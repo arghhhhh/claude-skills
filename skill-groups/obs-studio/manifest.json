@@ -2,6 +2,15 @@
   "name": "obs-studio",
   "description": "OBS Studio streaming/recording control — scenes, sources, studio mode, virtual camera.",
   "version": "0.1.0",
+  "prerequisites": [
+    {
+      "name": "go",
+      "check": "go version",
+      "install_hint": "Install Go from https://go.dev/dl/ (needed to compile gobs-cli)",
+      "required": false,
+      "note": "Only needed if installing via 'go install'. Pre-built binaries available at https://github.com/muesli/obs-cli/releases"
+    }
+  ],
   "install": {
     "check": "gobs-cli --version",
     "methods": [
@@ -28,6 +37,11 @@
   "test": {
     "command": "gobs-cli --version",
     "expect_success": true
+  },
+  "integration_test": {
+    "command": "gobs-cli obs-version",
+    "expect_success": true,
+    "description": "OBS Studio must be running with obs-websocket enabled (bundled in OBS 28+)"
   },
   "skills": [
     "obs-cli"

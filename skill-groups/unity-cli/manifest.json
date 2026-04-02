@@ -2,6 +2,20 @@
   "name": "unity-cli",
   "description": "Unity Editor automation via unity-cli — scene inspection, GameObject editing, prefab workflows, C# navigation/editing, asset management, input system, testing, and UI automation.",
   "version": "0.1.0",
+  "prerequisites": [
+    {
+      "name": "cargo",
+      "check": "cargo --version",
+      "install_hint": "Install Rust toolchain from https://rustup.rs/",
+      "required": true
+    },
+    {
+      "name": "git",
+      "check": "git --version",
+      "install_hint": "Install git from https://git-scm.com/",
+      "required": true
+    }
+  ],
   "install": {
     "check": "unity-cli --version",
     "methods": [
@@ -21,6 +35,11 @@
   "test": {
     "command": "unity-cli --version",
     "expect_success": true
+  },
+  "integration_test": {
+    "command": "unity-cli system ping",
+    "expect_success": true,
+    "description": "Unity Editor must be running with com.akiojin.unity-cli-bridge package installed"
   },
   "skills": [
     "unity-addressables",

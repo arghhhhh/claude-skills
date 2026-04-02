@@ -2,6 +2,21 @@
   "name": "comfyui",
   "description": "ComfyUI image/video generation — server management, workflow editing, node/model management.",
   "version": "0.1.0",
+  "prerequisites": [
+    {
+      "name": "pip",
+      "check": "pip --version",
+      "install_hint": "Install Python from https://python.org/ or use your system package manager",
+      "required": true
+    },
+    {
+      "name": "npx",
+      "check": "npx --version",
+      "install_hint": "Install Node.js from https://nodejs.org/ (npx is bundled with npm)",
+      "required": false,
+      "note": "Only needed for comfy-pilot (MCPorter-based) skill"
+    }
+  ],
   "install": {
     "check": "comfy --version",
     "methods": [
@@ -30,6 +45,11 @@
   "test": {
     "command": "comfy --version",
     "expect_success": true
+  },
+  "integration_test": {
+    "command": "curl -s http://127.0.0.1:8188/system_stats",
+    "expect_success": true,
+    "description": "ComfyUI server must be running at http://127.0.0.1:8188"
   },
   "skills": [
     "comfy-cli",

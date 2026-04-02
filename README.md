@@ -20,6 +20,15 @@ bash install.sh --skills comfyui --skip-software
 
 # List available groups
 bash install.sh --list
+
+# Verify everything is correctly installed
+bash install.sh --verify
+
+# Verify just one group
+bash install.sh --verify --skills unity-cli
+
+# Test live connections (software must be running)
+bash install.sh --test-integration --skills unity-cli
 ```
 
 ## What It Does
@@ -35,10 +44,11 @@ For each selected skill group, the installer:
 
 | Group | Software | Install Method | Skills | Agent |
 |-------|----------|---------------|--------|-------|
-| `unity-cli` | [unity-cli](https://github.com/arghhhhh/unity-cli) | `cargo install` | 13 skills (scene, prefab, C#, assets, etc.) | `unity` |
+| `unity-cli` | [unity-cli](https://github.com/arghhhhh/unity-cli) | `cargo install` (requires Rust) | 13 skills | `unity` |
 | `comfyui` | [comfy-cli](https://github.com/Comfy-Org/comfy-cli) + [comfy-pilot](https://github.com/ConstantineB6/comfy-pilot) | `pip install` | `comfy-cli`, `comfy-pilot` | `comfyui` |
-| `obs-studio` | [gobs-cli](https://github.com/muesli/obs-cli) | `go install` / binary | `obs-cli` | `obs-studio` |
+| `obs-studio` | [gobs-cli](https://github.com/muesli/obs-cli) | `go install` / brew / binary | `obs-cli` | `obs-studio` |
 | `blender` | [Blender](https://www.blender.org/) + [blender-mcp](https://github.com/ahujasid/blender-mcp) | manual / `brew` | `blender-mcp` | `blender` |
+| `app-ui` | [Unity App UI](https://docs.unity3d.com/Packages/com.unity.dt.app-ui@2.2/manual/index.html) | Unity Package Manager | 5 skills | — |
 
 MCPorter-based skills (comfyui, blender) also need [mcporter](https://github.com/steipete/mcporter) (`npx mcporter` — auto-installed via npx).
 
@@ -82,6 +92,43 @@ Some skills have `{{PLACEHOLDER}}` variables for machine-specific paths (binary 
 - **macOS/Linux**: Symlinks work natively
 - **Windows**: Requires Developer Mode enabled for symlinks, falls back to junction points or copies
 - All skill files use `~/.claude/skills/` paths internally
+
+## Verification & Testing
+
+The installer has three modes to ensure everything works:
+
+### `--verify` — Post-install health check (no runtime needed)
+Checks all three layers for each group:
+- **Prerequisites**: Are required tools (cargo, pip, npx, etc.) available?
+- **Software**: Is the CLI binary installed and callable?
+- **Skills/Agents**: Are files symlinked, non-empty, and free of broken links?
+- **CLAUDE.md**: Are trigger phrases present?
+- **Configuration**: Any `{{PLACEHOLDER}}` vars left unconfigured?
+
+```bash
+bash install.sh --verify
+# 23 passed  1 warnings  0 failed
+```
+
+### `--test-integration` — Live connection test (software must be running)
+Tests that the software actually responds to commands:
+
+| Group | What it tests |
+|-------|--------------|
+| `unity-cli` | `unity-cli system ping` — Unity Editor + bridge package |
+| `comfyui` | `curl http://127.0.0.1:8188/system_stats` — ComfyUI server |
+| `obs-studio` | `gobs-cli obs-version` — OBS + obs-websocket |
+| `blender` | `npx mcporter call blender.get_scene_info` — Blender + MCP addon |
+
+### Prerequisites per group
+
+| Group | Required | Optional |
+|-------|----------|----------|
+| `unity-cli` | `cargo` (Rust), `git` | — |
+| `comfyui` | `pip` (Python) | `npx` (Node.js, for comfy-pilot) |
+| `obs-studio` | — | `go` (only if building from source) |
+| `blender` | `npx` (Node.js) | — |
+| `app-ui` | — | — |
 
 ## Adding a New Skill Group
 
