@@ -1,0 +1,25 @@
+{
+  "name": "obs-studio",
+  "description": "OBS Studio streaming/recording control — scenes, sources, studio mode, virtual camera.",
+  "version": "0.1.0",
+  "install": {
+    "check": "obs-cli --version",
+    "methods": [
+      {
+        "name": "manual",
+        "platforms": ["macos", "linux", "windows"],
+        "url": "https://obsproject.com/download"
+      }
+    ]
+  },
+  "test": {
+    "command": "obs-cli --version",
+    "expect_success": true
+  },
+  "skills": [
+    "obs-cli"
+  ],
+  "agents": [
+    "obs-studio"
+  ]
+}

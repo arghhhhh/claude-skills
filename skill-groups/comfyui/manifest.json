@@ -1,0 +1,27 @@
+{
+  "name": "comfyui",
+  "description": "ComfyUI image/video generation — server management, workflow editing, node/model management.",
+  "version": "0.1.0",
+  "install": {
+    "check": "comfy --version",
+    "methods": [
+      {
+        "name": "pip",
+        "platforms": ["macos", "linux", "windows"],
+        "check": "pip --version",
+        "command": "pip install comfy-cli"
+      }
+    ]
+  },
+  "test": {
+    "command": "comfy --version",
+    "expect_success": true
+  },
+  "skills": [
+    "comfy-cli",
+    "comfy-pilot"
+  ],
+  "agents": [
+    "comfyui"
+  ]
+}

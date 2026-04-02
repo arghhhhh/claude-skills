@@ -1,0 +1,25 @@
+{
+  "name": "blender",
+  "description": "Blender 3D scene creation — modeling, materials, asset import, AI 3D generation, Python scripting.",
+  "version": "0.1.0",
+  "install": {
+    "check": "blender --version",
+    "methods": [
+      {
+        "name": "manual",
+        "platforms": ["macos", "linux", "windows"],
+        "url": "https://www.blender.org/download/"
+      }
+    ]
+  },
+  "test": {
+    "command": "blender --version",
+    "expect_success": true
+  },
+  "skills": [
+    "blender-mcp"
+  ],
+  "agents": [
+    "blender"
+  ]
+}

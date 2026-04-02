@@ -1,0 +1,51 @@
+{
+  "name": "unity-cli",
+  "description": "Unity Editor automation via unity-cli — scene inspection, GameObject editing, prefab workflows, C# navigation/editing, asset management, input system, testing, and UI automation.",
+  "version": "0.1.0",
+  "install": {
+    "check": "unity-cli --version",
+    "methods": [
+      {
+        "name": "cargo",
+        "platforms": ["macos", "linux", "windows"],
+        "check": "cargo --version",
+        "command": "cargo install --git https://github.com/arghhhhh/unity-cli.git"
+      },
+      {
+        "name": "binary",
+        "platforms": ["macos", "linux", "windows"],
+        "url": "https://github.com/arghhhhh/unity-cli/releases"
+      }
+    ]
+  },
+  "test": {
+    "command": "unity-cli --version",
+    "expect_success": true
+  },
+  "skills": [
+    "unity-addressables",
+    "unity-asset-management",
+    "unity-cli-usage",
+    "unity-csharp-edit",
+    "unity-csharp-navigate",
+    "unity-editor-tools",
+    "unity-gameobject-edit",
+    "unity-input-system",
+    "unity-playmode-testing",
+    "unity-prefab-workflow",
+    "unity-scene-create",
+    "unity-scene-inspect",
+    "unity-ui-automation"
+  ],
+  "agents": [
+    "unity"
+  ],
+  "source_repo": "https://github.com/arghhhhh/unity-cli.git",
+  "source_paths": {
+    "skills": ".claude-plugin/plugins/unity-cli/skills",
+    "agents": ".claude-plugin/plugins/unity-cli/agents",
+    "agent_renames": {
+      "unity-helper.md": "unity.md"
+    }
+  }
+}
