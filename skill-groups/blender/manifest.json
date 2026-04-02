@@ -6,9 +6,29 @@
     "check": "blender --version",
     "methods": [
       {
+        "name": "brew",
+        "platforms": ["macos"],
+        "check": "brew --version",
+        "command": "brew install --cask blender"
+      },
+      {
         "name": "manual",
         "platforms": ["macos", "linux", "windows"],
         "url": "https://www.blender.org/download/"
+      }
+    ],
+    "post_install": [
+      {
+        "name": "blender-mcp",
+        "description": "BlenderMCP addon for Claude integration",
+        "command": "uvx blender-mcp",
+        "url": "https://github.com/ahujasid/blender-mcp"
+      },
+      {
+        "name": "mcporter",
+        "description": "MCPorter CLI for calling MCP tools from the command line",
+        "check": "npx mcporter --version",
+        "url": "https://github.com/steipete/mcporter"
       }
     ]
   },
@@ -17,7 +37,7 @@
     "expect_success": true
   },
   "skills": [
-    "blender-mcp"
+    "mcp/blender-mcp"
   ],
   "agents": [
     "blender"

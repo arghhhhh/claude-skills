@@ -9,9 +9,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_GROUPS_DIR="$SCRIPT_DIR/skill-groups"
+SHARED_DIR="$SCRIPT_DIR/shared"
 CLAUDE_DIR="$HOME/.claude"
 SKILLS_DIR="$CLAUDE_DIR/skills"
 AGENTS_DIR="$CLAUDE_DIR/agents"
+CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
+CONFIG_FILE="$CLAUDE_DIR/skills-config.sh"
 
 # Colors (disabled if not a terminal)
 if [ -t 1 ]; then
@@ -46,6 +49,9 @@ create_symlink() {
   local target="$1"
   local link_path="$2"
 
+  # Ensure parent directory exists
+  mkdir -p "$(dirname "$link_path")"
+
   # Remove existing (file, symlink, or directory)
   if [ -e "$link_path" ] || [ -L "$link_path" ]; then
     rm -rf "$link_path"
@@ -76,13 +82,11 @@ create_symlink() {
 
 # ─── JSON parser (portable, no jq dependency) ───────────────────────────────
 
-# Extracts a simple string value from JSON: json_get '{"key":"val"}' "key" → val
 json_get() {
   local json="$1" key="$2"
   echo "$json" | sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1
 }
 
-# Extracts a simple array of strings: json_array '{"k":["a","b"]}' "k" → a\nb
 json_array() {
   local json="$1" key="$2"
   echo "$json" | sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\[//p" | sed 's/\].*//' | tr ',' '\n' | sed 's/[[:space:]]*"//g' | grep -v '^$'
@@ -139,6 +143,24 @@ select_groups() {
   done
 }
 
+# ─── Install prerequisites (mcporter, etc.) ─────────────────────────────────
+
+install_prerequisites() {
+  # Check for Node.js / npx (needed for mcporter)
+  if ! command -v npx >/dev/null 2>&1; then
+    warn "npx not found — MCPorter-based skills (comfyui, blender) need Node.js"
+    info "Install Node.js from https://nodejs.org/"
+  else
+    ok "npx available"
+  fi
+
+  # Check for git
+  if ! command -v git >/dev/null 2>&1; then
+    fail "git is required but not found"
+    exit 1
+  fi
+}
+
 # ─── Install software dependency ────────────────────────────────────────────
 
 install_software() {
@@ -157,11 +179,10 @@ install_software() {
 
   header "Installing $group software..."
 
-  # Try each install method
   local methods_json
   methods_json=$(cat "$SKILL_GROUPS_DIR/$group/manifest.json")
 
-  # Parse install methods — try cargo first, then pip, then manual
+  # Try each install method in order
   for method in cargo pip npm brew manual binary; do
     local method_cmd
     method_cmd=$(echo "$methods_json" | grep -A5 "\"name\": \"$method\"" | head -6)
@@ -192,13 +213,13 @@ install_software() {
       warn "$group requires manual installation"
       info "Download from: $url"
       read -rp "Press Enter after installing, or 's' to skip: " answer
-      [ "$answer" = "s" ] && return 1
+      [ "$answer" = "s" ] && return 0  # Don't block skill install
       return 0
     fi
   done
 
-  fail "Could not install $group software"
-  return 1
+  warn "Could not auto-install $group software — skills will be installed anyway"
+  return 0  # Don't block skill install
 }
 
 # ─── Install skills and agents ───────────────────────────────────────────────
@@ -216,26 +237,24 @@ install_skills() {
 
   local skills_source_dir agents_source_dir
   if [ -n "$source_repo" ]; then
-    # Clone source repo to temp location
-    local tmp_repo="/tmp/claude-skills-src-$group"
-    if [ -d "$tmp_repo" ]; then
+    # Clone source repo to a persistent location
+    local repo_cache="$CLAUDE_DIR/.skill-repos/$group"
+    mkdir -p "$CLAUDE_DIR/.skill-repos"
+    if [ -d "$repo_cache" ]; then
       info "Updating $group source repo..."
-      (cd "$tmp_repo" && git pull --quiet 2>/dev/null) || true
+      (cd "$repo_cache" && git pull --quiet 2>/dev/null) || true
     else
       info "Cloning $group source repo..."
-      git clone --quiet "$source_repo" "$tmp_repo" 2>/dev/null
+      git clone --quiet "$source_repo" "$repo_cache" 2>/dev/null
     fi
 
+    # Parse source_paths from manifest
     local skills_path agents_path
-    skills_path=$(echo "$manifest" | sed -n 's/.*"skills"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-    agents_path=$(echo "$manifest" | sed -n 's/.*"agents"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+    skills_path=$(echo "$manifest" | grep -A1 '"source_paths"' | grep '"skills"' | sed 's/.*: *"//;s/".*//')
+    agents_path=$(echo "$manifest" | grep -A2 '"source_paths"' | grep '"agents"' | sed 's/.*: *"//;s/".*//')
 
-    # source_paths parsing
-    skills_path=$(echo "$manifest" | grep -A1 '"source_paths"' | grep '"skills"' | sed 's/.*: *"//;s/".*//' )
-    agents_path=$(echo "$manifest" | grep -A2 '"source_paths"' | grep '"agents"' | sed 's/.*: *"//;s/".*//' )
-
-    skills_source_dir="$tmp_repo/$skills_path"
-    agents_source_dir="$tmp_repo/$agents_path"
+    skills_source_dir="$repo_cache/$skills_path"
+    agents_source_dir="$repo_cache/$agents_path"
   else
     # Skills are bundled in this repo
     skills_source_dir="$SKILL_GROUPS_DIR/$group/skills"
@@ -249,7 +268,10 @@ install_skills() {
     local src="$skills_source_dir/$skill"
     local dest="$SKILLS_DIR/$skill"
 
-    if [ -e "$src" ] || [ -d "$src" ]; then
+    if [ -d "$src" ]; then
+      create_symlink "$src" "$dest"
+      ok "Skill: $skill"
+    elif [ -f "$src" ]; then
       create_symlink "$src" "$dest"
       ok "Skill: $skill"
     elif [ -f "$src.md" ]; then
@@ -290,6 +312,110 @@ install_skills() {
   done
 }
 
+# ─── Apply template variables to skills ─────────────────────────────────────
+
+configure_skills() {
+  local group="$1"
+
+  # Load config if it exists
+  if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+  fi
+
+  # Check if any installed skill files have {{PLACEHOLDER}} vars
+  local needs_config=false
+  local skills
+  skills=$(json_array "$(cat "$SKILL_GROUPS_DIR/$group/manifest.json")" "skills")
+  for skill in $skills; do
+    local target="$SKILLS_DIR/$skill"
+    [ -f "$target" ] && grep -q '{{' "$target" 2>/dev/null && needs_config=true
+    [ -f "$target.md" ] && grep -q '{{' "$target.md" 2>/dev/null && needs_config=true
+  done
+
+  if [ "$needs_config" = "true" ]; then
+    warn "Some $group skills have {{PLACEHOLDER}} variables that need configuring"
+    info "Edit the skill files in $SKILLS_DIR/ or create $CONFIG_FILE"
+    info "See config.example.sh in this repo for the template"
+  fi
+}
+
+# ─── Append CLAUDE.md snippet ───────────────────────────────────────────────
+
+install_claude_md_snippet() {
+  local group="$1"
+  local snippet_file="$SHARED_DIR/claude-md/$group.md"
+
+  if [ ! -f "$snippet_file" ]; then
+    return 0
+  fi
+
+  # Create CLAUDE.md if it doesn't exist
+  if [ ! -f "$CLAUDE_MD" ]; then
+    echo "# Global Rules" > "$CLAUDE_MD"
+    echo "" >> "$CLAUDE_MD"
+  fi
+
+  # Check if snippet is already present (by first non-empty line)
+  local marker
+  marker=$(grep -m1 '^## ' "$snippet_file" 2>/dev/null || head -1 "$snippet_file")
+  if grep -qF "$marker" "$CLAUDE_MD" 2>/dev/null; then
+    ok "CLAUDE.md: $group snippet already present"
+    return 0
+  fi
+
+  # Append snippet
+  echo "" >> "$CLAUDE_MD"
+  echo "---" >> "$CLAUDE_MD"
+  echo "" >> "$CLAUDE_MD"
+  cat "$snippet_file" >> "$CLAUDE_MD"
+  ok "CLAUDE.md: appended $group trigger phrases"
+}
+
+# ─── Install shared skills ──────────────────────────────────────────────────
+
+install_shared_skills() {
+  local shared_skills_dir="$SHARED_DIR/skills"
+  [ -d "$shared_skills_dir" ] || return 0
+
+  mkdir -p "$SKILLS_DIR"
+  for skill_file in "$shared_skills_dir"/*.md; do
+    [ -f "$skill_file" ] || continue
+    local name
+    name=$(basename "$skill_file")
+    local dest="$SKILLS_DIR/$name"
+    create_symlink "$skill_file" "$dest"
+    ok "Shared skill: $name"
+  done
+
+  # Also install the mcp-setup snippet to CLAUDE.md
+  local mcp_snippet="$SHARED_DIR/claude-md/mcp-setup.md"
+  if [ -f "$mcp_snippet" ]; then
+    local marker
+    marker=$(grep -m1 '^## ' "$mcp_snippet" 2>/dev/null || head -1 "$mcp_snippet")
+    if ! grep -qF "$marker" "$CLAUDE_MD" 2>/dev/null; then
+      echo "" >> "$CLAUDE_MD"
+      echo "---" >> "$CLAUDE_MD"
+      echo "" >> "$CLAUDE_MD"
+      cat "$mcp_snippet" >> "$CLAUDE_MD"
+      ok "CLAUDE.md: appended MCP setup snippet"
+    fi
+  fi
+
+  # Install mcporter snippet
+  local mcporter_snippet="$SHARED_DIR/claude-md/mcporter.md"
+  if [ -f "$mcporter_snippet" ]; then
+    local marker
+    marker=$(grep -m1 '^## ' "$mcporter_snippet" 2>/dev/null || head -1 "$mcporter_snippet")
+    if ! grep -qF "$marker" "$CLAUDE_MD" 2>/dev/null; then
+      echo "" >> "$CLAUDE_MD"
+      echo "---" >> "$CLAUDE_MD"
+      echo "" >> "$CLAUDE_MD"
+      cat "$mcporter_snippet" >> "$CLAUDE_MD"
+      ok "CLAUDE.md: appended MCPorter usage snippet"
+    fi
+  fi
+}
+
 # ─── Run smoke test ─────────────────────────────────────────────────────────
 
 run_test() {
@@ -301,7 +427,6 @@ run_test() {
   test_cmd=$(echo "$manifest" | grep -A2 '"test"' | grep '"command"' | sed 's/.*: *"//;s/".*//')
 
   if [ -z "$test_cmd" ]; then
-    warn "No test defined for $group"
     return 0
   fi
 
@@ -309,7 +434,7 @@ run_test() {
   if eval "$test_cmd" >/dev/null 2>&1; then
     ok "$group smoke test passed"
   else
-    warn "$group smoke test failed — software may not be fully configured"
+    warn "$group smoke test failed — software may need manual configuration"
   fi
 }
 
@@ -318,28 +443,39 @@ run_test() {
 main() {
   header "claude-skills installer"
   info "Platform: $PLATFORM"
-  info "Target: $CLAUDE_DIR"
+  info "Target:   $CLAUDE_DIR"
   echo ""
 
   # Parse arguments
   SELECTED_GROUPS=()
+  SKIP_SOFTWARE=false
   while [[ $# -gt 0 ]]; do
     case $1 in
       --skills)
         IFS=',' read -ra SELECTED_GROUPS <<< "$2"
         shift 2
         ;;
+      --skip-software)
+        SKIP_SOFTWARE=true
+        shift
+        ;;
       --list)
         list_groups | tr ' ' '\n'
         exit 0
         ;;
       --help|-h)
-        echo "Usage: install.sh [--skills group1,group2] [--list] [--help]"
+        echo "Usage: install.sh [OPTIONS]"
         echo ""
         echo "Options:"
-        echo "  --skills   Comma-separated list of skill groups to install"
-        echo "  --list     List available skill groups"
-        echo "  --help     Show this help"
+        echo "  --skills GROUP1,GROUP2   Install specific skill groups"
+        echo "  --skip-software          Skip software installation, only install skills"
+        echo "  --list                   List available skill groups"
+        echo "  --help                   Show this help"
+        echo ""
+        echo "Examples:"
+        echo "  install.sh                          # Interactive selection"
+        echo "  install.sh --skills unity-cli       # Install just unity-cli"
+        echo "  install.sh --skills unity-cli,blender --skip-software"
         exit 0
         ;;
       *)
@@ -348,6 +484,9 @@ main() {
         ;;
     esac
   done
+
+  # Check prerequisites
+  install_prerequisites
 
   # Interactive selection if no --skills flag
   if [ ${#SELECTED_GROUPS[@]} -eq 0 ]; then
@@ -358,6 +497,9 @@ main() {
     fail "No groups selected"
     exit 1
   fi
+
+  # Ensure directories exist
+  mkdir -p "$SKILLS_DIR" "$AGENTS_DIR"
 
   echo ""
   header "Installing: ${SELECTED_GROUPS[*]}"
@@ -371,18 +513,39 @@ main() {
     header "── $group ──"
 
     # Step 1: Install software
-    if ! install_software "$group"; then
-      warn "Skipping $group skills (software not installed)"
-      continue
+    if [ "$SKIP_SOFTWARE" = "false" ]; then
+      install_software "$group"
     fi
 
     # Step 2: Install skills + agents
     install_skills "$group"
 
-    # Step 3: Smoke test
-    run_test "$group"
+    # Step 3: Configure template variables
+    configure_skills "$group"
+
+    # Step 4: Append CLAUDE.md snippet
+    install_claude_md_snippet "$group"
+
+    # Step 5: Smoke test
+    if [ "$SKIP_SOFTWARE" = "false" ]; then
+      run_test "$group"
+    fi
   done
 
+  # Install shared skills (mcp-setup, etc.)
+  header "── shared ──"
+  install_shared_skills
+
+  echo ""
+  header "Summary"
+  info "Skills installed to: $SKILLS_DIR/"
+  info "Agents installed to: $AGENTS_DIR/"
+  info "CLAUDE.md updated:   $CLAUDE_MD"
+  if [ -f "$CONFIG_FILE" ]; then
+    info "Config loaded from:  $CONFIG_FILE"
+  else
+    info "No config file at:   $CONFIG_FILE (see config.example.sh)"
+  fi
   echo ""
   ok "Done! Restart Claude Code to pick up new skills."
 }

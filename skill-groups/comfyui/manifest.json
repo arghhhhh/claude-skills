@@ -11,6 +11,20 @@
         "check": "pip --version",
         "command": "pip install comfy-cli"
       }
+    ],
+    "post_install": [
+      {
+        "name": "comfy-pilot",
+        "description": "Install comfy-pilot custom node for live workflow editing",
+        "command": "comfy node install comfy-pilot",
+        "url": "https://github.com/ConstantineB6/comfy-pilot"
+      },
+      {
+        "name": "mcporter",
+        "description": "MCPorter CLI for calling MCP tools from the command line",
+        "check": "npx mcporter --version",
+        "url": "https://github.com/steipete/mcporter"
+      }
     ]
   },
   "test": {

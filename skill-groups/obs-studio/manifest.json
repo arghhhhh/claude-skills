@@ -3,17 +3,30 @@
   "description": "OBS Studio streaming/recording control — scenes, sources, studio mode, virtual camera.",
   "version": "0.1.0",
   "install": {
-    "check": "obs-cli --version",
+    "check": "gobs-cli --version",
     "methods": [
       {
-        "name": "manual",
+        "name": "brew",
+        "platforms": ["macos"],
+        "check": "brew --version",
+        "command": "brew install muesli/tap/obs-cli"
+      },
+      {
+        "name": "go",
         "platforms": ["macos", "linux", "windows"],
-        "url": "https://obsproject.com/download"
+        "check": "go version",
+        "command": "go install github.com/muesli/obs-cli@latest"
+      },
+      {
+        "name": "binary",
+        "platforms": ["macos", "linux", "windows"],
+        "url": "https://github.com/muesli/obs-cli/releases"
       }
-    ]
+    ],
+    "notes": "OBS Studio itself must be installed separately from https://obsproject.com/download"
   },
   "test": {
-    "command": "obs-cli --version",
+    "command": "gobs-cli --version",
     "expect_success": true
   },
   "skills": [
