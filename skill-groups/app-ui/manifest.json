@@ -1,0 +1,28 @@
+{
+  "name": "app-ui",
+  "description": "Unity App UI framework — components, MVVM, navigation, Redux state management, and theming for UI Toolkit.",
+  "version": "0.1.0",
+  "install": {
+    "check": "echo 'app-ui is a Unity package — no CLI to check'",
+    "methods": [
+      {
+        "name": "manual",
+        "platforms": ["macos", "linux", "windows"],
+        "url": "https://docs.unity3d.com/Packages/com.unity.dt.app-ui@2.2/manual/index.html"
+      }
+    ],
+    "notes": "App UI is a Unity package (com.unity.dt.app-ui). Install via Unity Package Manager. These skills provide coding guidance — no external CLI required."
+  },
+  "test": {
+    "command": "echo 'app-ui skills are documentation-only — no runtime test needed'",
+    "expect_success": true
+  },
+  "skills": [
+    "app-ui",
+    "app-ui-mvvm",
+    "app-ui-navigation",
+    "app-ui-redux",
+    "app-ui-theming"
+  ],
+  "agents": []
+}
