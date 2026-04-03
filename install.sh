@@ -674,6 +674,7 @@ install_shared_skills() {
   [ -d "$shared_skills_dir" ] || return 0
 
   mkdir -p "$SKILLS_DIR"
+  # Install shared .md files
   for skill_file in "$shared_skills_dir"/*.md; do
     [ -f "$skill_file" ] || continue
     local name
@@ -681,9 +682,22 @@ install_shared_skills() {
     create_symlink "$skill_file" "$SKILLS_DIR/$name"
     ok "Shared skill: $name (v$(skill_get_version "$skill_file"))"
   done
+  # Install shared directory skills (contain SKILL.md + references)
+  for skill_dir in "$shared_skills_dir"/*/; do
+    [ -d "$skill_dir" ] || continue
+    local name
+    name=$(basename "$skill_dir")
+    local version_file="$skill_dir/SKILL.md"
+    create_symlink "$skill_dir" "$SKILLS_DIR/$name"
+    if [ -f "$version_file" ]; then
+      ok "Shared skill: $name (v$(skill_get_version "$version_file"))"
+    else
+      ok "Shared skill: $name"
+    fi
+  done
 
   # Append shared claude-md snippets
-  for snippet in mcp-setup mcporter; do
+  for snippet in mcp-setup mcporter skill-repo-maintenance; do
     local snippet_file="$SHARED_DIR/claude-md/$snippet.md"
     [ -f "$snippet_file" ] || continue
     if [ ! -f "$CLAUDE_MD" ]; then
