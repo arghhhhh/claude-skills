@@ -1,0 +1,41 @@
+{
+  "name": "github-cli",
+  "description": "GitHub CLI (gh) — issues, pull requests, repos, CI checks, releases, and API access.",
+  "version": "0.1.0",
+  "prerequisites": [],
+  "install": {
+    "check": "gh --version",
+    "methods": [
+      {
+        "name": "brew",
+        "platforms": ["macos", "linux"],
+        "check": "brew --version",
+        "command": "brew install gh"
+      },
+      {
+        "name": "winget",
+        "platforms": ["windows"],
+        "check": "winget --version",
+        "command": "winget install --id GitHub.cli"
+      },
+      {
+        "name": "manual",
+        "platforms": ["macos", "linux", "windows"],
+        "url": "https://cli.github.com/"
+      }
+    ]
+  },
+  "test": {
+    "command": "gh --version",
+    "expect_success": true
+  },
+  "integration_test": {
+    "command": "gh auth status",
+    "expect_success": true,
+    "description": "gh must be authenticated — run 'gh auth login' if not"
+  },
+  "skills": [
+    "github-cli"
+  ],
+  "agents": []
+}
