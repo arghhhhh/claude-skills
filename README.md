@@ -37,6 +37,30 @@ bash install.sh --update --sync
 bash install.sh --test-integration --skills unity-cli
 ```
 
+## Agent-Driven Setup (Recommended)
+
+The easiest way to set up on a new machine is to point Claude at this repo and let it handle everything.
+
+**Prompt for a fresh machine (no skills installed yet):**
+
+> Set up my Claude skills from https://github.com/arghhhhh/claude-skills — ask me which groups to install, then handle the rest including software installation and path configuration.
+
+**What the agent will do:**
+1. Clone the repo to `~/.claude/.skill-repos/claude-skills/`
+2. Show you the available skill groups and ask which to install (or all)
+3. Ask whether to also install the software dependencies
+4. Run the installer
+5. Search the machine for any `{{PLACEHOLDER}}` paths (binary locations, workspace dirs) and auto-resolve them into `~/.claude/skills-config.sh`
+6. Re-run the installer to apply the config
+7. Run `--verify` and report results
+
+**After first-time setup, the `skill-repo-maintenance` skill is installed and teaches agents how to update/add/sync skills going forward.** From that point on, the agent can reference that skill directly.
+
+**Other useful prompts:**
+- "Sync my skills" — pulls latest from repo and updates
+- "Add a new skill for X" — creates skill files, bumps versions, pushes
+- "Check my skill versions" — runs `--status`
+
 ## What It Does
 
 For each selected skill group, the installer:
