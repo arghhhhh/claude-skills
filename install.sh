@@ -432,6 +432,15 @@ install_global_prerequisites() {
     exit 1
   fi
   ok "git available"
+
+  if ! command -v node >/dev/null 2>&1; then
+    fail "node is required but not found — install from https://nodejs.org/"
+    if [ "$PLATFORM" = "macos" ] && command -v brew >/dev/null 2>&1; then
+      info "Quick install: brew install node"
+    fi
+    exit 1
+  fi
+  ok "node available"
 }
 
 # ─── Install software dependency ────────────────────────────────────────────
