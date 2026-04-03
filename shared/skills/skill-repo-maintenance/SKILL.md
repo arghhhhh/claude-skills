@@ -1,5 +1,5 @@
 ---
-version: 1.1.0
+version: 1.2.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -169,6 +169,75 @@ git clone https://github.com/arghhhhh/claude-skills.git ~/.claude/.skill-repos/c
 cd ~/.claude/.skill-repos/claude-skills
 bash install.sh
 ```
+
+## First-Time Setup on a New Machine
+
+When the user asks to "set up my skills", "install claude-skills", or "set up Claude on this machine", follow this workflow:
+
+### 1. Clone the repo (if not already present)
+
+```bash
+if [ -d ~/.claude/.skill-repos/claude-skills ]; then
+  cd ~/.claude/.skill-repos/claude-skills && git pull origin main
+else
+  mkdir -p ~/.claude/.skill-repos
+  git clone https://github.com/arghhhhh/claude-skills.git ~/.claude/.skill-repos/claude-skills
+fi
+```
+
+### 2. Run the installer
+
+```bash
+cd ~/.claude/.skill-repos/claude-skills && bash install.sh -y
+```
+
+The `-y` flag runs non-interactively (installs all groups, skips manual-install prompts).
+
+### 3. Resolve {{PLACEHOLDER}} variables
+
+After install, run `bash install.sh --verify` and check for `{{PLACEHOLDER}}` warnings. If any exist, **you** (the agent) should resolve them by searching the machine for the correct paths:
+
+**Strategy for finding paths:**
+- `which <binary>` or `command -v <binary>` — finds executables on PATH
+- `find / -name "<binary>" -type f 2>/dev/null | head -5` — broader search (use sparingly)
+- On Windows Git Bash: `where.exe <binary>` or search common locations
+- Check common install locations:
+  - Miniconda: `~/miniconda3/Scripts/`, `~/miniconda3/bin/`
+  - Homebrew: `/opt/homebrew/bin/`, `/usr/local/bin/`
+  - Cargo: `~/.cargo/bin/`
+  - Go: `~/go/bin/`
+  - npm global: check `npm root -g`
+  - Windows tools: `C:/Users/*/tools/`, `C:/Program Files/`
+
+**Once you find the paths**, write `~/.claude/skills-config.sh`:
+
+```bash
+# Example — fill in paths you actually found on this machine
+COMFY_CLI="/path/to/comfy"
+COMFYUI_WORKSPACE="/path/to/ComfyUI"
+COMFYUI_PYTHON=""  # leave empty if not using Windows standalone
+GOBS_CLI="/path/to/gobs-cli"
+OBS_CONFIG_DIR="$HOME/.config/obs-studio"  # or AppData/Roaming on Windows
+```
+
+Then re-run the installer to apply the config:
+
+```bash
+cd ~/.claude/.skill-repos/claude-skills && bash install.sh --update
+```
+
+### 4. Verify and report
+
+```bash
+cd ~/.claude/.skill-repos/claude-skills && bash install.sh --verify
+```
+
+Report the results to the user. If any software smoke tests failed, let them know what needs manual attention (e.g., "OBS Studio needs to be installed from obsproject.com").
+
+### 5. Register MCP servers (if applicable)
+
+Some skills require MCP server registration. Check post-install hints in the installer output. Common ones:
+- `officecli mcp claude` — registers OfficeCLI MCP server
 
 ## Key Rules
 
