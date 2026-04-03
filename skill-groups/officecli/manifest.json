@@ -1,0 +1,42 @@
+{
+  "name": "officecli",
+  "description": "Create, read, analyze, and modify Office documents (.docx, .xlsx, .pptx) via CLI.",
+  "version": "0.1.0",
+  "prerequisites": [],
+  "install": {
+    "check": "officecli --version",
+    "methods": [
+      {
+        "name": "curl",
+        "platforms": ["macos", "linux"],
+        "check": "curl --version",
+        "command": "curl -fsSL https://raw.githubusercontent.com/iOfficeAI/OfficeCLI/main/install.sh | bash"
+      },
+      {
+        "name": "manual",
+        "platforms": ["macos", "linux", "windows"],
+        "url": "https://github.com/iOfficeAI/OfficeCLI/releases"
+      }
+    ]
+  },
+  "test": {
+    "command": "officecli --version",
+    "expect_success": true
+  },
+  "skills": [
+    "officecli",
+    "officecli-docx",
+    "officecli-pptx",
+    "officecli-xlsx",
+    "officecli-pitch-deck",
+    "officecli-academic-paper",
+    "officecli-data-dashboard",
+    "officecli-financial-model",
+    "morph-ppt"
+  ],
+  "agents": [],
+  "post_install_hints": [
+    "Register the MCP server with: officecli mcp claude",
+    "Specialized skills (pitch-deck, academic-paper, etc.) are loaded on-demand by the core skill"
+  ]
+}
