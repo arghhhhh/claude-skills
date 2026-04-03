@@ -262,8 +262,10 @@ skill_get_version() {
   [ -f "$file" ] || { echo "0.0.0"; return; }
 
   local version
+  # Check for top-level version: or nested metadata.version:
   version=$(sed -n '/^---$/,/^---$/{
     s/^version:[[:space:]]*\(.*\)/\1/p
+    s/^[[:space:]]*version:[[:space:]]*\(.*\)/\1/p
   }' "$file" | head -1)
 
   # Strip quotes if present
