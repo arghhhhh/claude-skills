@@ -217,6 +217,10 @@ json_prerequisites() {
   local name="" check="" hint="" required="true"
   while IFS= read -r line; do
     if echo "$line" | grep -q '"prerequisites"'; then
+      # Handle empty array on same line: "prerequisites": []
+      if echo "$line" | grep -q '"prerequisites"[[:space:]]*:[[:space:]]*\[\]'; then
+        return
+      fi
       in_prereqs=true
       continue
     fi
