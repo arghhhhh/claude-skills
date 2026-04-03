@@ -1,5 +1,6 @@
 ---
 name: app-ui-navigation
+version: 1.0.0
 description: Expert for App UI navigation system - NavGraph, NavHost, NavController, destinations, and visual controllers (AppBar, Drawer, BottomNavBar).
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---

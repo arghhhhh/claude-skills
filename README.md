@@ -24,8 +24,14 @@ bash install.sh --list
 # Verify everything is correctly installed
 bash install.sh --verify
 
-# Verify just one group
-bash install.sh --verify --skills unity-cli
+# See version status of all skills
+bash install.sh --status
+
+# Update installed skills from repo
+bash install.sh --update
+
+# Bidirectional sync (also push local improvements back to repo)
+bash install.sh --update --sync
 
 # Test live connections (software must be running)
 bash install.sh --test-integration --skills unity-cli
@@ -34,11 +40,35 @@ bash install.sh --test-integration --skills unity-cli
 ## What It Does
 
 For each selected skill group, the installer:
-1. **Installs the software** (e.g. `cargo install unity-cli`, `pip install comfy-cli`)
-2. **Symlinks skills** into `~/.claude/skills/`
-3. **Symlinks agents** into `~/.claude/agents/`
-4. **Appends trigger phrases** to `~/.claude/CLAUDE.md`
-5. **Runs a smoke test** to verify the software works
+1. **Checks prerequisites** (cargo, pip, npx, etc.)
+2. **Installs the software** (e.g. `cargo install unity-cli`, `pip install comfy-cli`)
+3. **Symlinks skills** into `~/.claude/skills/` (with version tracking)
+4. **Symlinks agents** into `~/.claude/agents/`
+5. **Configures placeholders** from `~/.claude/skills-config.sh`
+6. **Appends trigger phrases** to `~/.claude/CLAUDE.md`
+7. **Runs a smoke test** to verify the software works
+
+On first run from a temporary directory (e.g. `/tmp`), the repo is automatically copied to `~/.claude/.skill-repos/claude-skills/` so symlinks survive reboots.
+
+## Skill Versioning
+
+Every skill file includes a `version` field in its YAML frontmatter:
+
+```yaml
+---
+version: 1.2.0
+---
+
+# My Skill
+...
+```
+
+The installer tracks versions to enable:
+- **`--status`**: See which skills are up to date, have updates available, or are newer locally
+- **`--update`**: Pull newer versions from the repo into your local install
+- **`--update --sync`**: Also push locally-improved skills back into the repo
+
+When updating, the installer automatically backs up your existing skills to `~/.claude/.skill-backups/`.
 
 ## Skill Groups
 
@@ -79,13 +109,49 @@ claude-skills/
 └── README.md
 ```
 
+After installation, the following is created in `~/.claude/`:
+
+```
+~/.claude/
+├── skills/                 # Symlinks (or copies with configured placeholders)
+├── agents/                 # Symlinks to agent definitions
+├── .skill-repos/
+│   └── claude-skills/      # Canonical repo copy (symlinks point here)
+├── .skills-meta/
+│   └── repo-path           # Stored repo location
+├── .skill-backups/         # Timestamped backups (created on update)
+├── skills-config.sh        # Machine-specific config (you create this)
+└── CLAUDE.md               # Trigger phrases appended here
+```
+
 ## Machine-Specific Configuration
 
-Some skills have `{{PLACEHOLDER}}` variables for machine-specific paths (binary locations, workspaces, etc.). After installing:
+Some skills have `{{PLACEHOLDER}}` variables for machine-specific paths. The installer will automatically substitute values from your config file:
 
 1. Copy `config.example.sh` to `~/.claude/skills-config.sh`
 2. Fill in your machine's paths
-3. Re-run the installer or manually edit the skill files
+3. Re-run the installer — placeholders are replaced automatically
+
+When a skill has placeholders and a config value is available, the symlink is replaced with a configured copy (the repo original stays as a template).
+
+## Updating Skills Across Machines
+
+The typical workflow for keeping skills in sync:
+
+```bash
+# Machine A: improve a skill, bump its version
+# (edit ~/.claude/skills/comfy-cli.md, change version: 1.0.0 → 1.1.0)
+
+# Sync the improvement back to the repo
+bash install.sh --update --sync
+cd ~/.claude/.skill-repos/claude-skills
+git add -A && git commit -m "Bump comfy-cli to 1.1.0" && git push
+
+# Machine B: pull and update
+cd ~/.claude/.skill-repos/claude-skills
+git pull
+bash install.sh --update
+```
 
 ## Cross-Platform Notes
 
@@ -95,19 +161,28 @@ Some skills have `{{PLACEHOLDER}}` variables for machine-specific paths (binary 
 
 ## Verification & Testing
 
-The installer has three modes to ensure everything works:
-
 ### `--verify` — Post-install health check (no runtime needed)
-Checks all three layers for each group:
+Checks all layers for each group:
 - **Prerequisites**: Are required tools (cargo, pip, npx, etc.) available?
 - **Software**: Is the CLI binary installed and callable?
-- **Skills/Agents**: Are files symlinked, non-empty, and free of broken links?
+- **Skills/Agents**: Are files symlinked, non-empty, versioned, and free of broken links?
 - **CLAUDE.md**: Are trigger phrases present?
 - **Configuration**: Any `{{PLACEHOLDER}}` vars left unconfigured?
 
 ```bash
 bash install.sh --verify
 # 23 passed  1 warnings  0 failed
+```
+
+### `--status` — Version overview
+Shows a table of all skills with local vs repo versions:
+
+```bash
+bash install.sh --status
+# Skill                     Local   Repo    Status
+# comfyui/comfy-cli         1.1.0   1.2.0   update available
+# blender/mcp/blender-mcp   1.0.0   1.0.0   up to date
+# obs-studio/obs-cli        1.1.0   1.0.0   local newer
 ```
 
 ### `--test-integration` — Live connection test (software must be running)
@@ -133,7 +208,7 @@ Tests that the software actually responds to commands:
 ## Adding a New Skill Group
 
 1. Create `skill-groups/<name>/manifest.json` (see existing ones for format)
-2. Add skill `.md` files under `skill-groups/<name>/skills/`
+2. Add skill `.md` files under `skill-groups/<name>/skills/` — include `version: 1.0.0` in YAML frontmatter
 3. Add agent `.md` files under `skill-groups/<name>/agents/`
 4. Add a CLAUDE.md snippet to `shared/claude-md/<name>.md`
 5. The installer reads the manifest to know what to install and test

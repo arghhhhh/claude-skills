@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # ─────────────────────────────────────────────────────────────────────────────
-# claude-skills installer
+# claude-skills installer v2
 # Cross-platform (macOS, Linux, Windows via Git Bash/WSL)
-# Installs selected skill groups: software + skills + agents → ~/.claude/
+# Installs, updates, and syncs skill groups: software + skills + agents → ~/.claude/
 # ─────────────────────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,6 +15,9 @@ SKILLS_DIR="$CLAUDE_DIR/skills"
 AGENTS_DIR="$CLAUDE_DIR/agents"
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 CONFIG_FILE="$CLAUDE_DIR/skills-config.sh"
+META_DIR="$CLAUDE_DIR/.skills-meta"
+BACKUP_DIR="$CLAUDE_DIR/.skill-backups"
+CANONICAL_DIR="$HOME/.claude/.skill-repos/claude-skills"
 
 # Counters for final report
 PASS_COUNT=0
@@ -24,9 +27,9 @@ WARN_COUNT=0
 # Colors (disabled if not a terminal)
 if [ -t 1 ]; then
   RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
-  BLUE='\033[0;34m'; BOLD='\033[1m'; NC='\033[0m'
+  BLUE='\033[0;34m'; BOLD='\033[1m'; DIM='\033[2m'; NC='\033[0m'
 else
-  RED=''; GREEN=''; YELLOW=''; BLUE=''; BOLD=''; NC=''
+  RED=''; GREEN=''; YELLOW=''; BLUE=''; BOLD=''; DIM=''; NC=''
 fi
 
 info()  { echo -e "${BLUE}▸${NC} $*"; }
@@ -48,6 +51,59 @@ detect_platform() {
 
 PLATFORM=$(detect_platform)
 
+# ─── Canonical repo location ─────────────────────────────────────────────────
+
+ensure_canonical_location() {
+  # Already in canonical location
+  if [ "$SCRIPT_DIR" = "$CANONICAL_DIR" ]; then
+    return 0
+  fi
+
+  # Check if path is ephemeral (tmp, temp, etc.)
+  local is_ephemeral=false
+  case "$SCRIPT_DIR" in
+    /tmp/*|/var/tmp/*|*/Temp/*|*/temp/*) is_ephemeral=true ;;
+  esac
+
+  if [ "$is_ephemeral" = "true" ]; then
+    warn "Repo is in a temporary directory ($SCRIPT_DIR)"
+    warn "Symlinks will break when this directory is cleaned up"
+    echo ""
+    info "The repo will be copied to: $CANONICAL_DIR"
+    read -rp "Proceed? [Y/n]: " answer
+    if [ "$answer" = "n" ] || [ "$answer" = "N" ]; then
+      warn "Continuing from $SCRIPT_DIR — symlinks may break later"
+      return 0
+    fi
+  else
+    info "Repo is at: $SCRIPT_DIR"
+    info "Canonical location is: $CANONICAL_DIR"
+    read -rp "Copy repo to canonical location? [Y/n]: " answer
+    if [ "$answer" = "n" ] || [ "$answer" = "N" ]; then
+      return 0
+    fi
+  fi
+
+  mkdir -p "$(dirname "$CANONICAL_DIR")"
+  if [ -d "$CANONICAL_DIR/.git" ]; then
+    # Update existing canonical copy
+    info "Updating existing canonical copy..."
+    rsync -a --exclude='.git' "$SCRIPT_DIR/" "$CANONICAL_DIR/"
+  else
+    # Fresh copy
+    cp -r "$SCRIPT_DIR" "$CANONICAL_DIR"
+  fi
+  ok "Copied to $CANONICAL_DIR"
+
+  # Store repo path for future reference
+  mkdir -p "$META_DIR"
+  echo "$CANONICAL_DIR" > "$META_DIR/repo-path"
+
+  # Re-exec from canonical location, passing all args
+  chmod +x "$CANONICAL_DIR/install.sh"
+  exec "$CANONICAL_DIR/install.sh" "$@"
+}
+
 # ─── Symlink helper (cross-platform) ────────────────────────────────────────
 
 create_symlink() {
@@ -56,8 +112,31 @@ create_symlink() {
 
   mkdir -p "$(dirname "$link_path")"
 
+  # Handle existing files — back up if not our own symlink
   if [ -e "$link_path" ] || [ -L "$link_path" ]; then
-    rm -rf "$link_path"
+    if [ -L "$link_path" ]; then
+      local existing_target
+      existing_target=$(readlink "$link_path")
+      # If it already points to our target, nothing to do
+      if [ "$existing_target" = "$target" ]; then
+        return 0
+      fi
+      # If it points somewhere in our repo, safe to overwrite
+      case "$existing_target" in
+        "$SCRIPT_DIR"/*|"$CANONICAL_DIR"/*|"$CLAUDE_DIR/.skill-repos/"*)
+          rm -f "$link_path"
+          ;;
+        *)
+          # Points elsewhere — back it up
+          backup_file "$link_path"
+          rm -f "$link_path"
+          ;;
+      esac
+    else
+      # Real file or directory — back it up
+      backup_file "$link_path"
+      rm -rf "$link_path"
+    fi
   fi
 
   if [ "$PLATFORM" = "windows" ]; then
@@ -80,6 +159,38 @@ create_symlink() {
   fi
 }
 
+# ─── Backup helper ───────────────────────────────────────────────────────────
+
+backup_file() {
+  local path="$1"
+  local timestamp
+  timestamp=$(date +%Y%m%d-%H%M%S)
+  local dest="$BACKUP_DIR/$timestamp"
+  mkdir -p "$dest"
+
+  local name
+  name=$(basename "$path")
+  # Preserve subdirectory structure relative to skills dir
+  local rel_dir=""
+  case "$path" in
+    "$SKILLS_DIR"/*)
+      rel_dir=$(dirname "${path#"$SKILLS_DIR"/}")
+      [ "$rel_dir" = "." ] && rel_dir=""
+      ;;
+    "$AGENTS_DIR"/*)
+      rel_dir="agents"
+      ;;
+  esac
+
+  if [ -n "$rel_dir" ]; then
+    mkdir -p "$dest/$rel_dir"
+    cp -r "$path" "$dest/$rel_dir/$name"
+  else
+    cp -r "$path" "$dest/$name"
+  fi
+  info "Backed up existing $(basename "$path") → $dest/"
+}
+
 # ─── JSON parser (portable, no jq dependency) ───────────────────────────────
 
 json_get() {
@@ -87,15 +198,21 @@ json_get() {
   echo "$json" | sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1
 }
 
+# Extract the "check" field from the "install" block (not from prerequisites or methods)
+json_get_install_check() {
+  local json="$1"
+  echo "$json" | tr '\n' ' ' | sed -n 's/.*"install"[[:space:]]*:[[:space:]]*{[[:space:]]*"check"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p'
+}
+
 json_array() {
   local json="$1" key="$2"
-  echo "$json" | sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\[//p" | sed 's/\].*//' | tr ',' '\n' | sed 's/[[:space:]]*"//g' | grep -v '^$'
+  # Collapse to single line, extract array content between [ and ], split by comma
+  echo "$json" | tr '\n' ' ' | sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*/\1/p" | tr ',' '\n' | sed 's/[[:space:]]*"//g' | grep -v '^$' || true
 }
 
 # Extract prerequisite objects from JSON — returns "name|check|install_hint|required" per line
 json_prerequisites() {
   local manifest_file="$1"
-  # Use a simple line-by-line parser for the prerequisites array
   local in_prereqs=false
   local name="" check="" hint="" required="true"
   while IFS= read -r line; do
@@ -104,24 +221,19 @@ json_prerequisites() {
       continue
     fi
     if [ "$in_prereqs" = "false" ]; then continue; fi
-    # End of prerequisites array
     if echo "$line" | grep -q '^\s*\]'; then
-      # Emit last entry if any
       if [ -n "$name" ]; then
         echo "$name|$check|$hint|$required"
       fi
       break
     fi
-    # Start of new object
     if echo "$line" | grep -q '^\s*{'; then
-      # Emit previous entry
       if [ -n "$name" ]; then
         echo "$name|$check|$hint|$required"
       fi
       name=""; check=""; hint=""; required="true"
       continue
     fi
-    # Parse fields
     local val
     val=$(echo "$line" | sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
     [ -n "$val" ] && name="$val"
@@ -132,6 +244,80 @@ json_prerequisites() {
     val=$(echo "$line" | sed -n 's/.*"required"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p')
     [ -n "$val" ] && required="$val"
   done < "$manifest_file"
+}
+
+# ─── Version helpers ─────────────────────────────────────────────────────────
+
+# Extract version from YAML frontmatter of a skill file
+skill_get_version() {
+  local file="$1"
+  # Handle directory skills — look for SKILL.md
+  [ -d "$file" ] && file="$file/SKILL.md"
+  # Try .md extension
+  [ ! -f "$file" ] && [ -f "${file}.md" ] && file="${file}.md"
+  [ -f "$file" ] || { echo "0.0.0"; return; }
+
+  local version
+  version=$(sed -n '/^---$/,/^---$/{
+    s/^version:[[:space:]]*\(.*\)/\1/p
+  }' "$file" | head -1)
+
+  # Strip quotes if present
+  version=$(echo "$version" | sed 's/^["'"'"']//;s/["'"'"']$//')
+
+  if [ -z "$version" ]; then
+    echo "0.0.0"
+  else
+    echo "$version"
+  fi
+}
+
+# Compare semver: returns 0 if equal, 1 if v1 > v2, 2 if v1 < v2
+semver_compare() {
+  local v1="$1" v2="$2"
+  [ "$v1" = "$v2" ] && return 0
+
+  local IFS=.
+  local v1_parts=($v1) v2_parts=($v2)
+  local i
+  for i in 0 1 2; do
+    local a="${v1_parts[$i]:-0}" b="${v2_parts[$i]:-0}"
+    if [ "$a" -gt "$b" ] 2>/dev/null; then return 1; fi
+    if [ "$a" -lt "$b" ] 2>/dev/null; then return 2; fi
+  done
+  return 0
+}
+
+# Check if a local skill differs from its repo counterpart (content-wise)
+diff_skill() {
+  local local_path="$1" repo_path="$2"
+
+  # If local is a symlink to the repo path, they're identical
+  if [ -L "$local_path" ]; then
+    local target
+    target=$(readlink "$local_path")
+    [ "$target" = "$repo_path" ] && return 0
+  fi
+
+  if [ -d "$local_path" ]; then
+    diff -rq "$local_path" "$repo_path" >/dev/null 2>&1
+  else
+    diff -q "$local_path" "$repo_path" >/dev/null 2>&1
+  fi
+}
+
+# Resolve the actual file path for a skill (handles .md extension, directories)
+resolve_skill_path() {
+  local base="$1"
+  if [ -d "$base" ]; then
+    echo "$base"
+  elif [ -f "$base" ]; then
+    echo "$base"
+  elif [ -f "${base}.md" ]; then
+    echo "${base}.md"
+  else
+    echo ""
+  fi
 }
 
 # ─── List available groups ───────────────────────────────────────────────────
@@ -237,9 +423,9 @@ install_software() {
   manifest=$(cat "$SKILL_GROUPS_DIR/$group/manifest.json")
 
   local check_cmd
-  check_cmd=$(json_get "$manifest" "check")
+  check_cmd=$(json_get_install_check "$manifest")
 
-  if [ -n "$check_cmd" ] && eval "$check_cmd" >/dev/null 2>&1; then
+  if [ -n "$check_cmd" ] && [ "$check_cmd" != "true" ] && eval "$check_cmd" >/dev/null 2>&1; then
     ok "$group software already installed"
     return 0
   fi
@@ -328,13 +514,13 @@ install_skills() {
 
     if [ -d "$src" ]; then
       create_symlink "$src" "$dest"
-      ok "Skill: $skill"
+      ok "Skill: $skill (v$(skill_get_version "$src"))"
     elif [ -f "$src" ]; then
       create_symlink "$src" "$dest"
-      ok "Skill: $skill"
+      ok "Skill: $skill (v$(skill_get_version "$src"))"
     elif [ -f "$src.md" ]; then
       create_symlink "$src.md" "$dest.md"
-      ok "Skill: $skill"
+      ok "Skill: $skill (v$(skill_get_version "$src.md"))"
     else
       warn "Skill not found: $skill (looked in $src)"
     fi
@@ -368,23 +554,83 @@ install_skills() {
 configure_skills() {
   local group="$1"
 
-  if [ -f "$CONFIG_FILE" ]; then
-    source "$CONFIG_FILE"
-  fi
+  local manifest skills
+  manifest=$(cat "$SKILL_GROUPS_DIR/$group/manifest.json")
+  skills=$(json_array "$manifest" "skills")
 
-  local needs_config=false
-  local skills
-  skills=$(json_array "$(cat "$SKILL_GROUPS_DIR/$group/manifest.json")" "skills")
+  # Collect all files that have placeholders
+  local files_with_placeholders=()
   for skill in $skills; do
     local target="$SKILLS_DIR/$skill"
-    [ -f "$target" ] && grep -q '{{' "$target" 2>/dev/null && needs_config=true
-    [ -f "$target.md" ] && grep -q '{{' "$target.md" 2>/dev/null && needs_config=true
+    for f in "$target" "$target.md"; do
+      [ -f "$f" ] || continue
+      if grep -q '{{' "$f" 2>/dev/null; then
+        files_with_placeholders+=("$f")
+      fi
+    done
+    # Check inside directory skills
+    if [ -d "$target" ]; then
+      while IFS= read -r -d '' f; do
+        if grep -q '{{' "$f" 2>/dev/null; then
+          files_with_placeholders+=("$f")
+        fi
+      done < <(find "$target" -name '*.md' -print0 2>/dev/null)
+    fi
   done
 
-  if [ "$needs_config" = "true" ]; then
+  # No placeholders — nothing to do
+  if [ ${#files_with_placeholders[@]} -eq 0 ]; then
+    return 0
+  fi
+
+  # No config file — warn and return
+  if [ ! -f "$CONFIG_FILE" ]; then
     warn "Some $group skills have {{PLACEHOLDER}} variables that need configuring"
-    info "Edit the skill files in $SKILLS_DIR/ or create $CONFIG_FILE"
-    info "See config.example.sh in this repo for the template"
+    info "Create $CONFIG_FILE (see config.example.sh) and re-run"
+    return 0
+  fi
+
+  # Source config and build substitution map
+  source "$CONFIG_FILE"
+
+  # Dynamically discover all uppercase variables set in the config file
+  local config_vars
+  config_vars=$(grep -oE '^[A-Z_]+=' "$CONFIG_FILE" | sed 's/=$//' || true)
+
+  local any_substituted=false
+  for f in "${files_with_placeholders[@]}"; do
+    # If the file is a symlink, replace with a copy so we don't modify the repo
+    if [ -L "$f" ]; then
+      local real_target
+      real_target=$(readlink "$f")
+      rm "$f"
+      cp "$real_target" "$f"
+    fi
+
+    for var in $config_vars; do
+      local val="${!var:-}"
+      [ -z "$val" ] && continue
+      if grep -q "{{${var}}}" "$f" 2>/dev/null; then
+        sed -i'' -e "s|{{${var}}}|${val}|g" "$f"
+        any_substituted=true
+      fi
+    done
+  done
+
+  if [ "$any_substituted" = "true" ]; then
+    ok "Configured $group placeholders from $CONFIG_FILE"
+  fi
+
+  # Check if any placeholders remain
+  local remaining=false
+  for f in "${files_with_placeholders[@]}"; do
+    if grep -q '{{' "$f" 2>/dev/null; then
+      remaining=true
+      break
+    fi
+  done
+  if [ "$remaining" = "true" ]; then
+    warn "Some $group placeholders still unconfigured — update $CONFIG_FILE"
   fi
 }
 
@@ -427,7 +673,7 @@ install_shared_skills() {
     local name
     name=$(basename "$skill_file")
     create_symlink "$skill_file" "$SKILLS_DIR/$name"
-    ok "Shared skill: $name"
+    ok "Shared skill: $name (v$(skill_get_version "$skill_file"))"
   done
 
   # Append shared claude-md snippets
@@ -483,10 +729,10 @@ verify_group() {
   info "Prerequisites:"
   check_prerequisites "$group" || true
 
-  # 2. Check software installed
+  # 2. Check software installed (using install-specific check command)
   info "Software:"
   local check_cmd
-  check_cmd=$(json_get "$manifest" "check")
+  check_cmd=$(json_get_install_check "$manifest")
   if [ -n "$check_cmd" ] && [ "$check_cmd" != "true" ]; then
     if eval "$check_cmd" >/dev/null 2>&1; then
       ok "Software binary found ($check_cmd)"
@@ -502,9 +748,10 @@ verify_group() {
   for skill in $skills; do
     local target="$SKILLS_DIR/$skill"
     if [ -d "$target" ]; then
-      # Directory skill — check SKILL.md exists inside
       if [ -f "$target/SKILL.md" ]; then
-        ok "Skill: $skill (directory, SKILL.md present)"
+        local ver
+        ver=$(skill_get_version "$target")
+        ok "Skill: $skill (directory, v$ver)"
       else
         fail "Skill: $skill (directory exists but SKILL.md missing)"
       fi
@@ -512,7 +759,9 @@ verify_group() {
       local f="${target}"
       [ -f "$target.md" ] && f="$target.md"
       if [ -s "$f" ]; then
-        ok "Skill: $skill (file, non-empty)"
+        local ver
+        ver=$(skill_get_version "$f")
+        ok "Skill: $skill (v$ver)"
       else
         fail "Skill: $skill (file exists but is empty)"
       fi
@@ -544,7 +793,6 @@ verify_group() {
     else
       fail "Agent: $agent.md (not found)"
     fi
-    # Check broken symlink
     if [ -L "$target" ] && [ ! -e "$target" ]; then
       fail "Agent: $agent.md (broken symlink → $(readlink "$target"))"
     fi
@@ -578,7 +826,6 @@ verify_group() {
     if [ -f "$target.md" ] && grep -q '{{' "$target.md" 2>/dev/null; then
       has_placeholders=true
     fi
-    # Check inside directory skills too
     if [ -d "$target" ]; then
       if grep -rq '{{' "$target" 2>/dev/null; then
         has_placeholders=true
@@ -601,7 +848,6 @@ integration_test_group() {
 
   header "Integration test: $group"
 
-  # Check if integration test is defined
   local int_cmd int_desc
   int_cmd=$(echo "$manifest" | grep -A3 '"integration_test"' | grep '"command"' | sed 's/.*: *"//;s/".*//')
   int_desc=$(echo "$manifest" | grep -A3 '"integration_test"' | grep '"description"' | sed 's/.*: *"//;s/".*//')
@@ -622,12 +868,321 @@ integration_test_group() {
   fi
 }
 
+# ─── Update mode (--update) ─────────────────────────────────────────────────
+
+update_group() {
+  local group="$1"
+  local manifest
+  manifest=$(cat "$SKILL_GROUPS_DIR/$group/manifest.json")
+
+  header "Updating: $group"
+
+  local source_repo
+  source_repo=$(json_get "$manifest" "source_repo")
+
+  local skills_source_dir agents_source_dir
+  if [ -n "$source_repo" ]; then
+    local repo_cache="$CLAUDE_DIR/.skill-repos/$group"
+    if [ -d "$repo_cache" ]; then
+      info "Pulling latest from $group source repo..."
+      (cd "$repo_cache" && git pull --quiet 2>/dev/null) || warn "Could not pull $group source repo"
+    else
+      info "Cloning $group source repo..."
+      mkdir -p "$CLAUDE_DIR/.skill-repos"
+      git clone --quiet "$source_repo" "$repo_cache" 2>/dev/null
+    fi
+
+    local skills_path agents_path
+    skills_path=$(echo "$manifest" | grep -A1 '"source_paths"' | grep '"skills"' | sed 's/.*: *"//;s/".*//')
+    agents_path=$(echo "$manifest" | grep -A2 '"source_paths"' | grep '"agents"' | sed 's/.*: *"//;s/".*//')
+
+    skills_source_dir="$repo_cache/$skills_path"
+    agents_source_dir="$repo_cache/$agents_path"
+  else
+    skills_source_dir="$SKILL_GROUPS_DIR/$group/skills"
+    agents_source_dir="$SKILL_GROUPS_DIR/$group/agents"
+  fi
+
+  local skills
+  skills=$(json_array "$manifest" "skills")
+
+  for skill in $skills; do
+    local repo_path local_path
+    repo_path=$(resolve_skill_path "$skills_source_dir/$skill")
+    local_path=$(resolve_skill_path "$SKILLS_DIR/$skill")
+
+    # Skill not in repo
+    if [ -z "$repo_path" ]; then
+      warn "$skill: not found in repo"
+      continue
+    fi
+
+    # Skill not installed locally
+    if [ -z "$local_path" ]; then
+      info "$skill: not installed locally — installing"
+      if [ -d "$repo_path" ]; then
+        create_symlink "$repo_path" "$SKILLS_DIR/$skill"
+      elif [ -f "$repo_path" ]; then
+        local dest="$SKILLS_DIR/$skill"
+        [[ "$repo_path" == *.md ]] && dest="$SKILLS_DIR/$skill.md"
+        create_symlink "$repo_path" "$dest"
+      fi
+      ok "$skill: installed (v$(skill_get_version "$repo_path"))"
+      continue
+    fi
+
+    update_skill "$skill" "$local_path" "$repo_path"
+  done
+
+  # Update agents
+  local agents
+  agents=$(json_array "$manifest" "agents")
+  for agent in $agents; do
+    local repo_agent="$agents_source_dir/$agent.md"
+    local local_agent="$AGENTS_DIR/$agent.md"
+
+    # Handle agent renames
+    local renames
+    renames=$(echo "$manifest" | grep -A10 '"agent_renames"' 2>/dev/null || true)
+    local rename_from
+    rename_from=$(echo "$renames" | sed -n "s/.*\"\([^\"]*\)\"[[:space:]]*:[[:space:]]*\"$agent.md\".*/\1/p")
+    [ -n "$rename_from" ] && repo_agent="$agents_source_dir/$rename_from"
+
+    if [ -f "$repo_agent" ] && [ -f "$local_agent" ]; then
+      if ! diff_skill "$local_agent" "$repo_agent"; then
+        info "Agent $agent.md has changed in repo — updating"
+        backup_file "$local_agent"
+        rm -f "$local_agent"
+        create_symlink "$repo_agent" "$local_agent"
+        ok "Agent: $agent (updated)"
+      else
+        ok "Agent: $agent (up to date)"
+      fi
+    elif [ -f "$repo_agent" ]; then
+      create_symlink "$repo_agent" "$local_agent"
+      ok "Agent: $agent (installed)"
+    fi
+  done
+}
+
+update_skill() {
+  local skill_name="$1" local_path="$2" repo_path="$3"
+
+  local local_ver repo_ver
+  local_ver=$(skill_get_version "$local_path")
+  repo_ver=$(skill_get_version "$repo_path")
+
+  # Compare versions
+  local cmp=0
+  semver_compare "$repo_ver" "$local_ver" && cmp=$? || cmp=$?
+
+  if [ $cmp -eq 1 ]; then
+    # Repo is newer
+    info "$skill_name: $local_ver → $repo_ver"
+    backup_file "$local_path"
+    rm -rf "$local_path"
+    if [ -d "$repo_path" ]; then
+      create_symlink "$repo_path" "$local_path"
+    else
+      create_symlink "$repo_path" "$local_path"
+    fi
+    ok "$skill_name: updated to v$repo_ver"
+
+  elif [ $cmp -eq 2 ]; then
+    # Local is newer
+    if [ "$SYNC_MODE" = "true" ]; then
+      warn "$skill_name: local (v$local_ver) is newer than repo (v$repo_ver)"
+      read -rp "  Sync local version back to repo? [y/N]: " answer
+      if [ "$answer" = "y" ] || [ "$answer" = "Y" ]; then
+        sync_skill_to_repo "$local_path" "$repo_path"
+        ok "$skill_name: synced v$local_ver back to repo"
+      else
+        info "$skill_name: keeping local v$local_ver"
+      fi
+    else
+      warn "$skill_name: local (v$local_ver) is newer than repo (v$repo_ver) — use --sync to push back"
+    fi
+
+  else
+    # Same version — check content
+    if ! diff_skill "$local_path" "$repo_path"; then
+      warn "$skill_name: same version (v$local_ver) but content differs"
+      if [ "$SYNC_MODE" = "true" ]; then
+        read -rp "  Keep [l]ocal, use [r]epo, or [s]kip? " answer
+        case "$answer" in
+          r|R)
+            backup_file "$local_path"
+            rm -rf "$local_path"
+            create_symlink "$repo_path" "$local_path"
+            ok "$skill_name: replaced with repo version"
+            ;;
+          l|L)
+            info "$skill_name: keeping local version"
+            read -rp "  Copy local version to repo? [y/N]: " sync_answer
+            if [ "$sync_answer" = "y" ] || [ "$sync_answer" = "Y" ]; then
+              sync_skill_to_repo "$local_path" "$repo_path"
+              ok "$skill_name: synced to repo"
+            fi
+            ;;
+          *)
+            info "$skill_name: skipped"
+            ;;
+        esac
+      else
+        info "  Use --sync to resolve"
+      fi
+    else
+      ok "$skill_name: up to date (v$local_ver)"
+    fi
+  fi
+}
+
+# ─── Sync skill back to repo ────────────────────────────────────────────────
+
+sync_skill_to_repo() {
+  local local_path="$1" repo_path="$2"
+
+  # If local is a symlink to repo, no sync needed
+  if [ -L "$local_path" ]; then
+    local target
+    target=$(readlink "$local_path")
+    if [ "$target" = "$repo_path" ]; then
+      info "Symlink already points to repo — no sync needed"
+      return 0
+    fi
+    # Resolve symlink for copy
+    local_path=$(readlink "$local_path")
+  fi
+
+  if [ -d "$local_path" ]; then
+    # Directory skill — sync contents
+    rsync -a --delete "$local_path/" "$repo_path/"
+  else
+    cp "$local_path" "$repo_path"
+  fi
+  info "Copied to repo. Run 'cd $(dirname "$repo_path") && git add -A && git commit && git push' to share."
+}
+
+# ─── Status mode (--status) ─────────────────────────────────────────────────
+
+show_status() {
+  header "Skill Status"
+  echo ""
+  printf "  ${BOLD}%-30s %-10s %-10s %s${NC}\n" "Skill" "Local" "Repo" "Status"
+  printf "  %-30s %-10s %-10s %s\n" "──────────────────────────────" "──────────" "──────────" "──────────────"
+
+  for group_dir in "$SKILL_GROUPS_DIR"/*/; do
+    [ -f "$group_dir/manifest.json" ] || continue
+    local group
+    group=$(basename "$group_dir")
+    local manifest
+    manifest=$(cat "$group_dir/manifest.json")
+
+    local source_repo
+    source_repo=$(json_get "$manifest" "source_repo")
+    local skills_source_dir
+    if [ -n "$source_repo" ]; then
+      local repo_cache="$CLAUDE_DIR/.skill-repos/$group"
+      local skills_path
+      skills_path=$(echo "$manifest" | grep -A1 '"source_paths"' | grep '"skills"' | sed 's/.*: *"//;s/".*//')
+      skills_source_dir="$repo_cache/$skills_path"
+    else
+      skills_source_dir="$SKILL_GROUPS_DIR/$group/skills"
+    fi
+
+    local skills
+    skills=$(json_array "$manifest" "skills")
+    for skill in $skills; do
+      local repo_path local_path local_ver repo_ver status
+      repo_path=$(resolve_skill_path "$skills_source_dir/$skill")
+      local_path=$(resolve_skill_path "$SKILLS_DIR/$skill")
+
+      repo_ver=$(skill_get_version "$repo_path")
+      [ "$repo_ver" = "0.0.0" ] && repo_ver="-"
+
+      if [ -z "$local_path" ]; then
+        local_ver="-"
+        status="${RED}not installed${NC}"
+      else
+        local_ver=$(skill_get_version "$local_path")
+        [ "$local_ver" = "0.0.0" ] && local_ver="-"
+
+        if [ "$local_ver" = "-" ] && [ "$repo_ver" = "-" ]; then
+          status="${YELLOW}unversioned${NC}"
+        elif [ "$local_ver" = "-" ]; then
+          status="${YELLOW}local unversioned${NC}"
+        elif [ "$repo_ver" = "-" ]; then
+          status="${YELLOW}repo unversioned${NC}"
+        else
+          local cmp=0
+          semver_compare "$repo_ver" "$local_ver" && cmp=$? || cmp=$?
+          if [ $cmp -eq 0 ]; then
+            if [ -n "$repo_path" ] && ! diff_skill "$local_path" "$repo_path"; then
+              status="${YELLOW}content differs${NC}"
+            else
+              status="${GREEN}up to date${NC}"
+            fi
+          elif [ $cmp -eq 1 ]; then
+            status="${BLUE}update available${NC}"
+          else
+            status="${YELLOW}local newer${NC}"
+          fi
+        fi
+      fi
+
+      printf "  %-30s %-10s %-10s " "$group/$skill" "$local_ver" "$repo_ver"
+      echo -e "$status"
+    done
+  done
+
+  # Show locally installed skills not managed by any group
+  echo ""
+  header "Unmanaged Skills"
+  local all_managed_skills=""
+  for group_dir in "$SKILL_GROUPS_DIR"/*/; do
+    [ -f "$group_dir/manifest.json" ] || continue
+    local manifest
+    manifest=$(cat "$group_dir/manifest.json")
+    all_managed_skills="$all_managed_skills $(json_array "$manifest" "skills")"
+  done
+
+  local found_unmanaged=false
+  for item in "$SKILLS_DIR"/*; do
+    [ -e "$item" ] || continue
+    local name
+    name=$(basename "$item" .md)
+    # Skip if it's managed
+    local is_managed=false
+    for managed in $all_managed_skills mcp-setup; do
+      if [ "$name" = "$managed" ] || [ "$name" = "$(basename "$managed")" ]; then
+        is_managed=true
+        break
+      fi
+    done
+    if [ "$is_managed" = "false" ]; then
+      found_unmanaged=true
+      local ver
+      ver=$(skill_get_version "$item")
+      [ "$ver" = "0.0.0" ] && ver="-"
+      printf "  %-30s v%-10s %s\n" "$name" "$ver" "${DIM}(not from repo)${NC}"
+    fi
+  done
+  if [ "$found_unmanaged" = "false" ]; then
+    info "  (none)"
+  fi
+  echo ""
+}
+
 # ─── Main ────────────────────────────────────────────────────────────────────
 
 main() {
   SELECTED_GROUPS=()
   SKIP_SOFTWARE=false
-  MODE="install"  # install, verify, test-integration
+  SYNC_MODE=false
+  MODE="install"  # install, verify, test-integration, update, status
+
+  # Save original args for re-exec
+  local original_args=("$@")
 
   # Parse arguments
   while [[ $# -gt 0 ]]; do
@@ -648,6 +1203,18 @@ main() {
         MODE="test-integration"
         shift
         ;;
+      --update)
+        MODE="update"
+        shift
+        ;;
+      --sync)
+        SYNC_MODE=true
+        shift
+        ;;
+      --status)
+        MODE="status"
+        shift
+        ;;
       --list)
         list_groups | tr ' ' '\n'
         exit 0
@@ -659,6 +1226,9 @@ main() {
         echo "  (default)              Install skill groups (software + skills + agents)"
         echo "  --verify               Check installed groups: symlinks, files, CLAUDE.md, software"
         echo "  --test-integration     Test live connections (Unity running, ComfyUI server, etc.)"
+        echo "  --update               Update installed skills from repo (newer repo → local)"
+        echo "  --update --sync        Also sync newer local skills back to repo"
+        echo "  --status               Show version table for all skills"
         echo ""
         echo "Options:"
         echo "  --skills GROUP1,GROUP2 Target specific skill groups (default: interactive)"
@@ -671,6 +1241,9 @@ main() {
         echo "  install.sh --skills unity-cli                 # Install just unity-cli"
         echo "  install.sh --verify                           # Verify all installed groups"
         echo "  install.sh --verify --skills unity-cli        # Verify just unity-cli"
+        echo "  install.sh --update                           # Update all groups from repo"
+        echo "  install.sh --update --sync                    # Bidirectional sync"
+        echo "  install.sh --status                           # Version overview"
         echo "  install.sh --test-integration --skills comfyui"
         exit 0
         ;;
@@ -681,14 +1254,26 @@ main() {
     esac
   done
 
+  # ── Ensure canonical repo location (for install/update modes) ──
+  if [ "$MODE" = "install" ] || [ "$MODE" = "update" ]; then
+    ensure_canonical_location "${original_args[@]}"
+  fi
+
   header "claude-skills — $MODE"
   info "Platform: $PLATFORM"
   info "Target:   $CLAUDE_DIR"
+  info "Repo:     $SCRIPT_DIR"
   echo ""
 
-  # For verify/test-integration, default to all groups if none specified
+  # For non-install modes, default to all groups if none specified
   if [ "$MODE" != "install" ] && [ ${#SELECTED_GROUPS[@]} -eq 0 ]; then
     SELECTED_GROUPS=($(list_groups))
+  fi
+
+  # ── Status mode ──
+  if [ "$MODE" = "status" ]; then
+    show_status
+    exit 0
   fi
 
   # ── Verify mode ──
@@ -729,6 +1314,26 @@ main() {
     exit 0
   fi
 
+  # ── Update mode ──
+  if [ "$MODE" = "update" ]; then
+    for group in "${SELECTED_GROUPS[@]}"; do
+      if [ ! -f "$SKILL_GROUPS_DIR/$group/manifest.json" ]; then
+        fail "Unknown skill group: $group"
+        continue
+      fi
+      update_group "$group"
+    done
+
+    echo ""
+    header "Update Summary"
+    echo -e "  ${GREEN}$PASS_COUNT passed${NC}  ${YELLOW}$WARN_COUNT warnings${NC}  ${RED}$FAIL_COUNT failed${NC}"
+    if [ "$SYNC_MODE" = "true" ] && [ "$WARN_COUNT" -gt 0 ]; then
+      echo ""
+      info "Don't forget to commit and push repo changes if you synced skills back"
+    fi
+    exit 0
+  fi
+
   # ── Install mode ──
 
   install_global_prerequisites
@@ -755,9 +1360,9 @@ main() {
 
     header "── $group ──"
 
-    # Step 1: Check prerequisites
+    # Step 1: Check prerequisites (fail message already emitted inside)
     if ! check_prerequisites "$group"; then
-      fail "Missing required prerequisites for $group — skipping"
+      info "Skipping $group due to missing prerequisites"
       continue
     fi
 
@@ -797,6 +1402,7 @@ main() {
     warn "Some steps failed — review the output above"
   fi
   info "Run 'install.sh --verify' to check installation health"
+  info "Run 'install.sh --status' to see version overview"
   info "Run 'install.sh --test-integration' to test live connections"
   echo ""
   ok "Done! Restart Claude Code to pick up new skills."

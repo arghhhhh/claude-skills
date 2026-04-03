@@ -1,3 +1,7 @@
+---
+version: 1.0.0
+---
+
 # MCP Setup Skill
 
 Use this skill when the user wants to add a new MCP server and create a skill file for it.

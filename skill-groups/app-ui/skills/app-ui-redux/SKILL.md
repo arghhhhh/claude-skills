@@ -1,5 +1,6 @@
 ---
 name: app-ui-redux
+version: 1.0.0
 description: Expert for App UI Redux state management - Store, Slices, Reducers, Actions, AsyncThunks, middleware, and Redux DevTools.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---

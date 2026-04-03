@@ -1,5 +1,6 @@
 ---
 name: app-ui-theming
+version: 1.0.0
 description: Expert for App UI theming and styling - USS variables, custom themes, dark/light mode, scale factors, and BEM conventions.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---

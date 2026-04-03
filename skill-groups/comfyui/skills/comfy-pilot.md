@@ -1,3 +1,7 @@
+---
+version: 1.0.0
+---
+
 # ComfyUI Pilot Skill (via MCPorter)
 
 Use this skill for **live workflow editing**, node discovery, image viewing, and canvas control in ComfyUI. Requires ComfyUI to be running.

@@ -1,3 +1,7 @@
+---
+version: 1.0.0
+---
+
 # Blender MCP Skill
 
 Use this skill when the user wants to interact with Blender — create/modify 3D scenes, objects, materials, import assets, generate 3D models, or execute Python scripts in Blender.

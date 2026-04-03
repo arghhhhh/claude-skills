@@ -1,3 +1,7 @@
+---
+version: 1.0.0
+---
+
 # OBS Studio CLI Skill
 
 Use this skill to control OBS Studio remotely via `gobs-cli` (obs-websocket v5) and edit OBS settings via config files.

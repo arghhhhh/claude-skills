@@ -1,5 +1,6 @@
 ---
 name: app-ui
+version: 1.0.0
 description: Expert assistant for developing UI in Unity using App UI framework. Use when creating components, styling, MVVM architecture, navigation, or any UI-related tasks.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---

@@ -1,5 +1,6 @@
 ---
 name: app-ui-mvvm
+version: 1.0.0
 description: Expert for App UI MVVM pattern and dependency injection - ObservableObject, RelayCommand, AppBuilder, service registration, and DI.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---

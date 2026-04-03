@@ -1,3 +1,7 @@
+---
+version: 1.0.0
+---
+
 # ComfyUI CLI Skill
 
 Use this skill for **server management**, running workflow files, and quick node/model operations via the command line.
