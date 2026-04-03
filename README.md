@@ -103,6 +103,12 @@ When updating, the installer automatically backs up your existing skills to `~/.
 | `obs-studio` | [gobs-cli](https://github.com/muesli/obs-cli) | `go install` / brew / binary | `obs-cli` | `obs-studio` |
 | `blender` | [Blender](https://www.blender.org/) + [blender-mcp](https://github.com/ahujasid/blender-mcp) | manual / `brew` | `blender-mcp` | `blender` |
 | `app-ui` | [Unity App UI](https://docs.unity3d.com/Packages/com.unity.dt.app-ui@2.2/manual/index.html) | Unity Package Manager | 5 skills | — |
+| `github-cli` | [gh](https://cli.github.com/) | `brew` / `winget` / binary | `github-cli` | — |
+| `ast-grep` | [ast-grep](https://ast-grep.github.io/) | `brew` / `npm` / `cargo` / `pip` | `ast-grep` | — |
+| `find-docs` | [Context7](https://context7.com/) | `npx ctx7@latest` (no install) | `find-docs` | — |
+| `find-skills` | [skills.sh](https://skills.sh/) | `npx skills` (no install) | `find-skills` | — |
+| `officecli` | [OfficeCLI](https://github.com/iOfficeAI/OfficeCLI) | curl / PowerShell / binary | 9 skills | — |
+| `playwright-cli` | [Playwright](https://playwright.dev/) | `npm` / `npx` | `playwright-cli` | — |
 
 MCPorter-based skills (comfyui, blender) also need [mcporter](https://github.com/steipete/mcporter) (`npx mcporter` — auto-installed via npx).
 
@@ -113,22 +119,19 @@ claude-skills/
 ├── install.sh                          # Cross-platform CLI installer
 ├── config.example.sh                   # Machine-specific config template
 ├── skill-groups/
-│   ├── unity-cli/
-│   │   └── manifest.json               # Points to arghhhhh/unity-cli repo
-│   ├── comfyui/
-│   │   ├── manifest.json
-│   │   ├── skills/                     # comfy-cli.md, comfy-pilot.md
-│   │   └── agents/                     # comfyui.md
-│   ├── obs-studio/
-│   │   ├── manifest.json
-│   │   ├── skills/                     # obs-cli.md
-│   │   └── agents/                     # obs-studio.md
-│   └── blender/
-│       ├── manifest.json
-│       ├── skills/mcp/                 # blender-mcp.md
-│       └── agents/                     # blender.md
+│   ├── app-ui/                         # Unity App UI (5 skills)
+│   ├── ast-grep/                       # Structural code search
+│   ├── blender/                        # Blender 3D + MCP addon
+│   ├── comfyui/                        # ComfyUI + comfy-pilot
+│   ├── find-docs/                      # Context7 doc lookup
+│   ├── find-skills/                    # skills.sh discovery
+│   ├── github-cli/                     # GitHub CLI (gh)
+│   ├── obs-studio/                     # OBS Studio + gobs-cli
+│   ├── officecli/                      # Office docs (9 skills)
+│   ├── playwright-cli/                 # Browser automation
+│   └── unity-cli/                      # Unity Editor (13 skills, from fork)
 ├── shared/
-│   ├── skills/                         # mcp-setup.md (shared across groups)
+│   ├── skills/                         # mcp-setup.md, skill-repo-maintenance/
 │   └── claude-md/                      # CLAUDE.md snippets per group
 └── README.md
 ```
