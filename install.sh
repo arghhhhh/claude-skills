@@ -195,19 +195,19 @@ backup_file() {
 
 json_get() {
   local json="$1" key="$2"
-  echo "$json" | sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1
+  echo "$json" | sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1 | tr -d '\r'
 }
 
 # Extract the "check" field from the "install" block (not from prerequisites or methods)
 json_get_install_check() {
   local json="$1"
-  echo "$json" | tr '\n' ' ' | sed -n 's/.*"install"[[:space:]]*:[[:space:]]*{[[:space:]]*"check"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p'
+  echo "$json" | tr '\n' ' ' | sed -n 's/.*"install"[[:space:]]*:[[:space:]]*{[[:space:]]*"check"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | tr -d '\r'
 }
 
 json_array() {
   local json="$1" key="$2"
   # Collapse to single line, extract array content between [ and ], split by comma
-  echo "$json" | tr '\n' ' ' | sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*/\1/p" | tr ',' '\n' | sed 's/[[:space:]]*"//g' | grep -v '^$' || true
+  echo "$json" | tr '\n' ' ' | sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*/\1/p" | tr ',' '\n' | sed 's/[[:space:]]*"//g' | tr -d '\r' | grep -v '^$' || true
 }
 
 # Extract prerequisite objects from JSON — returns "name|check|install_hint|required" per line
@@ -247,7 +247,7 @@ json_prerequisites() {
     [ -n "$val" ] && hint="$val"
     val=$(echo "$line" | sed -n 's/.*"required"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p')
     [ -n "$val" ] && required="$val"
-  done < "$manifest_file"
+  done < <(tr -d '\r' < "$manifest_file")
 }
 
 # ─── Version helpers ─────────────────────────────────────────────────────────
@@ -347,7 +347,7 @@ select_groups() {
   echo ""
   for i in "${!available[@]}"; do
     local manifest
-    manifest=$(cat "$SKILL_GROUPS_DIR/${available[$i]}/manifest.json")
+    manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/${available[$i]}/manifest.json")
     local desc
     desc=$(json_get "$manifest" "description")
     printf "  ${BOLD}%d)${NC} %-15s %s\n" $((i+1)) "${available[$i]}" "$desc"
@@ -426,7 +426,7 @@ install_global_prerequisites() {
 install_software() {
   local group="$1"
   local manifest
-  manifest=$(cat "$SKILL_GROUPS_DIR/$group/manifest.json")
+  manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
 
   local check_cmd
   check_cmd=$(json_get_install_check "$manifest")
@@ -439,17 +439,17 @@ install_software() {
   header "Installing $group software..."
 
   local methods_json
-  methods_json=$(cat "$SKILL_GROUPS_DIR/$group/manifest.json")
+  methods_json=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
 
-  for method in cargo pip npm brew go manual binary; do
+  for method in cargo pip npm brew go winget manual binary; do
     local method_cmd
-    method_cmd=$(echo "$methods_json" | grep -A5 "\"name\": \"$method\"" | head -6)
+    method_cmd=$(echo "$methods_json" | grep -A5 "\"name\": \"$method\"" | head -6) || true
     [ -z "$method_cmd" ] && continue
 
     local cmd prereq url
-    cmd=$(echo "$method_cmd" | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-    prereq=$(echo "$method_cmd" | sed -n 's/.*"check"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-    url=$(echo "$method_cmd" | sed -n 's/.*"url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+    cmd=$(echo "$method_cmd" | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | tr -d '\r')
+    prereq=$(echo "$method_cmd" | sed -n 's/.*"check"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | tr -d '\r')
+    url=$(echo "$method_cmd" | sed -n 's/.*"url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | tr -d '\r')
 
     if [ -n "$prereq" ] && ! eval "$prereq" >/dev/null 2>&1; then
       info "Skipping $method install (prerequisite not met: $prereq)"
@@ -482,7 +482,7 @@ install_software() {
 install_skills() {
   local group="$1"
   local manifest
-  manifest=$(cat "$SKILL_GROUPS_DIR/$group/manifest.json")
+  manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
 
   mkdir -p "$SKILLS_DIR" "$AGENTS_DIR"
 
@@ -561,7 +561,7 @@ configure_skills() {
   local group="$1"
 
   local manifest skills
-  manifest=$(cat "$SKILL_GROUPS_DIR/$group/manifest.json")
+  manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
   skills=$(json_array "$manifest" "skills")
 
   # Collect all files that have placeholders
@@ -721,7 +721,7 @@ install_shared_skills() {
 run_test() {
   local group="$1"
   local manifest
-  manifest=$(cat "$SKILL_GROUPS_DIR/$group/manifest.json")
+  manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
 
   local test_cmd
   test_cmd=$(echo "$manifest" | grep -A2 '"test"' | grep '"command"' | sed 's/.*: *"//;s/".*//')
@@ -741,7 +741,7 @@ run_test() {
 verify_group() {
   local group="$1"
   local manifest
-  manifest=$(cat "$SKILL_GROUPS_DIR/$group/manifest.json")
+  manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
 
   header "Verifying: $group"
 
@@ -864,7 +864,7 @@ verify_group() {
 integration_test_group() {
   local group="$1"
   local manifest
-  manifest=$(cat "$SKILL_GROUPS_DIR/$group/manifest.json")
+  manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
 
   header "Integration test: $group"
 
@@ -893,7 +893,7 @@ integration_test_group() {
 update_group() {
   local group="$1"
   local manifest
-  manifest=$(cat "$SKILL_GROUPS_DIR/$group/manifest.json")
+  manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
 
   header "Updating: $group"
 
@@ -1096,7 +1096,7 @@ show_status() {
     local group
     group=$(basename "$group_dir")
     local manifest
-    manifest=$(cat "$group_dir/manifest.json")
+    manifest=$(tr -d '\r' < "$group_dir/manifest.json")
 
     local source_repo
     source_repo=$(json_get "$manifest" "source_repo")
@@ -1162,7 +1162,7 @@ show_status() {
   for group_dir in "$SKILL_GROUPS_DIR"/*/; do
     [ -f "$group_dir/manifest.json" ] || continue
     local manifest
-    manifest=$(cat "$group_dir/manifest.json")
+    manifest=$(tr -d '\r' < "$group_dir/manifest.json")
     all_managed_skills="$all_managed_skills $(json_array "$manifest" "skills")"
   done
 
