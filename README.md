@@ -2,6 +2,10 @@
 
 Portable Claude Code skills, agents, and rules — shareable across machines via a single CLI installer.
 
+> **New machine? Paste this into Claude Code:**
+>
+> *Set up my Claude skills from https://github.com/arghhhhh/claude-skills — ask me which groups to install, then handle the rest including software installation and path configuration.*
+
 ## Quick Start
 
 ```bash
