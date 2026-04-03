@@ -188,49 +188,13 @@ bash install.sh --update
 
 ## Verification & Testing
 
-### `--verify` — Post-install health check (no runtime needed)
-Checks all layers for each group:
-- **Prerequisites**: Are required tools (cargo, pip, npx, etc.) available?
-- **Software**: Is the CLI binary installed and callable?
-- **Skills/Agents**: Are files symlinked, non-empty, versioned, and free of broken links?
-- **CLAUDE.md**: Are trigger phrases present?
-- **Configuration**: Any `{{PLACEHOLDER}}` vars left unconfigured?
-
 ```bash
-bash install.sh --verify
-# 23 passed  1 warnings  0 failed
+bash install.sh --verify             # Check symlinks, files, CLAUDE.md, prerequisites
+bash install.sh --status             # Version table (local vs repo)
+bash install.sh --test-integration   # Test live connections (software must be running)
 ```
 
-### `--status` — Version overview
-Shows a table of all skills with local vs repo versions:
-
-```bash
-bash install.sh --status
-# Skill                     Local   Repo    Status
-# comfyui/comfy-cli         1.1.0   1.2.0   update available
-# blender/mcp/blender-mcp   1.0.0   1.0.0   up to date
-# obs-studio/obs-cli        1.1.0   1.0.0   local newer
-```
-
-### `--test-integration` — Live connection test (software must be running)
-Tests that the software actually responds to commands:
-
-| Group | What it tests |
-|-------|--------------|
-| `unity-cli` | `unity-cli system ping` — Unity Editor + bridge package |
-| `comfyui` | `curl http://127.0.0.1:8188/system_stats` — ComfyUI server |
-| `obs-studio` | `gobs-cli obs-version` — OBS + obs-websocket |
-| `blender` | `npx mcporter call blender.get_scene_info` — Blender + MCP addon |
-
-### Prerequisites per group
-
-| Group | Required | Optional |
-|-------|----------|----------|
-| `unity-cli` | `cargo` (Rust), `git` | — |
-| `comfyui` | `pip` (Python) | `npx` (Node.js, for comfy-pilot) |
-| `obs-studio` | — | `go` (only if building from source) |
-| `blender` | `npx` (Node.js) | — |
-| `app-ui` | — | — |
+Prerequisites and integration test commands are defined per group in each `manifest.json` — run `--verify` to see what's missing.
 
 ## Adding a New Skill Group
 
