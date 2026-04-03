@@ -14,6 +14,11 @@ For live workflow editing on the canvas, node discovery with slot details, and v
 - **Workspace**: `{{COMFYUI_WORKSPACE}}`
 - **Always prefix**: `PYTHONIOENCODING=utf-8`
 
+## Not Installed?
+
+- **ComfyUI**: https://github.com/Tavris1/ComfyUI-Easy-Install
+- **comfy-cli**: `pip install comfy-cli`
+
 ## Launching ComfyUI
 
 ```bash

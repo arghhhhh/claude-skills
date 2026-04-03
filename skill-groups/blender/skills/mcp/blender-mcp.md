@@ -13,6 +13,12 @@ Use this skill when the user wants to interact with Blender — create/modify 3D
 - In Blender's 3D View sidebar (N key) > "BlenderMCP" tab > click "Connect to Claude"
 - Default connection: `localhost:9876`
 
+## Not Installed?
+
+- **Blender**: https://www.blender.org/download/
+- **BlenderMCP addon**: https://github.com/ahujasid/blender-mcp — download `addon.py`, install via Edit > Preferences > Add-ons
+- **MCPorter**: runs via `npx mcporter` (auto-fetched, no global install needed)
+
 ## Commands
 
 ### Scene Inspection

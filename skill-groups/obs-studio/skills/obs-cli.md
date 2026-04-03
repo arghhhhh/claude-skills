@@ -13,6 +13,11 @@ Use this skill to control OBS Studio remotely via `gobs-cli` (obs-websocket v5) 
 - **Default connection**: `localhost:4455` (obs-websocket v5)
 - **Override**: `--host`, `--port`, `--password` flags or env vars `OBS_HOST`, `OBS_PORT`, `OBS_PASSWORD`
 
+## Not Installed?
+
+- **OBS Studio**: https://obsproject.com/download
+- **gobs-cli**: https://github.com/onyx-and-iris/gobs-cli — install via `go install github.com/onyx-and-iris/gobs-cli@latest` or download a release binary
+
 For brevity, `gobs-cli` below refers to the full path to the binary.
 
 ## Stream Control

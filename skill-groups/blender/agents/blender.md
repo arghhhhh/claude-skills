@@ -33,7 +33,10 @@ All Blender interaction goes through: `npx mcporter call blender.<tool> [params]
 # Operational Rules
 
 1. **Always check Blender connection first** — run `get_scene_info` to verify the addon is connected
-2. **Start with scene inspection** — understand what's already in the scene
+2. **If connection fails**, the software may not be installed. Point the user to:
+   - Blender: https://www.blender.org/download/
+   - BlenderMCP addon: https://github.com/ahujasid/blender-mcp
+3. **Start with scene inspection** — understand what's already in the scene
 3. **Use `get_viewport_screenshot` after visual changes** — always show the user what happened
 4. **Break Python code into small steps** — don't send massive scripts to `execute_blender_code`
 5. **Save before risky operations** — `bpy.ops.wm.save_mainfile()`

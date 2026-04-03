@@ -12,6 +12,10 @@ Use this skill when working with GitHub issues, pull requests, repos, CI checks,
 - **Auth**: Run `gh auth login` to authenticate
 - **Check auth**: `gh auth status`
 
+## Not Installed?
+
+- **GitHub CLI**: https://cli.github.com/ — install via `winget install --id GitHub.cli`, `brew install gh`, or download from the site
+
 ## Commands
 
 ### Issues

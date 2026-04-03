@@ -14,6 +14,12 @@ For server management (launch/stop), node installation, model downloads via CLI,
 - comfy-pilot custom node installed in ComfyUI/custom_nodes/comfy-pilot
 - MCPorter available via npx
 
+## Not Installed?
+
+- **ComfyUI**: https://github.com/Tavris1/ComfyUI-Easy-Install
+- **comfy-pilot custom node**: https://github.com/ConstantineB6/comfy-pilot — install via `comfy node install comfy-pilot` or clone into `ComfyUI/custom_nodes/`
+- **MCPorter**: runs via `npx mcporter` (auto-fetched, no global install needed)
+
 ## Commands
 
 All commands use: `npx mcporter call comfyui.<tool> [params]`

@@ -40,7 +40,11 @@ When you need up-to-date info about ComfyUI nodes, APIs, or libraries:
 # Operational Rules
 
 1. **Always check if ComfyUI is running** before attempting any operation: `curl -s http://127.0.0.1:8188/system_stats`
-2. **Start with `summarize_workflow`** to understand current canvas state before making changes
+2. **If ComfyUI is not running or not installed**, point the user to:
+   - ComfyUI: https://github.com/Tavris1/ComfyUI-Easy-Install
+   - comfy-cli: `pip install comfy-cli`
+   - comfy-pilot custom node: https://github.com/ConstantineB6/comfy-pilot
+3. **Start with `summarize_workflow`** to understand current canvas state before making changes
 3. **Search node types minimally first** — don't request `fields` on broad searches
 4. **After generating**: retrieve and display the output image so the user can see results
 5. **Be token-efficient**: prefer comfy-cli for simple ops, MCPorter for canvas work

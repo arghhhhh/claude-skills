@@ -8,28 +8,22 @@
       "check": "go version",
       "install_hint": "Install Go from https://go.dev/dl/ (needed to compile gobs-cli)",
       "required": false,
-      "note": "Only needed if installing via 'go install'. Pre-built binaries available at https://github.com/muesli/obs-cli/releases"
+      "note": "Only needed if installing via 'go install'. Pre-built binaries available at https://github.com/onyx-and-iris/gobs-cli/releases"
     }
   ],
   "install": {
     "check": "gobs-cli --version",
     "methods": [
       {
-        "name": "brew",
-        "platforms": ["macos"],
-        "check": "brew --version",
-        "command": "brew install muesli/tap/obs-cli"
-      },
-      {
         "name": "go",
         "platforms": ["macos", "linux", "windows"],
         "check": "go version",
-        "command": "go install github.com/muesli/obs-cli@latest"
+        "command": "go install github.com/onyx-and-iris/gobs-cli@latest"
       },
       {
         "name": "binary",
         "platforms": ["macos", "linux", "windows"],
-        "url": "https://github.com/muesli/obs-cli/releases"
+        "url": "https://github.com/onyx-and-iris/gobs-cli/releases"
       }
     ],
     "notes": "OBS Studio itself must be installed separately from https://obsproject.com/download"
