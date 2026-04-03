@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ─────────────────────────────────────────────────────────────────────────────
-# claude-skills installer v2
+# claude-skills installer v2.1
 # Cross-platform (macOS, Linux, Windows via Git Bash/WSL)
 # Installs, updates, and syncs skill groups: software + skills + agents → ~/.claude/
 # ─────────────────────────────────────────────────────────────────────────────
@@ -219,44 +219,22 @@ json_array() {
   echo "$json" | tr '\n' ' ' | sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*/\1/p" | tr ',' '\n' | sed 's/[[:space:]]*"//g' | tr -d '\r' | grep -v '^$' || true
 }
 
-# Extract prerequisite objects from JSON — returns "name|check|install_hint|required" per line
+# Extract prerequisite objects from JSON — returns "name|check|install_hint|required|note" per line
+# Uses node for reliable JSON parsing to avoid sed/grep issues with field ordering
 json_prerequisites() {
   local manifest_file="$1"
-  local in_prereqs=false
-  local name="" check="" hint="" required="true"
-  while IFS= read -r line; do
-    if echo "$line" | grep -q '"prerequisites"'; then
-      # Handle empty array on same line: "prerequisites": []
-      if echo "$line" | grep -q '"prerequisites"[[:space:]]*:[[:space:]]*\[\]'; then
-        return
-      fi
-      in_prereqs=true
-      continue
-    fi
-    if [ "$in_prereqs" = "false" ]; then continue; fi
-    if echo "$line" | grep -q '^\s*\]'; then
-      if [ -n "$name" ]; then
-        echo "$name|$check|$hint|$required"
-      fi
-      break
-    fi
-    if echo "$line" | grep -q '^\s*{'; then
-      if [ -n "$name" ]; then
-        echo "$name|$check|$hint|$required"
-      fi
-      name=""; check=""; hint=""; required="true"
-      continue
-    fi
-    local val
-    val=$(echo "$line" | sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-    [ -n "$val" ] && name="$val"
-    val=$(echo "$line" | sed -n 's/.*"check"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-    [ -n "$val" ] && check="$val"
-    val=$(echo "$line" | sed -n 's/.*"install_hint"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-    [ -n "$val" ] && hint="$val"
-    val=$(echo "$line" | sed -n 's/.*"required"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p')
-    [ -n "$val" ] && required="$val"
-  done < <(tr -d '\r' < "$manifest_file")
+  node -e "
+    const m = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+    const prereqs = m.prerequisites || [];
+    for (const p of prereqs) {
+      const name = p.name || '';
+      const check = p.check || '';
+      const hint = p.install_hint || '';
+      const required = p.required !== false ? 'true' : 'false';
+      const note = p.note || '';
+      console.log([name, check, hint, required, note].join('|'));
+    }
+  " "$manifest_file" 2>/dev/null || true
 }
 
 # ─── Version helpers ─────────────────────────────────────────────────────────
@@ -404,18 +382,38 @@ check_prerequisites() {
     return 0
   fi
 
-  while IFS='|' read -r name check hint required; do
+  while IFS='|' read -r name check hint required note; do
     [ -z "$name" ] && continue
     if eval "$check" >/dev/null 2>&1; then
       ok "Prerequisite: $name"
     else
       if [ "$required" = "true" ]; then
         fail "Missing required prerequisite: $name"
+        [ -n "$note" ] && info "  ($note)"
         info "  $hint"
+        # Suggest brew install on macOS for common tools
+        if [ "$PLATFORM" = "macos" ] && command -v brew >/dev/null 2>&1; then
+          case "$name" in
+            go)    info "  Quick install: brew install go" ;;
+            cargo) info "  Quick install: brew install rust" ;;
+            uvx)   info "  Quick install: brew install uv" ;;
+            node|npx) info "  Quick install: brew install node" ;;
+          esac
+        fi
         all_met=false
       else
         warn "Optional prerequisite missing: $name"
+        [ -n "$note" ] && info "  ($note)"
         info "  $hint"
+        if [ "$PLATFORM" = "macos" ] && command -v brew >/dev/null 2>&1; then
+          case "$name" in
+            go)    info "  Quick install: brew install go" ;;
+            cargo) info "  Quick install: brew install rust" ;;
+            uvx)   info "  Quick install: brew install uv" ;;
+            node|npx) info "  Quick install: brew install node" ;;
+            pip)   info "  Quick install: brew install python" ;;
+          esac
+        fi
       fi
     fi
   done <<< "$prereqs"
@@ -453,18 +451,27 @@ install_software() {
 
   header "Installing $group software..."
 
-  local methods_json
-  methods_json=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
+  # Use node for reliable JSON parsing of install methods
+  local methods_list
+  methods_list=$(node -e "
+    const m = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+    const methods = (m.install && m.install.methods) || [];
+    for (const method of methods) {
+      const name = method.name || '';
+      const cmd = method.command || '';
+      const check = method.check || '';
+      const url = method.url || '';
+      console.log([name, cmd, check, url].join('|'));
+    }
+  " "$SKILL_GROUPS_DIR/$group/manifest.json" 2>/dev/null) || true
 
-  for method in cargo pip npm brew go winget uv manual binary; do
-    local method_cmd
-    method_cmd=$(echo "$methods_json" | grep -A5 "\"name\": \"$method\"" | head -6) || true
-    [ -z "$method_cmd" ] && continue
+  if [ -z "$methods_list" ]; then
+    warn "No install methods defined for $group"
+    return 0
+  fi
 
-    local cmd prereq url
-    cmd=$(echo "$method_cmd" | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | tr -d '\r')
-    prereq=$(echo "$method_cmd" | sed -n 's/.*"check"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | tr -d '\r')
-    url=$(echo "$method_cmd" | sed -n 's/.*"url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | tr -d '\r')
+  while IFS='|' read -r method cmd prereq url; do
+    [ -z "$method" ] && continue
 
     if [ -n "$prereq" ] && ! eval "$prereq" >/dev/null 2>&1; then
       info "Skipping $method install (prerequisite not met: $prereq)"
@@ -474,6 +481,11 @@ install_software() {
     if [ -n "$cmd" ]; then
       info "Installing via $method: $cmd"
       if eval "$cmd"; then
+        # Add tool-specific bin dirs to PATH for subsequent commands
+        case "$method" in
+          go)    export PATH="$HOME/go/bin:$PATH" ;;
+          cargo) export PATH="$HOME/.cargo/bin:$PATH" ;;
+        esac
         ok "Installed $group via $method"
         return 0
       else
@@ -484,13 +496,16 @@ install_software() {
       info "Download from: $url"
       if [ "$NON_INTERACTIVE" = "true" ]; then
         info "Non-interactive mode: skipping manual install"
+        INSTALL_SKIPPED=true
         return 0
       fi
       read -rp "Press Enter after installing, or 's' to skip: " answer
-      [ "$answer" = "s" ] && return 0
+      if [ "$answer" = "s" ]; then
+        INSTALL_SKIPPED=true
+      fi
       return 0
     fi
-  done
+  done <<< "$methods_list"
 
   warn "Could not auto-install $group software — skills will be installed anyway"
   return 0
@@ -608,10 +623,11 @@ configure_skills() {
     return 0
   fi
 
-  # No config file — warn and return
+  # No config file — warn prominently and return
   if [ ! -f "$CONFIG_FILE" ]; then
-    warn "Some $group skills have {{PLACEHOLDER}} variables that need configuring"
-    info "Create $CONFIG_FILE (see config.example.sh) and re-run"
+    warn "Some $group skills have {{PLACEHOLDER}} variables — skills will NOT work until configured"
+    info "To fix: cp $SCRIPT_DIR/config.example.sh $CONFIG_FILE"
+    info "Then edit $CONFIG_FILE with your machine-specific paths and re-run the installer"
     return 0
   fi
 
@@ -655,7 +671,8 @@ configure_skills() {
     fi
   done
   if [ "$remaining" = "true" ]; then
-    warn "Some $group placeholders still unconfigured — update $CONFIG_FILE"
+    warn "Some $group placeholders still unconfigured — these skills will NOT work until configured"
+    info "Update $CONFIG_FILE with the missing values and re-run the installer"
   fi
 }
 
@@ -1397,6 +1414,7 @@ main() {
   SKIP_SOFTWARE=false
   SYNC_MODE=false
   NON_INTERACTIVE=false
+  INSTALL_SKIPPED=false
   MODE="install"  # install, verify, test-integration, update, status
 
   # Save original args for re-exec
@@ -1583,6 +1601,9 @@ main() {
 
     header "── $group ──"
 
+    # Reset per-group install state
+    INSTALL_SKIPPED=false
+
     # Step 1: Check prerequisites (fail message already emitted inside)
     if ! check_prerequisites "$group"; then
       info "Skipping $group due to missing prerequisites"
@@ -1606,9 +1627,11 @@ main() {
     # Step 6: Append CLAUDE.md snippet
     install_claude_md_snippet "$group"
 
-    # Step 7: Smoke test
-    if [ "$SKIP_SOFTWARE" = "false" ]; then
+    # Step 7: Smoke test (skip if software install was skipped)
+    if [ "$SKIP_SOFTWARE" = "false" ] && [ "$INSTALL_SKIPPED" != "true" ]; then
       run_test "$group"
+    elif [ "$INSTALL_SKIPPED" = "true" ]; then
+      info "Smoke test: skipped (software install was skipped)"
     fi
 
     # Step 8: Show post-install hints
