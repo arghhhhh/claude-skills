@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.1.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -128,6 +128,11 @@ mkdir -p skill-groups/<name>/agents/  # if the group has an agent
 
 Must include: `name`, `description`, `version`, `prerequisites`, `install`, `test`, `skills`, `agents`.
 See any existing manifest for the template.
+
+Optional fields:
+- **`mcp_servers`**: Object mapping server names to `{ "command": "...", "args": [...] }`. The installer auto-generates `~/.mcporter/mcporter.json` and `~/.claude/.mcp.json` entries. Use `{{PLACEHOLDER}}` for machine-specific paths (resolved from `skills-config.sh`). Commands are auto-resolved to full paths on Windows.
+- **`post_install_hints`**: Array of strings printed after install. Use for optional setup steps the installer can't automate (e.g., API keys, browser auth, manual addon installation).
+- **`agent_renames`**: Object mapping source filenames to agent names when they differ.
 
 ### 3. Create CLAUDE.md snippet
 
