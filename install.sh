@@ -456,7 +456,7 @@ install_software() {
   local methods_json
   methods_json=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
 
-  for method in cargo pip npm brew go winget manual binary; do
+  for method in cargo pip npm brew go winget uv manual binary; do
     local method_cmd
     method_cmd=$(echo "$methods_json" | grep -A5 "\"name\": \"$method\"" | head -6) || true
     [ -z "$method_cmd" ] && continue
@@ -657,6 +657,123 @@ configure_skills() {
   if [ "$remaining" = "true" ]; then
     warn "Some $group placeholders still unconfigured — update $CONFIG_FILE"
   fi
+}
+
+# ─── Install MCP server configs ─────────────────────────────────────────────
+
+install_mcp_config() {
+  local group="$1"
+  local manifest_file="$SKILL_GROUPS_DIR/$group/manifest.json"
+
+  # Quick check — skip if no mcp_servers in manifest
+  if ! grep -q '"mcp_servers"' "$manifest_file" 2>/dev/null; then
+    return 0
+  fi
+
+  local mcporter_config="$HOME/.mcporter/mcporter.json"
+  local claude_mcp_config="$CLAUDE_DIR/.mcp.json"
+  mkdir -p "$HOME/.mcporter"
+
+  # Single node script: read manifest, resolve paths, substitute placeholders, merge configs
+  local output
+  output=$(node -e "
+    const fs = require('fs');
+    const { execSync } = require('child_process');
+
+    const manifest = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
+    const servers = manifest.mcp_servers;
+    if (!servers) process.exit(0);
+
+    const isWindows = !!process.env.MSYSTEM || process.platform === 'win32';
+
+    // Load placeholder config vars
+    const vars = {};
+    try {
+      for (const line of fs.readFileSync(process.argv[4], 'utf8').split('\n')) {
+        const m = line.match(/^([A-Z_]+)=['\"]?([^'\"]*)['\"]?$/);
+        if (m) vars[m[1]] = m[2];
+      }
+    } catch(e) {}
+
+    function subst(s) {
+      return s.replace(/\{\{([A-Z_]+)\}\}/g, (_, k) => vars[k] || '{{' + k + '}}');
+    }
+
+    function resolveCmd(cmd) {
+      if (cmd.includes('{{') || cmd.startsWith('/') || /^[A-Za-z]:/.test(cmd)) return cmd;
+      // Try command -v first (uses current PATH)
+      try {
+        const r = execSync('command -v ' + cmd, { encoding: 'utf8', stdio: ['pipe','pipe','pipe'] }).trim();
+        if (r) {
+          if (isWindows) {
+            try { return execSync('cygpath -w \"' + r + '\"', { encoding: 'utf8', stdio: ['pipe','pipe','pipe'] }).trim(); }
+            catch(e) { return r; }
+          }
+          return r;
+        }
+      } catch(e) {}
+      // On Windows, check common install locations for tools not yet on PATH
+      if (isWindows) {
+        const home = process.env.HOME || process.env.USERPROFILE || '';
+        const candidates = [
+          home + '/.local/bin/' + cmd,
+          home + '/.local/bin/' + cmd + '.exe',
+          home + '/.cargo/bin/' + cmd + '.exe',
+          '/c/Program Files/GitHub CLI/' + cmd + '.exe',
+        ];
+        for (const p of candidates) {
+          try {
+            fs.accessSync(p, fs.constants.X_OK);
+            try { return execSync('cygpath -w \"' + p + '\"', { encoding: 'utf8', stdio: ['pipe','pipe','pipe'] }).trim(); }
+            catch(e) { return p; }
+          } catch(e) {}
+        }
+      }
+      return cmd;
+    }
+
+    function mergeInto(path, entries) {
+      let cfg = {};
+      try { cfg = JSON.parse(fs.readFileSync(path, 'utf8')); } catch(e) {}
+      if (!cfg.mcpServers) cfg.mcpServers = {};
+      let changed = false;
+      for (const [name, entry] of Object.entries(entries)) {
+        if (!cfg.mcpServers[name]) { cfg.mcpServers[name] = entry; changed = true; }
+      }
+      if (changed) fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + '\n');
+    }
+
+    const ready = {};
+    for (const [name, config] of Object.entries(servers)) {
+      const e = JSON.parse(JSON.stringify(config));
+      e.command = subst(e.command);
+      if (e.args) e.args = e.args.map(subst);
+      if (JSON.stringify(e).includes('{{')) {
+        console.log('PLACEHOLDER:' + name);
+        continue;
+      }
+      e.command = resolveCmd(e.command);
+      ready[name] = e;
+      console.log('OK:' + name);
+    }
+
+    if (Object.keys(ready).length > 0) {
+      mergeInto(process.argv[2], ready);
+      mergeInto(process.argv[3], ready);
+    }
+  " "$manifest_file" "$mcporter_config" "$claude_mcp_config" "$CONFIG_FILE" 2>/dev/null) || true
+
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    case "$line" in
+      OK:*)
+        ok "MCP config: ${line#OK:} (added to mcporter + claude configs)"
+        ;;
+      PLACEHOLDER:*)
+        warn "MCP config: ${line#PLACEHOLDER:} has unconfigured placeholders — update $CONFIG_FILE"
+        ;;
+    esac
+  done <<< "$output"
 }
 
 # ─── Append CLAUDE.md snippet ───────────────────────────────────────────────
@@ -875,6 +992,33 @@ verify_group() {
     warn "Unconfigured {{PLACEHOLDER}} variables found — edit skill files or create $CONFIG_FILE"
   else
     ok "No unconfigured placeholders"
+  fi
+
+  # 7. Check MCP server configs
+  if grep -q '"mcp_servers"' "$SKILL_GROUPS_DIR/$group/manifest.json" 2>/dev/null; then
+    info "MCP configs:"
+    local mcporter_config="$HOME/.mcporter/mcporter.json"
+    local claude_mcp_config="$CLAUDE_DIR/.mcp.json"
+    # Extract server names from manifest
+    local server_names
+    server_names=$(node -e "
+      const m = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+      if (m.mcp_servers) Object.keys(m.mcp_servers).forEach(n => console.log(n));
+    " "$SKILL_GROUPS_DIR/$group/manifest.json" 2>/dev/null) || true
+    for sname in $server_names; do
+      local in_mcporter=false in_claude=false
+      grep -q "\"$sname\"" "$mcporter_config" 2>/dev/null && in_mcporter=true
+      grep -q "\"$sname\"" "$claude_mcp_config" 2>/dev/null && in_claude=true
+      if [ "$in_mcporter" = "true" ] && [ "$in_claude" = "true" ]; then
+        ok "MCP server '$sname' configured in mcporter + claude"
+      elif [ "$in_mcporter" = "true" ]; then
+        warn "MCP server '$sname' in mcporter but missing from $claude_mcp_config"
+      elif [ "$in_claude" = "true" ]; then
+        warn "MCP server '$sname' in claude but missing from $mcporter_config"
+      else
+        fail "MCP server '$sname' not configured — re-run installer"
+      fi
+    done
   fi
 }
 
@@ -1434,10 +1578,13 @@ main() {
     # Step 4: Configure template variables
     configure_skills "$group"
 
-    # Step 5: Append CLAUDE.md snippet
+    # Step 5: Install MCP server configs
+    install_mcp_config "$group"
+
+    # Step 6: Append CLAUDE.md snippet
     install_claude_md_snippet "$group"
 
-    # Step 6: Smoke test
+    # Step 7: Smoke test
     if [ "$SKIP_SOFTWARE" = "false" ]; then
       run_test "$group"
     fi

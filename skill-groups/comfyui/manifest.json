@@ -58,5 +58,11 @@
   ],
   "agents": [
     "comfyui"
-  ]
+  ],
+  "mcp_servers": {
+    "comfyui": {
+      "command": "{{COMFYUI_PYTHON}}",
+      "args": ["{{COMFYUI_WORKSPACE}}/custom_nodes/comfy-pilot/mcp_server.py"]
+    }
+  }
 }

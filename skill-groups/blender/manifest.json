@@ -9,6 +9,13 @@
       "install_hint": "Install Node.js from https://nodejs.org/ (npx is bundled with npm)",
       "required": true,
       "note": "Needed for MCPorter to call blender-mcp tools"
+    },
+    {
+      "name": "uvx",
+      "check": "uvx --version",
+      "install_hint": "Install uv from https://docs.astral.sh/uv/getting-started/installation/",
+      "required": true,
+      "note": "Needed to run blender-mcp MCP server"
     }
   ],
   "install": {
@@ -55,5 +62,11 @@
   ],
   "agents": [
     "blender"
-  ]
+  ],
+  "mcp_servers": {
+    "blender": {
+      "command": "uvx",
+      "args": ["blender-mcp"]
+    }
+  }
 }
