@@ -70,25 +70,34 @@ ensure_canonical_location() {
     warn "Symlinks will break when this directory is cleaned up"
     echo ""
     info "The repo will be copied to: $CANONICAL_DIR"
-    read -rp "Proceed? [Y/n]: " answer
-    if [ "$answer" = "n" ] || [ "$answer" = "N" ]; then
-      warn "Continuing from $SCRIPT_DIR — symlinks may break later"
-      return 0
+    if [ "$NON_INTERACTIVE" != "true" ]; then
+      read -rp "Proceed? [Y/n]: " answer
+      if [ "$answer" = "n" ] || [ "$answer" = "N" ]; then
+        warn "Continuing from $SCRIPT_DIR — symlinks may break later"
+        return 0
+      fi
     fi
   else
     info "Repo is at: $SCRIPT_DIR"
     info "Canonical location is: $CANONICAL_DIR"
-    read -rp "Copy repo to canonical location? [Y/n]: " answer
-    if [ "$answer" = "n" ] || [ "$answer" = "N" ]; then
-      return 0
+    if [ "$NON_INTERACTIVE" != "true" ]; then
+      read -rp "Copy repo to canonical location? [Y/n]: " answer
+      if [ "$answer" = "n" ] || [ "$answer" = "N" ]; then
+        return 0
+      fi
     fi
   fi
 
   mkdir -p "$(dirname "$CANONICAL_DIR")"
   if [ -d "$CANONICAL_DIR/.git" ]; then
-    # Update existing canonical copy
+    # Update existing canonical copy (preserve .git)
     info "Updating existing canonical copy..."
-    rsync -a --exclude='.git' "$SCRIPT_DIR/" "$CANONICAL_DIR/"
+    if command -v rsync >/dev/null 2>&1; then
+      rsync -a --exclude='.git' "$SCRIPT_DIR/" "$CANONICAL_DIR/"
+    else
+      # Fallback for Windows/environments without rsync
+      find "$SCRIPT_DIR" -mindepth 1 -maxdepth 1 ! -name '.git' -exec cp -r {} "$CANONICAL_DIR/" \;
+    fi
   else
     # Fresh copy
     cp -r "$SCRIPT_DIR" "$CANONICAL_DIR"
@@ -343,6 +352,12 @@ select_groups() {
   local available
   available=($(list_groups))
 
+  if [ "$NON_INTERACTIVE" = "true" ]; then
+    info "Non-interactive mode: installing all groups"
+    SELECTED_GROUPS=("${available[@]}")
+    return
+  fi
+
   header "Available skill groups:"
   echo ""
   for i in "${!available[@]}"; do
@@ -467,6 +482,10 @@ install_software() {
     elif [ -n "$url" ]; then
       warn "$group requires manual installation"
       info "Download from: $url"
+      if [ "$NON_INTERACTIVE" = "true" ]; then
+        info "Non-interactive mode: skipping manual install"
+        return 0
+      fi
       read -rp "Press Enter after installing, or 's' to skip: " answer
       [ "$answer" = "s" ] && return 0
       return 0
@@ -1012,7 +1031,10 @@ update_skill() {
     # Local is newer
     if [ "$SYNC_MODE" = "true" ]; then
       warn "$skill_name: local (v$local_ver) is newer than repo (v$repo_ver)"
-      read -rp "  Sync local version back to repo? [y/N]: " answer
+      local answer=""
+      if [ "$NON_INTERACTIVE" != "true" ]; then
+        read -rp "  Sync local version back to repo? [y/N]: " answer
+      fi
       if [ "$answer" = "y" ] || [ "$answer" = "Y" ]; then
         sync_skill_to_repo "$local_path" "$repo_path"
         ok "$skill_name: synced v$local_ver back to repo"
@@ -1028,26 +1050,30 @@ update_skill() {
     if ! diff_skill "$local_path" "$repo_path"; then
       warn "$skill_name: same version (v$local_ver) but content differs"
       if [ "$SYNC_MODE" = "true" ]; then
-        read -rp "  Keep [l]ocal, use [r]epo, or [s]kip? " answer
-        case "$answer" in
-          r|R)
-            backup_file "$local_path"
-            rm -rf "$local_path"
-            create_symlink "$repo_path" "$local_path"
-            ok "$skill_name: replaced with repo version"
-            ;;
-          l|L)
-            info "$skill_name: keeping local version"
-            read -rp "  Copy local version to repo? [y/N]: " sync_answer
-            if [ "$sync_answer" = "y" ] || [ "$sync_answer" = "Y" ]; then
-              sync_skill_to_repo "$local_path" "$repo_path"
-              ok "$skill_name: synced to repo"
-            fi
-            ;;
-          *)
-            info "$skill_name: skipped"
-            ;;
-        esac
+        if [ "$NON_INTERACTIVE" = "true" ]; then
+          info "$skill_name: skipped (non-interactive)"
+        else
+          read -rp "  Keep [l]ocal, use [r]epo, or [s]kip? " answer
+          case "$answer" in
+            r|R)
+              backup_file "$local_path"
+              rm -rf "$local_path"
+              create_symlink "$repo_path" "$local_path"
+              ok "$skill_name: replaced with repo version"
+              ;;
+            l|L)
+              info "$skill_name: keeping local version"
+              read -rp "  Copy local version to repo? [y/N]: " sync_answer
+              if [ "$sync_answer" = "y" ] || [ "$sync_answer" = "Y" ]; then
+                sync_skill_to_repo "$local_path" "$repo_path"
+                ok "$skill_name: synced to repo"
+              fi
+              ;;
+            *)
+              info "$skill_name: skipped"
+              ;;
+          esac
+        fi
       else
         info "  Use --sync to resolve"
       fi
@@ -1076,7 +1102,12 @@ sync_skill_to_repo() {
 
   if [ -d "$local_path" ]; then
     # Directory skill — sync contents
-    rsync -a --delete "$local_path/" "$repo_path/"
+    if command -v rsync >/dev/null 2>&1; then
+      rsync -a --delete "$local_path/" "$repo_path/"
+    else
+      rm -rf "$repo_path"
+      cp -r "$local_path" "$repo_path"
+    fi
   else
     cp "$local_path" "$repo_path"
   fi
@@ -1199,6 +1230,7 @@ main() {
   SELECTED_GROUPS=()
   SKIP_SOFTWARE=false
   SYNC_MODE=false
+  NON_INTERACTIVE=false
   MODE="install"  # install, verify, test-integration, update, status
 
   # Save original args for re-exec
@@ -1231,6 +1263,10 @@ main() {
         SYNC_MODE=true
         shift
         ;;
+      --yes|-y)
+        NON_INTERACTIVE=true
+        shift
+        ;;
       --status)
         MODE="status"
         shift
@@ -1253,6 +1289,7 @@ main() {
         echo "Options:"
         echo "  --skills GROUP1,GROUP2 Target specific skill groups (default: interactive)"
         echo "  --skip-software        Skip software installation, only install skills/agents"
+        echo "  --yes, -y              Non-interactive mode (auto-accept prompts, skip manual installs)"
         echo "  --list                 List available skill groups"
         echo "  --help                 Show this help"
         echo ""

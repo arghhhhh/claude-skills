@@ -7,7 +7,8 @@
       "name": "pip",
       "check": "pip --version || python -m pip --version || python3 -m pip --version",
       "install_hint": "Install Python from https://python.org/ or Miniconda from https://docs.conda.io/",
-      "required": true
+      "required": false,
+      "note": "Only needed for installing comfy-cli software, not for skill files"
     },
     {
       "name": "npx",
