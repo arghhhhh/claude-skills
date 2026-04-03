@@ -465,12 +465,14 @@ install_software() {
   methods_list=$(node -e "
     const m = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
     const methods = (m.install && m.install.methods) || [];
+    const SEP = '\x1f';  // ASCII Unit Separator — safe delimiter (never appears in commands)
     for (const method of methods) {
       const name = method.name || '';
       const cmd = method.command || '';
       const check = method.check || '';
       const url = method.url || '';
-      console.log([name, cmd, check, url].join('|'));
+      const platforms = (method.platforms || []).join(',');
+      console.log([name, cmd, check, url, platforms].join(SEP));
     }
   " "$SKILL_GROUPS_DIR/$group/manifest.json" 2>/dev/null) || true
 
@@ -479,8 +481,16 @@ install_software() {
     return 0
   fi
 
-  while IFS='|' read -r method cmd prereq url; do
+  local IFS_SEP=$'\x1f'
+  while IFS="$IFS_SEP" read -r method cmd prereq url platforms; do
     [ -z "$method" ] && continue
+
+    # Skip methods not for this platform
+    if [ -n "$platforms" ]; then
+      if ! echo "$platforms" | grep -q "$PLATFORM"; then
+        continue
+      fi
+    fi
 
     if [ -n "$prereq" ] && ! eval "$prereq" >/dev/null 2>&1; then
       info "Skipping $method install (prerequisite not met: $prereq)"
