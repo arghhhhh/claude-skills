@@ -43,11 +43,7 @@ bash install.sh --test-integration --skills unity-cli
 
 ## Agent-Driven Setup (Recommended)
 
-The easiest way to set up on a new machine is to point Claude at this repo and let it handle everything.
-
-**Prompt for a fresh machine (no skills installed yet):**
-
-> Set up my Claude skills from https://github.com/arghhhhh/claude-skills — ask me which groups to install, then handle the rest including software installation and path configuration.
+Use the prompt at the top of this README to kick off setup. Here's what the agent will do:
 
 **What the agent will do:**
 1. Clone the repo to `~/.claude/.skill-repos/claude-skills/`
