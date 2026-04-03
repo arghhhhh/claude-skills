@@ -5,8 +5,8 @@
   "prerequisites": [
     {
       "name": "pip",
-      "check": "pip --version",
-      "install_hint": "Install Python from https://python.org/ or use your system package manager",
+      "check": "pip --version || python -m pip --version || python3 -m pip --version",
+      "install_hint": "Install Python from https://python.org/ or Miniconda from https://docs.conda.io/",
       "required": true
     },
     {
@@ -23,8 +23,8 @@
       {
         "name": "pip",
         "platforms": ["macos", "linux", "windows"],
-        "check": "pip --version",
-        "command": "pip install comfy-cli"
+        "check": "pip --version || python -m pip --version || python3 -m pip --version",
+        "command": "pip install comfy-cli || python -m pip install comfy-cli || python3 -m pip install comfy-cli"
       }
     ],
     "post_install": [
