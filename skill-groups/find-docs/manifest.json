@@ -1,7 +1,7 @@
 {
   "name": "find-docs",
   "description": "Retrieve up-to-date library/framework documentation via Context7 — API patterns, setup guides, migration docs.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "prerequisites": [
     {
       "name": "npx",
@@ -29,5 +29,11 @@
   "skills": [
     "find-docs"
   ],
-  "agents": []
+  "agents": [],
+  "post_install_hints": [
+    "For higher rate limits, set up Context7 authentication:",
+    "  Option A: export CONTEXT7_API_KEY=your_key  (add to ~/.bashrc)",
+    "  Option B: npx ctx7@latest login  (browser-based OAuth)",
+    "  Get an API key at: https://context7.com/"
+  ]
 }

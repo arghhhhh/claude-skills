@@ -872,6 +872,28 @@ run_test() {
   fi
 }
 
+# ─── Show post-install hints ────────────────────────────────────────────────
+
+show_post_install_hints() {
+  local group="$1"
+  local manifest_file="$SKILL_GROUPS_DIR/$group/manifest.json"
+
+  # Use node to extract hints array (clean JSON parsing)
+  local hints
+  hints=$(node -e "
+    const m = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+    if (m.post_install_hints) m.post_install_hints.forEach(h => console.log(h));
+  " "$manifest_file" 2>/dev/null) || true
+
+  if [ -n "$hints" ]; then
+    echo ""
+    while IFS= read -r line; do
+      info "$line"
+    done <<< "$hints"
+    echo ""
+  fi
+}
+
 # ─── Verify installation (--verify) ─────────────────────────────────────────
 
 verify_group() {
@@ -1588,6 +1610,9 @@ main() {
     if [ "$SKIP_SOFTWARE" = "false" ]; then
       run_test "$group"
     fi
+
+    # Step 8: Show post-install hints
+    show_post_install_hints "$group"
   done
 
   # Install shared skills
