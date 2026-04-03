@@ -1,0 +1,33 @@
+{
+  "name": "find-skills",
+  "description": "Discover and install agent skills from the open skills ecosystem via skills.sh.",
+  "version": "0.1.0",
+  "prerequisites": [
+    {
+      "name": "npx",
+      "check": "npx --version",
+      "install_hint": "Install Node.js from https://nodejs.org/ (npx is bundled with npm)",
+      "required": true
+    }
+  ],
+  "install": {
+    "check": "npx skills --version",
+    "methods": [
+      {
+        "name": "npx",
+        "platforms": ["macos", "linux", "windows"],
+        "check": "npx --version",
+        "command": "echo 'find-skills uses npx skills — no global install needed'"
+      }
+    ],
+    "notes": "Uses npx skills at runtime — no global installation required. Browse skills at https://skills.sh/"
+  },
+  "test": {
+    "command": "npx skills --version",
+    "expect_success": true
+  },
+  "skills": [
+    "find-skills"
+  ],
+  "agents": []
+}

@@ -1,0 +1,48 @@
+{
+  "name": "ast-grep",
+  "description": "Structural code search & rewriting using AST patterns — find code by structure, not text.",
+  "version": "0.1.0",
+  "prerequisites": [],
+  "install": {
+    "check": "ast-grep --version",
+    "methods": [
+      {
+        "name": "brew",
+        "platforms": ["macos", "linux"],
+        "check": "brew --version",
+        "command": "brew install ast-grep"
+      },
+      {
+        "name": "npm",
+        "platforms": ["macos", "linux", "windows"],
+        "check": "npm --version",
+        "command": "npm install -g @ast-grep/cli"
+      },
+      {
+        "name": "cargo",
+        "platforms": ["macos", "linux", "windows"],
+        "check": "cargo --version",
+        "command": "cargo install ast-grep"
+      },
+      {
+        "name": "pip",
+        "platforms": ["macos", "linux", "windows"],
+        "check": "pip --version",
+        "command": "pip install ast-grep-cli"
+      },
+      {
+        "name": "manual",
+        "platforms": ["macos", "linux", "windows"],
+        "url": "https://ast-grep.github.io/guide/quick-start.html"
+      }
+    ]
+  },
+  "test": {
+    "command": "ast-grep --version",
+    "expect_success": true
+  },
+  "skills": [
+    "ast-grep"
+  ],
+  "agents": []
+}

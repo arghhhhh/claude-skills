@@ -1,0 +1,33 @@
+{
+  "name": "find-docs",
+  "description": "Retrieve up-to-date library/framework documentation via Context7 — API patterns, setup guides, migration docs.",
+  "version": "0.1.0",
+  "prerequisites": [
+    {
+      "name": "npx",
+      "check": "npx --version",
+      "install_hint": "Install Node.js from https://nodejs.org/ (npx is bundled with npm)",
+      "required": true
+    }
+  ],
+  "install": {
+    "check": "npx ctx7@latest --version",
+    "methods": [
+      {
+        "name": "npx",
+        "platforms": ["macos", "linux", "windows"],
+        "check": "npx --version",
+        "command": "echo 'find-docs uses npx ctx7@latest — no global install needed'"
+      }
+    ],
+    "notes": "Uses npx ctx7@latest at runtime — no global installation required."
+  },
+  "test": {
+    "command": "npx ctx7@latest --version",
+    "expect_success": true
+  },
+  "skills": [
+    "find-docs"
+  ],
+  "agents": []
+}
