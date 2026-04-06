@@ -25,7 +25,7 @@
         "command": "sudo apt install -y imagemagick"
       }
     ],
-    "notes": "ImageMagick 7+ uses the unified 'magick' command. Legacy v6 uses separate 'convert', 'identify', etc. Download from https://imagemagick.org/script/download.php"
+    "notes": "ImageMagick 7+ uses the unified 'magick' command. Legacy v6 uses separate 'convert', 'identify', etc."
   },
   "test": {
     "command": "magick --version",

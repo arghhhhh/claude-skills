@@ -1,5 +1,5 @@
 ---
-# officecli: v1.0.23
+# officecli: v1.1.0
 name: officecli-pptx
 description: "Use this skill any time a .pptx file is involved -- as input, output, or both. This includes: creating slide decks, pitch decks, or presentations; reading, parsing, or extracting text from any .pptx file; editing, modifying, or updating existing presentations; combining or splitting slide files; working with templates, layouts, speaker notes, or comments. Trigger whenever the user mentions 'deck,' 'slides,' 'presentation,' or references a .pptx filename."
 ---
@@ -326,6 +326,31 @@ officecli query slides.pptx 'shape:contains("placeholder")'
 
 **Use subagents** -- even for 2-3 slides. You've been staring at the code and will see what you expect, not what's there. Subagents have fresh eyes.
 
+#### Preferred: Playwright + HTML preview (full fidelity)
+
+Use `officecli watch` for a live localhost preview, then Playwright to screenshot individual slides for the QA subagent. This renders gradients, charts, tables, and images accurately — unlike SVG which misses all of these.
+
+```bash
+# Start live preview server (run in background)
+officecli watch slides.pptx
+# → Watch: http://localhost:18080
+
+# Use Playwright to open and screenshot slides
+playwright-cli open http://localhost:18080
+playwright-cli snapshot                     # get element refs
+playwright-cli screenshot e42 --filename=slide3.png   # screenshot a slide element
+```
+
+> **⚠️ `watch` + resident mode staleness:** When editing with `open`/`close` (resident mode) while `watch` is running, the watch server may not detect the file change written by `close`. If the preview appears stale after edits, restart the watch server:
+> ```bash
+> officecli unwatch slides.pptx   # or pkill -f "officecli watch"
+> officecli watch slides.pptx     # restart — picks up current file state
+> ```
+
+#### Fallback: SVG renders (limited fidelity)
+
+Use SVG only when Playwright is unavailable. SVG renders only one slide per invocation and **cannot render** gradient backgrounds, charts, or tables — these appear as blank/white, causing false positives in QA (e.g., white text on a gradient background reported as "invisible").
+
 ```bash
 # Render a single slide as SVG for visual inspection
 officecli view slides.pptx svg --start 3 --end 3 --browser
@@ -334,13 +359,15 @@ officecli view slides.pptx svg --start 3 --end 3 --browser
 for i in 1 2 3 4 5; do officecli view slides.pptx svg --start $i --end $i > /tmp/slide-$i.svg; done
 ```
 
-**SVG limitations:** SVG renders only one slide (the first in the `--start`/`--end` range). Gradient backgrounds, charts, and tables are not visible in SVG output. For full-fidelity multi-slide preview including charts and gradients, use HTML mode:
+For full-fidelity multi-slide preview without Playwright, use HTML mode:
 
 ```bash
 officecli view slides.pptx html --browser
 ```
 
-Prompt for visual QA subagent:
+#### QA subagent prompt
+
+Feed screenshots (from Playwright) or SVG files to a subagent with this prompt:
 
 ```
 Visually inspect these slides. Assume there are issues -- find them.
@@ -356,6 +383,7 @@ Look for:
 - Low-contrast icons (e.g., dark icons on dark backgrounds without a contrasting circle)
 - Text boxes too narrow causing excessive wrapping
 - Leftover placeholder content
+- Images with distorted aspect ratios (stretched or compressed)
 
 For each slide, list issues or areas of concern, even if minor.
 Report ALL issues found.
@@ -672,6 +700,7 @@ Batch fields: `command`, `path`, `parent`, `type`, `from`, `to`, `index`, `props
 | **Batch intermittent failure**: Approximately 1-in-15 batch operations may fail with "Failed to send to resident" when using batch mode with resident mode (`open`/`close`). | Retry the failed batch command. If the error persists, close and re-open the file: `officecli close file.pptx && officecli open file.pptx`, then retry. For critical workflows, consider splitting large batch arrays into smaller chunks (10-15 operations each). |
 | **Table cell solidFill schema warning**: Setting `color` on table cell run properties may produce `solidFill` schema validation errors. The table renders correctly in PowerPoint. | Ignore if the table opens correctly. Alternatively, set text color at the row level (`set tr[N] --prop color=HEX`) instead of the cell level. |
 | **Multi-series chart rendering in SVG/screenshot**: SVG and screenshot renders may show fewer series than actually exist in the chart data. The chart data is correct but the rendering engine does not always display all series visually. | Verify multi-series charts by opening the .pptx in PowerPoint or by using `get /slide[N]/chart[M]` to confirm all series are present in the data. Do not rely solely on SVG/screenshot visual QA for multi-series verification. |
+| **`watch` server stale after resident mode edits**: When `officecli watch` is running and you edit the file using resident mode (`open`/`close`), the watch server may not detect the file change written by `close`. The live preview continues serving the old version. | Restart the watch server after resident mode edits: `officecli unwatch file.pptx` then `officecli watch file.pptx`. Alternatively, use `pkill -f "officecli watch"` and restart. The restarted server re-reads the file and serves the current version. |
 | **Slide titles show as "(untitled)" in `view outline` / `view issues`**: When using `layout=blank` (the recommended approach for custom designs), all titles are added as plain text boxes — not as PPTX title placeholder elements. As a result, `view outline` and `view issues` report "(untitled)" for every slide, and screen reader outline navigation will not find slide titles. This is **expected behavior** for blank-layout decks. Evaluators and testers should not flag this as a defect when the deck uses `layout=blank`. If outline-compatible titles are required, use `officecli set deck.pptx "/slide[N]/placeholder[title]" --prop text="Title"` to set the PPTX title placeholder — but note this requires a layout that includes a title placeholder (i.e., not `layout=blank`). |
 
 ---
