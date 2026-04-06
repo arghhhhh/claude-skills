@@ -1,0 +1,45 @@
+{
+  "name": "imagemagick",
+  "description": "Image manipulation via ImageMagick CLI — resize, convert, composite, annotate, effects, and batch processing.",
+  "version": "0.1.0",
+  "prerequisites": [],
+  "install": {
+    "check": "magick --version",
+    "methods": [
+      {
+        "name": "winget",
+        "platforms": ["windows"],
+        "check": "winget --version",
+        "command": "winget install ImageMagick.ImageMagick"
+      },
+      {
+        "name": "brew",
+        "platforms": ["macos"],
+        "check": "brew --version",
+        "command": "brew install imagemagick"
+      },
+      {
+        "name": "apt",
+        "platforms": ["linux"],
+        "check": "apt --version",
+        "command": "sudo apt install -y imagemagick"
+      }
+    ],
+    "notes": "ImageMagick 7+ uses the unified 'magick' command. Legacy v6 uses separate 'convert', 'identify', etc."
+  },
+  "test": {
+    "command": "magick --version",
+    "expect_success": true
+  },
+  "integration_test": {
+    "command": "magick -size 100x100 xc:red /tmp/im-test.png && magick identify /tmp/im-test.png",
+    "expect_success": true,
+    "description": "Creates a test image and identifies it to verify full pipeline works"
+  },
+  "skills": [
+    "imagemagick-cli"
+  ],
+  "agents": [
+    "imagemagick"
+  ]
+}

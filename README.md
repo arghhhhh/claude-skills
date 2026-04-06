@@ -108,6 +108,7 @@ When updating, the installer automatically backs up your existing skills to `~/.
 | `find-docs` | [Context7](https://context7.com/) | `npx ctx7@latest` (no install) | `find-docs` | — |
 | `find-skills` | [skills.sh](https://skills.sh/) | `npx skills` (no install) | `find-skills` | — |
 | `officecli` | [OfficeCLI](https://github.com/iOfficeAI/OfficeCLI) | curl / PowerShell / binary | 9 skills | — |
+| `imagemagick` | [ImageMagick](https://imagemagick.org/) | `winget` / `brew` / `apt` | `imagemagick-cli` | `imagemagick` |
 | `playwright-cli` | [Playwright](https://playwright.dev/) | `npm` / `npx` | `playwright-cli` | — |
 
 MCPorter-based skills (comfyui, blender) also need [mcporter](https://github.com/steipete/mcporter) (`npx mcporter` — auto-installed via npx).
@@ -126,6 +127,7 @@ claude-skills/
 │   ├── find-docs/                      # Context7 doc lookup
 │   ├── find-skills/                    # skills.sh discovery
 │   ├── github-cli/                     # GitHub CLI (gh)
+│   ├── imagemagick/                    # ImageMagick image manipulation
 │   ├── obs-studio/                     # OBS Studio + gobs-cli
 │   ├── officecli/                      # Office docs (9 skills)
 │   ├── playwright-cli/                 # Browser automation
