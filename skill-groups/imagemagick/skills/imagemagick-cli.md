@@ -10,9 +10,10 @@ Use this skill to manipulate images via the `magick` CLI (ImageMagick 7+).
 
 - **Binary**: `magick` (ImageMagick 7+ unified command)
 - **Verify**: `magick --version`
+- **Download**: https://imagemagick.org/script/download.php
 - **Not installed?**
-  - Windows: `winget install ImageMagick.ImageMagick`
-  - macOS: `brew install imagemagick`
+  - Windows: `winget install ImageMagick.ImageMagick` or download from https://imagemagick.org/script/download.php#windows
+  - macOS: `brew install imagemagick` or download from https://imagemagick.org/script/download.php#macosx
   - Linux: `sudo apt install imagemagick`
 
 ## Important Notes
