@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "prerequisites": [],
   "install": {
-    "check": "ast-grep --version",
+    "check": "sg --version || ast-grep --version",
     "methods": [
       {
         "name": "brew",
@@ -38,7 +38,7 @@
     ]
   },
   "test": {
-    "command": "ast-grep --version",
+    "command": "sg --version || ast-grep --version",
     "expect_success": true
   },
   "skills": [

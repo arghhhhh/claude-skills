@@ -59,6 +59,20 @@
   "agents": [
     "comfyui"
   ],
+  "config_vars": {
+    "COMFYUI_WORKSPACE": {
+      "prompt": "Path to your ComfyUI workspace directory (the folder containing main.py and custom_nodes/)",
+      "example": "C:/Comfy/ComfyUI-Easy-Install/ComfyUI",
+      "validate": "test -f '{{value}}/main.py' || test -d '{{value}}/custom_nodes'"
+    },
+    "COMFYUI_PYTHON": {
+      "prompt": "Path to the Python executable used by ComfyUI (embedded or system Python)",
+      "example": "C:/Comfy/ComfyUI-Easy-Install/python_embeded/python.exe",
+      "default_from": "{{COMFYUI_WORKSPACE}}/../python_embeded/python.exe",
+      "fallback": "python",
+      "validate": "{{value}} --version"
+    }
+  },
   "mcp_servers": {
     "comfyui": {
       "command": "{{COMFYUI_PYTHON}}",

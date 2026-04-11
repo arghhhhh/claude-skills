@@ -642,12 +642,60 @@ configure_skills() {
     return 0
   fi
 
-  # No config file — warn prominently and return
+  # No config file — prompt if interactive, warn if not
   if [ ! -f "$CONFIG_FILE" ]; then
-    warn "Some $group skills have {{PLACEHOLDER}} variables — skills will NOT work until configured"
-    info "To fix: cp $SCRIPT_DIR/config.example.sh $CONFIG_FILE"
-    info "Then edit $CONFIG_FILE with your machine-specific paths and re-run the installer"
-    return 0
+    if [ "$NON_INTERACTIVE" = "true" ]; then
+      warn "Some $group skills have {{PLACEHOLDER}} variables — skills will NOT work until configured"
+      info "To fix: cp $SCRIPT_DIR/config.example.sh $CONFIG_FILE"
+      info "Then edit $CONFIG_FILE with your machine-specific paths and re-run the installer"
+      return 0
+    fi
+
+    # Try to prompt using config_vars from the manifest
+    local config_vars_json
+    config_vars_json=$(node -e "
+      const m = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+      const cv = m.config_vars || {};
+      for (const [k, v] of Object.entries(cv)) {
+        console.log(k + '|' + (v.prompt || 'Value for ' + k));
+      }
+    " "$SKILL_GROUPS_DIR/$group/manifest.json" 2>/dev/null) || true
+
+    if [ -n "$config_vars_json" ]; then
+      info "Some $group skills need paths configured."
+      info "Enter values below (or press Enter to skip and configure later)"
+      echo ""
+
+      # Create config file
+      cp "$SCRIPT_DIR/config.example.sh" "$CONFIG_FILE" 2>/dev/null || echo "# claude-skills configuration" > "$CONFIG_FILE"
+
+      local any_set=false
+      while IFS='|' read -r vname vprompt; do
+        [ -z "$vname" ] && continue
+        read -rp "  $vprompt: " value
+        if [ -n "$value" ]; then
+          if grep -q "^${vname}=" "$CONFIG_FILE" 2>/dev/null; then
+            sed -i'' -e "s|^${vname}=.*|${vname}=\"${value}\"|" "$CONFIG_FILE"
+          else
+            echo "${vname}=\"${value}\"" >> "$CONFIG_FILE"
+          fi
+          any_set=true
+        fi
+      done <<< "$config_vars_json"
+
+      if [ "$any_set" = "true" ]; then
+        ok "Config saved to $CONFIG_FILE — re-running configuration"
+        # Fall through to apply the config
+      else
+        warn "Some $group skills have {{PLACEHOLDER}} variables — configure later in $CONFIG_FILE"
+        return 0
+      fi
+    else
+      warn "Some $group skills have {{PLACEHOLDER}} variables — skills will NOT work until configured"
+      info "To fix: cp $SCRIPT_DIR/config.example.sh $CONFIG_FILE"
+      info "Then edit $CONFIG_FILE with your machine-specific paths and re-run the installer"
+      return 0
+    fi
   fi
 
   # Source config and build substitution map
@@ -727,7 +775,7 @@ install_mcp_config() {
     try {
       for (const line of fs.readFileSync(process.argv[4], 'utf8').split('\n')) {
         const m = line.match(/^([A-Z_]+)=['\"]?([^'\"]*)['\"]?$/);
-        if (m) vars[m[1]] = m[2];
+        if (m && m[2]) vars[m[1]] = m[2];
       }
     } catch(e) {}
 
@@ -768,23 +816,33 @@ install_mcp_config() {
       return cmd;
     }
 
-    function mergeInto(path, entries) {
+    function mergeInto(cfgPath, entries) {
       let cfg = {};
-      try { cfg = JSON.parse(fs.readFileSync(path, 'utf8')); } catch(e) {}
+      try { cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8')); } catch(e) {}
       if (!cfg.mcpServers) cfg.mcpServers = {};
       let changed = false;
       for (const [name, entry] of Object.entries(entries)) {
-        if (!cfg.mcpServers[name]) { cfg.mcpServers[name] = entry; changed = true; }
+        // Update if missing or if content differs (e.g. placeholder was resolved)
+        const existing = JSON.stringify(cfg.mcpServers[name] || null);
+        const incoming = JSON.stringify(entry);
+        if (existing !== incoming) { cfg.mcpServers[name] = entry; changed = true; }
       }
-      if (changed) fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + '\n');
+      if (changed) fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n');
     }
+
+    // Collect names of missing config vars for the MISSING_VARS output
+    const missingVars = new Set();
 
     const ready = {};
     for (const [name, config] of Object.entries(servers)) {
       const e = JSON.parse(JSON.stringify(config));
       e.command = subst(e.command);
       if (e.args) e.args = e.args.map(subst);
-      if (JSON.stringify(e).includes('{{')) {
+      const serialized = JSON.stringify(e);
+      if (serialized.includes('{{')) {
+        // Extract which vars are missing
+        const matches = serialized.match(/\{\{([A-Z_]+)\}\}/g) || [];
+        matches.forEach(m => missingVars.add(m.replace(/[{}]/g, '')));
         console.log('PLACEHOLDER:' + name);
         continue;
       }
@@ -793,11 +851,28 @@ install_mcp_config() {
       console.log('OK:' + name);
     }
 
+    if (missingVars.size > 0) {
+      // Output config_vars info so the caller can prompt for them
+      const configVars = manifest.config_vars || {};
+      for (const varName of missingVars) {
+        const info = configVars[varName];
+        if (info) {
+          console.log('MISSING_VAR:' + varName + ':' + (info.prompt || 'Value for ' + varName));
+        } else {
+          console.log('MISSING_VAR:' + varName + ':Value for ' + varName);
+        }
+      }
+    }
+
     if (Object.keys(ready).length > 0) {
       mergeInto(process.argv[2], ready);
       mergeInto(process.argv[3], ready);
     }
   " "$manifest_file" "$mcporter_config" "$claude_mcp_config" "$CONFIG_FILE" 2>/dev/null) || true
+
+  local has_missing_vars=false
+  local missing_var_names=()
+  local missing_var_prompts=()
 
   while IFS= read -r line; do
     [ -z "$line" ] && continue
@@ -806,10 +881,61 @@ install_mcp_config() {
         ok "MCP config: ${line#OK:} (added to mcporter + claude configs)"
         ;;
       PLACEHOLDER:*)
-        warn "MCP config: ${line#PLACEHOLDER:} has unconfigured placeholders — update $CONFIG_FILE"
+        warn "MCP config: ${line#PLACEHOLDER:} has unconfigured placeholders"
+        ;;
+      MISSING_VAR:*)
+        has_missing_vars=true
+        local var_info="${line#MISSING_VAR:}"
+        local var_name="${var_info%%:*}"
+        local var_prompt="${var_info#*:}"
+        missing_var_names+=("$var_name")
+        missing_var_prompts+=("$var_prompt")
         ;;
     esac
   done <<< "$output"
+
+  # If there are missing vars, prompt the user (interactive) or show instructions (non-interactive)
+  if [ "$has_missing_vars" = "true" ]; then
+    if [ "$NON_INTERACTIVE" = "true" ]; then
+      warn "Missing config vars for $group MCP server — set these in $CONFIG_FILE:"
+      for i in "${!missing_var_names[@]}"; do
+        info "  ${missing_var_names[$i]}: ${missing_var_prompts[$i]}"
+      done
+    else
+      info "The $group MCP server needs some paths configured."
+      info "Enter values below (or press Enter to skip and configure later in $CONFIG_FILE)"
+      echo ""
+
+      local any_set=false
+      # Ensure config file exists
+      if [ ! -f "$CONFIG_FILE" ]; then
+        cp "$SCRIPT_DIR/config.example.sh" "$CONFIG_FILE" 2>/dev/null || echo "# claude-skills configuration" > "$CONFIG_FILE"
+      fi
+
+      for i in "${!missing_var_names[@]}"; do
+        local vname="${missing_var_names[$i]}"
+        local vprompt="${missing_var_prompts[$i]}"
+        read -rp "  $vprompt: " value
+        if [ -n "$value" ]; then
+          # Write/update the var in the config file
+          if grep -q "^${vname}=" "$CONFIG_FILE" 2>/dev/null; then
+            sed -i'' -e "s|^${vname}=.*|${vname}=\"${value}\"|" "$CONFIG_FILE"
+          else
+            echo "${vname}=\"${value}\"" >> "$CONFIG_FILE"
+          fi
+          any_set=true
+        fi
+      done
+
+      # Re-run MCP config if any values were set
+      if [ "$any_set" = "true" ]; then
+        ok "Config saved to $CONFIG_FILE"
+        info "Re-running MCP config for $group..."
+        install_mcp_config "$group"
+        return
+      fi
+    fi
+  fi
 }
 
 # ─── Append CLAUDE.md snippet ───────────────────────────────────────────────

@@ -18,7 +18,7 @@
         "name": "npm",
         "platforms": ["macos", "linux", "windows"],
         "check": "npm --version",
-        "command": "npm install -g @playwright/cli@latest"
+        "command": "npm install -g @playwright/cli@latest && npx playwright install chromium"
       }
     ]
   },

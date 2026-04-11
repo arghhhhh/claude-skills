@@ -37,6 +37,24 @@
     "expect_success": true,
     "description": "OBS Studio must be running with obs-websocket enabled (bundled in OBS 28+)"
   },
+  "config_vars": {
+    "GOBS_CLI": {
+      "prompt": "Path to gobs-cli binary (leave blank if installed via 'go install' — will use gobs-cli from PATH)",
+      "example": "C:/Users/you/go/bin/gobs-cli.exe",
+      "fallback": "gobs-cli"
+    },
+    "OBS_CONFIG_DIR": {
+      "prompt": "Path to your OBS Studio config directory",
+      "example_windows": "C:/Users/you/AppData/Roaming/obs-studio",
+      "example_macos": "~/Library/Application Support/obs-studio",
+      "example_linux": "~/.config/obs-studio"
+    },
+    "GOBS_CONFIG": {
+      "prompt": "Path to gobs-cli config file (contains OBS_PASSWORD)",
+      "example_windows": "C:/Users/you/AppData/Local/gobs-cli/config.env",
+      "example_macos": "~/.config/gobs-cli/config.env"
+    }
+  },
   "skills": [
     "obs-cli"
   ],
