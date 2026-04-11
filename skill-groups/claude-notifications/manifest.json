@@ -1,0 +1,34 @@
+{
+  "name": "claude-notifications",
+  "description": "Smart desktop notifications for Claude Code — task complete, questions, plan ready, sounds, click-to-focus.",
+  "version": "0.1.0",
+  "prerequisites": [
+    {
+      "name": "claude",
+      "check": "claude --version",
+      "install_hint": "Install Claude Code: npm install -g @anthropic-ai/claude-code",
+      "required": true
+    }
+  ],
+  "install": {
+    "check": "claude plugin list 2>/dev/null | grep -q claude-notifications-go",
+    "methods": [
+      {
+        "name": "bootstrap",
+        "platforms": ["macos", "linux", "windows"],
+        "check": "curl --version || wget --version",
+        "command": "curl -fsSL https://raw.githubusercontent.com/777genius/claude-notifications-go/main/bin/bootstrap.sh | bash || { echo 'Bootstrap had issues, attempting manual install...' && claude plugin marketplace add 777genius/claude-notifications-go </dev/null 2>/dev/null; claude plugin install claude-notifications-go@claude-notifications-go </dev/null 2>/dev/null && PLUGIN_ROOT=$(node -e \"const d=JSON.parse(require('fs').readFileSync(process.env.HOME+'/.claude/plugins/installed_plugins.json','utf8'));const e=((d.plugins||{})['claude-notifications-go@claude-notifications-go']||[]).filter(x=>x.installPath);if(e.length)process.stdout.write(e[e.length-1].installPath)\" 2>/dev/null) && [ -n \"$PLUGIN_ROOT\" ] && INSTALL_TARGET_DIR=\"$PLUGIN_ROOT/bin\" bash \"$PLUGIN_ROOT/bin/install.sh\"; }"
+      }
+    ]
+  },
+  "test": {
+    "command": "claude plugin list 2>/dev/null | grep -q claude-notifications-go",
+    "expect_success": true
+  },
+  "post_install_hints": [
+    "Restart Claude Code for notification hooks to take effect",
+    "Run /claude-notifications-go:settings inside Claude Code to configure sounds and webhooks"
+  ],
+  "skills": [],
+  "agents": []
+}
