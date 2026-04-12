@@ -1,7 +1,7 @@
 {
   "name": "app-ui",
   "description": "Unity App UI framework — components, MVVM, navigation, Redux state management, and theming for UI Toolkit.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "prerequisites": [],
   "install": {
     "check": "true",
