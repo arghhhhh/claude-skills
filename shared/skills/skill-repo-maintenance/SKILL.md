@@ -1,5 +1,5 @@
 ---
-version: 1.2.0
+version: 1.3.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
