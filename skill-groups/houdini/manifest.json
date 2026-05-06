@@ -1,0 +1,88 @@
+{
+  "name": "houdini",
+  "description": "SideFX Houdini automation — nodes, rendering, geometry, PDG/TOPs, USD/Solaris, HDAs, VEX, DOPs, viewport, COPs, CHOPs via 166 MCP tools.",
+  "version": "0.1.0",
+  "prerequisites": [
+    {
+      "name": "git",
+      "check": "git --version",
+      "install_hint": "Install Git from https://git-scm.com/downloads",
+      "required": true,
+      "note": "Needed to clone houdini-mcp"
+    },
+    {
+      "name": "uv",
+      "check": "uv --version",
+      "install_hint": "Install uv from https://docs.astral.sh/uv/getting-started/installation/",
+      "required": true,
+      "note": "Needed to run the houdini-mcp server"
+    },
+    {
+      "name": "npx",
+      "check": "npx --version",
+      "install_hint": "Install Node.js from https://nodejs.org/ (npx is bundled with npm)",
+      "required": true,
+      "note": "Needed for MCPorter to call houdini-mcp tools from the CLI"
+    }
+  ],
+  "install": {
+    "check": "test -f '{{HOUDINI_MCP_DIR}}/houdini_mcp_server.py'",
+    "methods": [
+      {
+        "name": "manual",
+        "platforms": ["macos", "linux", "windows"],
+        "url": "https://github.com/kleer001/houdini-mcp",
+        "note": "Clone kleer001/houdini-mcp to the path you set in HOUDINI_MCP_DIR, then run: uv sync && uv run python scripts/install.py"
+      }
+    ],
+    "post_install": [
+      {
+        "name": "houdini-plugin",
+        "description": "Install the Houdini-side plugin (auto-loads MCP server when Houdini opens; bridge auto-launches headless hython if Houdini GUI is not running)",
+        "command": "cd '{{HOUDINI_MCP_DIR}}' && uv sync && uv run python scripts/install.py"
+      },
+      {
+        "name": "mcporter",
+        "description": "MCPorter CLI for calling MCP tools from the command line",
+        "check": "npx mcporter --version",
+        "url": "https://github.com/steipete/mcporter"
+      }
+    ]
+  },
+  "test": {
+    "command": "test -f '{{HOUDINI_MCP_DIR}}/houdini_mcp_server.py'",
+    "expect_success": true
+  },
+  "integration_test": {
+    "command": "npx mcporter call houdini.ping",
+    "expect_success": true,
+    "description": "Verifies the MCP bridge can reach Houdini (auto-launches headless hython if no GUI is running)"
+  },
+  "skills": [
+    "mcp/houdini-mcp"
+  ],
+  "agents": [],
+  "config_vars": {
+    "HOUDINI_MCP_DIR": {
+      "prompt": "Path to your local clone of kleer001/houdini-mcp (the folder containing houdini_mcp_server.py)",
+      "example": "C:/Users/joss/Desktop/Projects/Downloaded/houdini-mcp",
+      "validate": "test -f '{{value}}/houdini_mcp_server.py'"
+    }
+  },
+  "mcp_servers": {
+    "houdini": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "{{HOUDINI_MCP_DIR}}",
+        "run",
+        "python",
+        "houdini_mcp_server.py"
+      ]
+    }
+  },
+  "post_install_hints": [
+    "Restart Houdini for the plugin to take effect (or rely on the auto-launched headless hython).",
+    "Patches applied locally on the 'patched' branch: ysysimon PR #2 (Windows path/encoding fixes) and ysk424 PR #3 (parm.label/Color/vex crash fixes). Re-apply if you upstream-pull."
+  ]
+}
