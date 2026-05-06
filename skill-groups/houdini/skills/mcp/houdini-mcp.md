@@ -1,12 +1,12 @@
 ---
-version: 1.0.0
+version: 1.0.1
 ---
 
 # Houdini MCP Skill
 
 Use this skill when the user wants to interact with SideFX Houdini — create/modify scenes, build node networks, write VEX, set up simulations, render, work with USD/Solaris, PDG/TOPs, COPs, CHOPs, HDAs, or query Houdini docs.
 
-Bridge: `kleer001/houdini-mcp` (patched fork — Windows path fixes + parm/vex crash fixes). 166 tools total.
+Bridge: `arghhhhh/houdini-mcp` (fork of `kleer001/houdini-mcp`, branch `patched` — Windows path fixes + parm/vex crash fixes). 166 tools total.
 
 ## Prerequisites
 
