@@ -1,7 +1,7 @@
 {
   "name": "houdini",
   "description": "SideFX Houdini automation — nodes, rendering, geometry, PDG/TOPs, USD/Solaris, HDAs, VEX, DOPs, viewport, COPs, CHOPs via 166 MCP tools.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "prerequisites": [
     {
       "name": "git",
@@ -28,6 +28,16 @@
   "install": {
     "check": "test -f '{{HOUDINI_MCP_DIR}}/houdini_mcp_server.py'",
     "methods": [
+      {
+        "name": "bootstrap-unix",
+        "platforms": ["macos", "linux"],
+        "command": "git clone https://github.com/kleer001/houdini-mcp.git '{{HOUDINI_MCP_DIR}}' && cd '{{HOUDINI_MCP_DIR}}' && bash bootstrap.sh"
+      },
+      {
+        "name": "bootstrap-windows",
+        "platforms": ["windows"],
+        "command": "git clone https://github.com/kleer001/houdini-mcp.git '{{HOUDINI_MCP_DIR}}' && cd '{{HOUDINI_MCP_DIR}}' && cmd.exe /c bootstrap.bat"
+      },
       {
         "name": "manual",
         "platforms": ["macos", "linux", "windows"],
@@ -64,8 +74,8 @@
   "agents": [],
   "config_vars": {
     "HOUDINI_MCP_DIR": {
-      "prompt": "Path to your local clone of kleer001/houdini-mcp (the folder containing houdini_mcp_server.py)",
-      "example": "C:/Users/joss/Desktop/Projects/Downloaded/houdini-mcp",
+      "prompt": "Path to your local clone of kleer001/houdini-mcp (the folder containing houdini_mcp_server.py). On Windows: e.g. C:/Users/<you>/dev/houdini-mcp. On macOS/Linux: e.g. ~/dev/houdini-mcp",
+      "example": "~/dev/houdini-mcp",
       "validate": "test -f '{{value}}/houdini_mcp_server.py'"
     }
   },
