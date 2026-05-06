@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ─────────────────────────────────────────────────────────────────────────────
-# claude-skills installer v2.1
+# claude-skills installer v2.2 — content overlay support
 # Cross-platform (macOS, Linux, Windows via Git Bash/WSL)
 # Installs, updates, and syncs skill groups: software + skills + agents → ~/.claude/
 # ─────────────────────────────────────────────────────────────────────────────
@@ -299,6 +299,38 @@ diff_skill() {
   fi
 }
 
+# Resolve a per-group content overlay for a skill, if one exists.
+# Overlays live at: skill-groups/<group>/overlays/skills/<skill-name>(/SKILL.md|.md)
+# and take precedence over the upstream source_repo files.
+# Echoes overlay path on success, empty string if no overlay exists.
+resolve_skill_overlay() {
+  local group="$1" skill="$2"
+  local overlay_dir="$SKILL_GROUPS_DIR/$group/overlays/skills"
+  if [ -f "$overlay_dir/$skill/SKILL.md" ]; then
+    echo "$overlay_dir/$skill"
+  elif [ -f "$overlay_dir/$skill.md" ]; then
+    echo "$overlay_dir/$skill.md"
+  elif [ -f "$overlay_dir/$skill" ]; then
+    echo "$overlay_dir/$skill"
+  else
+    echo ""
+  fi
+}
+
+# Resolve a per-group content overlay for an agent file (by upstream filename).
+# Overlay path: skill-groups/<group>/overlays/agents/<upstream-filename>.md
+# `agent_renames` is applied later at symlink-destination time, so the overlay
+# filename mirrors the ORIGINAL upstream filename.
+resolve_agent_overlay() {
+  local group="$1" upstream_filename="$2"
+  local overlay_path="$SKILL_GROUPS_DIR/$group/overlays/agents/$upstream_filename"
+  if [ -f "$overlay_path" ]; then
+    echo "$overlay_path"
+  else
+    echo ""
+  fi
+}
+
 # Resolve the actual file path for a skill (handles .md extension, directories)
 resolve_skill_path() {
   local base="$1"
@@ -571,6 +603,23 @@ install_skills() {
     local src="$skills_source_dir/$skill"
     local dest="$SKILLS_DIR/$skill"
 
+    # Per-group content overlay takes precedence over source_repo
+    local overlay
+    overlay=$(resolve_skill_overlay "$group" "$skill")
+    if [ -n "$overlay" ]; then
+      if [ -d "$overlay" ]; then
+        create_symlink "$overlay" "$dest"
+        ok "Skill: $skill (v$(skill_get_version "$overlay")) [overlay]"
+      else
+        # File overlay (single-file skill)
+        local odest="$dest"
+        [[ "$overlay" == *.md ]] && odest="$dest.md"
+        create_symlink "$overlay" "$odest"
+        ok "Skill: $skill (v$(skill_get_version "$overlay")) [overlay]"
+      fi
+      continue
+    fi
+
     if [ -d "$src" ]; then
       create_symlink "$src" "$dest"
       ok "Skill: $skill (v$(skill_get_version "$src"))"
@@ -598,6 +647,15 @@ install_skills() {
 
     local src="$agents_source_dir/$src_file"
     local dest="$AGENTS_DIR/$agent.md"
+
+    # Per-group agent overlay (keyed by upstream filename, before rename)
+    local agent_overlay
+    agent_overlay=$(resolve_agent_overlay "$group" "$src_file")
+    if [ -n "$agent_overlay" ]; then
+      create_symlink "$agent_overlay" "$dest"
+      ok "Agent: $agent [overlay]"
+      continue
+    fi
 
     if [ -f "$src" ]; then
       create_symlink "$src" "$dest"
@@ -1275,7 +1333,14 @@ update_group() {
 
   for skill in $skills; do
     local repo_path local_path
-    repo_path=$(resolve_skill_path "$skills_source_dir/$skill")
+    # Per-group content overlay takes precedence
+    local overlay
+    overlay=$(resolve_skill_overlay "$group" "$skill")
+    if [ -n "$overlay" ]; then
+      repo_path="$overlay"
+    else
+      repo_path=$(resolve_skill_path "$skills_source_dir/$skill")
+    fi
     local_path=$(resolve_skill_path "$SKILLS_DIR/$skill")
 
     # Skill not in repo
@@ -1313,7 +1378,14 @@ update_group() {
     renames=$(echo "$manifest" | grep -A10 '"agent_renames"' 2>/dev/null || true)
     local rename_from
     rename_from=$(echo "$renames" | sed -n "s/.*\"\([^\"]*\)\"[[:space:]]*:[[:space:]]*\"$agent.md\".*/\1/p")
-    [ -n "$rename_from" ] && repo_agent="$agents_source_dir/$rename_from"
+    local upstream_filename="$agent.md"
+    [ -n "$rename_from" ] && upstream_filename="$rename_from"
+    repo_agent="$agents_source_dir/$upstream_filename"
+
+    # Per-group agent overlay (keyed by upstream filename)
+    local agent_overlay
+    agent_overlay=$(resolve_agent_overlay "$group" "$upstream_filename")
+    [ -n "$agent_overlay" ] && repo_agent="$agent_overlay"
 
     if [ -f "$repo_agent" ] && [ -f "$local_agent" ]; then
       if ! diff_skill "$local_agent" "$repo_agent"; then
@@ -1473,7 +1545,14 @@ show_status() {
     skills=$(json_array "$manifest" "skills")
     for skill in $skills; do
       local repo_path local_path local_ver repo_ver status
-      repo_path=$(resolve_skill_path "$skills_source_dir/$skill")
+      # Per-group overlay takes precedence over source_repo
+      local overlay
+      overlay=$(resolve_skill_overlay "$group" "$skill")
+      if [ -n "$overlay" ]; then
+        repo_path="$overlay"
+      else
+        repo_path=$(resolve_skill_path "$skills_source_dir/$skill")
+      fi
       local_path=$(resolve_skill_path "$SKILLS_DIR/$skill")
 
       repo_ver=$(skill_get_version "$repo_path")

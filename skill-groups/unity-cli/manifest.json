@@ -1,7 +1,7 @@
 {
   "name": "unity-cli",
   "description": "Unity Editor automation via unity-cli — scene inspection, GameObject editing, prefab workflows, C# navigation/editing, asset management, input system, testing, and UI automation.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "prerequisites": [
     {
       "name": "cargo",
@@ -23,18 +23,18 @@
         "name": "cargo",
         "platforms": ["macos", "linux"],
         "check": "cargo --version",
-        "command": "cargo install --git https://github.com/arghhhhh/unity-cli.git"
+        "command": "cargo install --git https://github.com/akiojin/unity-cli.git"
       },
       {
         "name": "cargo",
         "platforms": ["windows"],
         "check": "cargo --version",
-        "command": "MSVC_LINK=$(find '/c/Program Files/Microsoft Visual Studio' '/c/Program Files (x86)/Microsoft Visual Studio' -name 'link.exe' -path '*/Hostx64/x64/*' 2>/dev/null | head -1) && if [ -n \"$MSVC_LINK\" ]; then export PATH=\"$(dirname \"$MSVC_LINK\"):$PATH\" && cargo install --git https://github.com/arghhhhh/unity-cli.git; else echo 'MSVC Build Tools not found — install via: winget install Microsoft.VisualStudio.2022.BuildTools --override \"--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"' && false; fi"
+        "command": "MSVC_LINK=$(find '/c/Program Files/Microsoft Visual Studio' '/c/Program Files (x86)/Microsoft Visual Studio' -name 'link.exe' -path '*/Hostx64/x64/*' 2>/dev/null | head -1) && if [ -n \"$MSVC_LINK\" ]; then export PATH=\"$(dirname \"$MSVC_LINK\"):$PATH\" && cargo install --git https://github.com/akiojin/unity-cli.git; else echo 'MSVC Build Tools not found — install via: winget install Microsoft.VisualStudio.2022.BuildTools --override \"--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"' && false; fi"
       },
       {
         "name": "binary",
         "platforms": ["macos", "linux", "windows"],
-        "url": "https://github.com/arghhhhh/unity-cli/releases"
+        "url": "https://github.com/akiojin/unity-cli/releases"
       }
     ]
   },
@@ -65,7 +65,7 @@
   "agents": [
     "unity"
   ],
-  "source_repo": "https://github.com/arghhhhh/unity-cli.git",
+  "source_repo": "https://github.com/akiojin/unity-cli.git",
   "source_paths": {
     "skills": ".claude-plugin/plugins/unity-cli/skills",
     "agents": ".claude-plugin/plugins/unity-cli/agents",

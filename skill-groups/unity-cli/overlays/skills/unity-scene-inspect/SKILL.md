@@ -1,0 +1,80 @@
+---
+name: unity-scene-inspect
+description: Inspect Unity scenes without mutating them. Use when the user asks to analyze scene hierarchy, list scenes, find a gameobject by name or component, inspect component values, review object references, or query animator state. Do not use for creating scenes; use `unity-scene-create`. Do not use for editing GameObjects; use `unity-gameobject-edit`.
+allowed-tools: Bash(unity-cli:*), Read, Grep, Glob
+metadata:
+  author: akiojin
+  version: 0.3.0
+  category: scenes
+  triggers:
+    - hierarchy
+    - inspect
+    - find
+    - reference
+    - animator
+  siblings:
+    - unity-scene-create
+    - unity-gameobject-edit
+    - unity-csharp-navigate
+---
+
+# Scene Inspect
+
+Inspect scene hierarchy, find objects, and read component data without mutating anything. This is the read-only sibling of `unity-gameobject-edit`.
+
+## Use When
+
+- The user wants to inspect the current scene before making changes.
+- The user asks where a GameObject, component, or animator state lives.
+- The user wants a hierarchy summary, scene inventory, or reference analysis.
+
+## Do Not Use When
+
+- The task is to create new scenes; use `unity-scene-create`.
+- The task is to mutate existing objects; use `unity-gameobject-edit`.
+- The user only needs source-code navigation with no scene context; use `unity-csharp-navigate`.
+
+## Preferred Flow
+
+1. Start with `get_scene_info`, `list_scenes`, or `get_hierarchy` to scope the work.
+2. Locate candidates with `find_gameobject` or `find_by_component`.
+3. Inspect targets with `get_gameobject_details`, `get_component_values`, or animator queries.
+4. Use `analyze_scene_contents` with `includeInactive` for broad audits.
+
+## Critical: Parameter Names
+
+Read-only inspection tools use `gameObjectName` (no leading slash), NOT `gameObjectPath`:
+
+- `get_gameobject_details` — `gameObjectName` or `path`
+- `get_component_values` — `gameObjectName`
+- `get_object_references` — `gameObjectName`
+- `get_animator_state` — `gameObjectName`
+- `get_animator_runtime_info` — `gameObjectName`
+
+Search tools use `name` (not `gameObjectName`):
+
+- `find_gameobject` — `name`
+
+When unsure: `unity-cli tool schema <tool_name> --output json`.
+
+```bash
+unity-cli raw get_hierarchy --json '{"nameOnly":true}'
+
+# Search — uses "name", NOT "gameObjectName"
+unity-cli raw find_gameobject --json '{"name":"Player"}'
+
+# Read-only inspection — uses "gameObjectName", NOT "gameObjectPath"
+unity-cli raw get_component_values --json '{"gameObjectName":"Player","componentType":"Transform"}'
+unity-cli raw analyze_scene_contents --json '{"includeInactive":true}'
+```
+
+## Examples
+
+- "Show the current scene hierarchy and find the player camera."
+- "Inspect the `Transform` values on `Player`."
+- "Tell me which animator state the character is in right now."
+
+## References
+
+- [runtime-checklist.md](references/runtime-checklist.md): connection and instance prerequisites.
+- [scene-inspection-playbook.md](references/scene-inspection-playbook.md): step-by-step inspection flow for large or duplicated scenes.
