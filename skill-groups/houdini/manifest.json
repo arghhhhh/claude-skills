@@ -1,7 +1,7 @@
 {
   "name": "houdini",
   "description": "SideFX Houdini automation — nodes, rendering, geometry, PDG/TOPs, USD/Solaris, HDAs, VEX, DOPs, viewport, COPs, CHOPs via 166 MCP tools.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "prerequisites": [
     {
       "name": "git",
@@ -71,7 +71,9 @@
   "skills": [
     "mcp/houdini-mcp"
   ],
-  "agents": [],
+  "agents": [
+    "houdini"
+  ],
   "config_vars": {
     "HOUDINI_MCP_DIR": {
       "prompt": "Path to your local clone of kleer001/houdini-mcp (the folder containing houdini_mcp_server.py). On Windows: e.g. C:/Users/<you>/dev/houdini-mcp. On macOS/Linux: e.g. ~/dev/houdini-mcp",
