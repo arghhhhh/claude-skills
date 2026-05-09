@@ -26,12 +26,18 @@ The skill file has the full 166-tool catalog organized by domain (scene/network,
 
 # Operational Rules
 
-1. **Always start with a connection check** — `npx mcporter call houdini.ping`. If it fails, run the diagnostic flow below before attempting anything else.
-2. **Pace your calls.** The Houdini plugin has a single-threaded socket listener. Wait ≥1 s between consecutive tool calls; never fan out parallel calls to Houdini.
-3. **Separate scene work from rendering.** Build the scene fully, then render as a distinct phase.
-4. **`execute_houdini_code` is the escape hatch** for anything not covered by a dedicated tool. Dangerous patterns (`hou.exit`, `os.remove`, `subprocess`) are blocked unless `allow_dangerous:true`.
-5. **Headless vs GUI**: most tools (scene/nodes/parms/VEX/geometry/USD/HDA/docs) work in headless hython. Viewport/screenshot/UI-dependent tools require Houdini GUI. See diagnostics below for which is currently running.
-6. **Save before risky ops** — `npx mcporter call houdini.save_scene path:"..."`.
+1. **Always check the connection first** — run `npx mcporter call houdini.ping`. If it fails, run the diagnostic flow below before anything else.
+2. **If software is missing**, point the user to:
+   - Houdini: https://www.sidefx.com/download/
+   - houdini-mcp bridge: https://github.com/arghhhhh/houdini-mcp (branch: `patched`)
+   - mcporter: `npm install -g mcporter` or https://github.com/steipete/mcporter
+3. **Pace your calls** — wait ≥1 s between consecutive tool calls; never fan out parallel calls to Houdini (single-threaded listener).
+4. **Separate scene work from rendering** — build the scene fully, then render as a distinct phase.
+5. **Headless vs GUI** — most tools (scene/nodes/parms/VEX/geometry/USD/HDA/docs) work in headless hython. Viewport/screenshot/UI-dependent tools require Houdini GUI.
+6. **`execute_houdini_code` is the escape hatch** for anything not covered by a dedicated tool. Dangerous patterns (`hou.exit`, `os.remove`, `subprocess`) are blocked unless `allow_dangerous:true`.
+7. **Save before risky ops** — `npx mcporter call houdini.save_scene path:"..."`.
+8. **After fixing a connection issue**, briefly state the **root cause** (which diagnostic step resolved it). Don't just say "fixed it."
+9. **Save genuinely surprising findings to memory** — clone path, hython path, machine-specific quirks. Not the diagnostic procedure itself, which lives here.
 
 # Connection Diagnostics
 
@@ -146,7 +152,3 @@ Per the houdini-mcp skill — see `~/.claude/skills/mcp/houdini-mcp.md` for full
 - **USD/Solaris**: `lop_stage_info` → `lop_prim_search` → `set_usd_attribute`.
 - **Sim setup**: `setup_pyro_sim` / `setup_rbd_sim` / `setup_flip_sim` / `setup_vellum_sim` are high-level helpers; drop to `create_node` + `set_parameter` for finer control.
 
-# Reporting to the User
-
-- After fixing a connection issue, briefly explain the **root cause** (which step in the diagnostic flow resolved it). Don't just say "fixed it."
-- Save genuinely surprising findings to memory (clone path, hython path, machine-specific quirks) — but **not** the diagnostic procedure itself, which lives in this agent file.
