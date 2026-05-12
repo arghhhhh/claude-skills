@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ─────────────────────────────────────────────────────────────────────────────
-# claude-skills installer v2.2 — content overlay support
+# claude-skills installer v2.3 — content overlay support + shell aliases
 # Cross-platform (macOS, Linux, Windows via Git Bash/WSL)
 # Installs, updates, and syncs skill groups: software + skills + agents → ~/.claude/
 # ─────────────────────────────────────────────────────────────────────────────
@@ -473,6 +473,66 @@ install_global_prerequisites() {
     exit 1
   fi
   ok "node available"
+}
+
+# ─── Install shell aliases ──────────────────────────────────────────────────
+
+install_shell_aliases() {
+  # Adds a wrapper around `claude` so `claude --dsp` runs with
+  # --dangerously-skip-permissions. Idempotent: re-running replaces the
+  # managed block between BEGIN/END markers.
+  local marker_begin="# >>> claude-skills aliases >>>"
+  local marker_end="# <<< claude-skills aliases <<<"
+  local block
+  block=$(cat <<'EOF'
+# >>> claude-skills aliases >>>
+# Managed by claude-skills installer — do not edit between markers.
+# `claude --dsp` is a shortcut for `claude --dangerously-skip-permissions`.
+claude() {
+  if [ "${1:-}" = "--dsp" ]; then
+    shift
+    command claude --dangerously-skip-permissions "$@"
+  else
+    command claude "$@"
+  fi
+}
+# <<< claude-skills aliases <<<
+EOF
+)
+
+  local targets=("$HOME/.bashrc")
+  # macOS defaults to zsh; also target zsh anywhere a .zshrc exists.
+  if [ "$PLATFORM" = "macos" ] || [ -f "$HOME/.zshrc" ]; then
+    targets+=("$HOME/.zshrc")
+  fi
+
+  for rc in "${targets[@]}"; do
+    [ -f "$rc" ] || touch "$rc"
+
+    local existed_already=false
+    if grep -qF "$marker_begin" "$rc"; then
+      existed_already=true
+      local tmp
+      tmp=$(mktemp)
+      awk -v begin="$marker_begin" -v end="$marker_end" '
+        $0 == begin { skipping=1; next }
+        skipping && $0 == end { skipping=0; next }
+        !skipping { print }
+      ' "$rc" > "$tmp" && mv "$tmp" "$rc"
+    fi
+
+    # Ensure a trailing newline before appending the block.
+    if [ -s "$rc" ] && [ "$(tail -c1 "$rc" 2>/dev/null | od -An -c | tr -d ' ')" != "\n" ]; then
+      printf '\n' >> "$rc"
+    fi
+    printf '%s\n' "$block" >> "$rc"
+
+    if [ "$existed_already" = "true" ]; then
+      ok "Refreshed claude --dsp wrapper in $rc"
+    else
+      ok "Installed claude --dsp wrapper in $rc (restart shell to pick up)"
+    fi
+  done
 }
 
 # ─── Install software dependency ────────────────────────────────────────────
@@ -1781,6 +1841,7 @@ main() {
 
   # ── Update mode ──
   if [ "$MODE" = "update" ]; then
+    install_shell_aliases
     for group in "${SELECTED_GROUPS[@]}"; do
       if [ ! -f "$SKILL_GROUPS_DIR/$group/manifest.json" ]; then
         fail "Unknown skill group: $group"
@@ -1802,6 +1863,7 @@ main() {
   # ── Install mode ──
 
   install_global_prerequisites
+  install_shell_aliases
 
   if [ ${#SELECTED_GROUPS[@]} -eq 0 ]; then
     select_groups
