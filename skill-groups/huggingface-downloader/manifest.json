@@ -1,0 +1,54 @@
+{
+  "name": "huggingface-downloader",
+  "description": "Fast, resumable HuggingFace model/dataset downloads via the hfdownloader CLI — grab models for ComfyUI straight from a huggingface.co link.",
+  "version": "1.0.0",
+  "prerequisites": [],
+  "install": {
+    "check": "hfdownloader version",
+    "methods": [
+      {
+        "name": "github-release-unix",
+        "platforms": ["linux", "macos"],
+        "check": "curl --version",
+        "command": "mkdir -p ~/.local/bin && OS=$(uname -s | tr '[:upper:]' '[:lower:]') && ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') && URL=$(curl -s https://api.github.com/repos/bodaay/HuggingFaceModelDownloader/releases/latest | grep browser_download_url | grep \"${OS}_${ARCH}\" | head -1 | cut -d'\"' -f4) && curl -sSL -o ~/.local/bin/hfdownloader \"$URL\" && chmod +x ~/.local/bin/hfdownloader"
+      },
+      {
+        "name": "github-release-windows",
+        "platforms": ["windows"],
+        "check": "curl --version",
+        "command": "mkdir -p \"$HOME/bin\" && URL=$(curl -s https://api.github.com/repos/bodaay/HuggingFaceModelDownloader/releases/latest | grep browser_download_url | grep windows_amd64 | head -1 | cut -d'\"' -f4) && curl -sSL -o \"$HOME/bin/hfdownloader.exe\" \"$URL\""
+      },
+      {
+        "name": "manual",
+        "platforms": ["windows", "macos", "linux"],
+        "url": "https://github.com/bodaay/HuggingFaceModelDownloader/releases/latest"
+      }
+    ],
+    "notes": "Downloads the latest prebuilt binary from GitHub releases. The binary must be reachable on PATH as 'hfdownloader' ('hfdownloader.exe' on Windows). See the skill file for detailed install + PATH steps."
+  },
+  "post_install_hints": [
+    "Ensure the hfdownloader binary is on PATH. Linux/macOS: ~/.local/bin (add to PATH if it is not already). Windows: move hfdownloader.exe to a folder on PATH, e.g. add %USERPROFILE%\\bin to the user PATH.",
+    "For gated or private models, set the HF_TOKEN environment variable to a HuggingFace token with read access (https://huggingface.co/settings/tokens).",
+    "Set COMFYUI_MODELS_DIR in ~/.claude/skills-config.sh to your ComfyUI models folder so the skill places downloads in the right location."
+  ],
+  "config_vars": {
+    "COMFYUI_MODELS_DIR": {
+      "prompt": "Path to your ComfyUI models directory (where downloaded models should be placed)",
+      "example": "C:/Comfy/models",
+      "fallback": ""
+    }
+  },
+  "test": {
+    "command": "hfdownloader version",
+    "expect_success": true
+  },
+  "integration_test": {
+    "command": "hfdownloader download bert-base-uncased --dry-run",
+    "expect_success": true,
+    "description": "Dry-run lists the repo file plan without downloading — confirms network and HuggingFace API access work"
+  },
+  "skills": [
+    "huggingface-downloader"
+  ],
+  "agents": []
+}
