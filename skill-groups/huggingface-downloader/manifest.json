@@ -1,7 +1,7 @@
 {
   "name": "huggingface-downloader",
   "description": "Fast, resumable HuggingFace model/dataset downloads via the hfdownloader CLI — grab models for ComfyUI straight from a huggingface.co link.",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "prerequisites": [],
   "install": {
     "check": "hfdownloader version",

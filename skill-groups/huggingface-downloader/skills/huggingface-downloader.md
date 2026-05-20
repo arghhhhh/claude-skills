@@ -1,5 +1,5 @@
 ---
-version: 1.0.1
+version: 1.1.0
 ---
 
 # HuggingFace Downloader Skill
@@ -13,21 +13,41 @@ and say something like "grab this model".
 repos. Prefer it over `git clone` or `huggingface-cli` — it is faster and
 resumes cleanly after interruptions.
 
+## Critical thing to know about output layout
+
+`hfdownloader download` **always writes files into a `<owner>/<repo>/` subtree**,
+never straight into your target folder. With `--local-dir DIR`, a repo file at
+internal path `P` lands at:
+
+```
+DIR/<owner>/<repo>/P
+```
+
+So you **always** download into a staging location and then **move** the file(s)
+to their final name. There is no flag that places a file flat — `--legacy -o`
+behaves the same as `--local-dir`. (hfdownloader *can* also build a flat
+"friendly view", but on Windows that view is a full second copy of every file,
+doubling disk use — so this skill disables it with `--no-friendly` and moves
+files manually instead.)
+
 ## Quick example (the common case)
 
-User: *"Use the HuggingFace downloader to grab this model:
+User: *"grab this model:
 `https://huggingface.co/Kijai/LTX2.3_comfy/blob/main/diffusion_models/ltx-2.3-22b-distilled_transformer_only_fp8_input_scaled_v3.safetensors`"*
 
 1. Parse → repo `Kijai/LTX2.3_comfy`, revision `main`, file
    `diffusion_models/ltx-2.3-22b-distilled_transformer_only_fp8_input_scaled_v3.safetensors`.
-2. The repo path starts with `diffusion_models/` → ComfyUI folder is `diffusion_models`.
-3. Dry-run, then download:
+2. Model type = standalone diffusion model → ComfyUI folder `diffusion_models`.
+3. Dry-run, then download (staging into the destination folder itself):
 
 ```
-hfdownloader download Kijai/LTX2.3_comfy -b main -F ltx-2.3-22b-distilled_transformer_only_fp8_input_scaled_v3.safetensors -E .md,LICENSE,.gitattributes --legacy -o <COMFYUI_MODELS_DIR>/diffusion_models --no-friendly --no-manifest -c 16 --dry-run
+hfdownloader download Kijai/LTX2.3_comfy -F ltx-2.3-22b-distilled_transformer_only_fp8_input_scaled_v3.safetensors -E .md,LICENSE,.gitattributes --local-dir <COMFYUI_MODELS_DIR>/diffusion_models --no-friendly --no-manifest -c 16 --dry-run
 ```
 
-Confirm the plan shows exactly that one file, then re-run without `--dry-run`.
+4. The file lands at
+   `<COMFYUI_MODELS_DIR>/diffusion_models/Kijai/LTX2.3_comfy/diffusion_models/ltx-2.3-22b-...v3.safetensors`.
+5. Move it to `<COMFYUI_MODELS_DIR>/diffusion_models/ltx-2.3-22b-...v3.safetensors`
+   and delete the leftover `<COMFYUI_MODELS_DIR>/diffusion_models/Kijai/` folder.
 
 ---
 
@@ -50,7 +70,7 @@ Strip any `?query` and `#fragment` first, then read the path after
 | `.../datasets/{owner}/{name}/...` | A **dataset** — add `--dataset` to commands. Repo id = `{owner}/{name}`. |
 | `.../{name}` (single segment) | A canonical model (e.g. `bert-base-uncased`). Repo id = `{name}`. |
 
-- **Revision** defaults to `main` if the URL has no `/blob/`, `/resolve/`, or `/tree/` segment.
+- **Revision** defaults to `main` if the URL has no `/blob/`, `/resolve/`, or `/tree/` segment. Pass it with `-b <rev>` only when it is not `main`.
 - The **filename** is the last segment of the file path.
 
 ## Step 3 — Decide the destination
@@ -90,48 +110,65 @@ model card, or inspect the filename — and ask the user when still ambiguous.
 
 ## Step 4 — Dry-run first (always)
 
-Append `--dry-run` to any download command before running it for real. Confirm
-the plan lists exactly the file(s) you expect and the size looks right. Repos
-can be huge — the dry-run is how you catch an accidental whole-repo pull.
+Append `--dry-run` to the download command before running it for real. Confirm
+the plan lists exactly the file(s) you expect and the sizes look right. Repos
+can be huge — the dry-run is how you catch an accidental whole-repo pull, and it
+shows each file's repo-internal path (which tells you where it will land).
 
 ## Step 5 — Download
 
-### Single file (most common)
+Stage the download **into the destination folder itself** so the later move is
+on the same drive (instant). The command is the same for one file or several:
 
 ```
-hfdownloader download <repo-id> -b <revision> -F <filename> -E .md,LICENSE,.gitattributes --legacy -o <destination-folder> --no-friendly --no-manifest -c 16
+hfdownloader download <repo-id> -b <revision> -F <filename> -E .md,LICENSE,.gitattributes --local-dir <destination-folder> --no-friendly --no-manifest -c 16
 ```
 
-- `-F <filename>` — selects only LFS artifacts matching the name. Use the exact filename.
-- `-E .md,LICENSE,.gitattributes` — drops repo boilerplate text files.
-- `--legacy -o <dir>` — flat layout: the file lands exactly at `<dir>/<filename>`, regardless of its path inside the repo.
-- `--no-friendly` — **important.** Without it, hfdownloader writes a *second full copy* of every file in a `<owner>/<repo>/` "friendly view" tree. On Windows that copy is real data, not a symlink — it doubles disk usage.
-- `--no-manifest` — skips the stray `hfd.yaml` manifest file in the output folder.
+- `-F <filename>` — include filter. **Matches the file's basename only, not its
+  path.** Use the exact filename. If several wanted files share a basename, one
+  `-F` grabs them all (that is fine — see Step 6).
+- `-E .md,LICENSE,.gitattributes` — drops repo boilerplate. Add more patterns
+  (`.json,.pth,.txt`, …) to exclude auxiliary files you do not want.
+- `--local-dir <destination-folder>` — staging root. Files arrive under
+  `<destination-folder>/<owner>/<repo>/...`.
+- `--no-friendly` — skip the friendly-view copy (it would double disk usage on Windows).
+- `--no-manifest` — skip the stray `hfd.yaml` file.
 - `-c 16` — 16 parallel connections (faster for large files).
-- `-b <revision>` — branch/revision; omit if it is `main`.
+- For a **whole repo**, omit `-F`. For a **dataset**, add `--dataset`.
 
-### Whole repo
+For large downloads, run this in the background and continue once it completes.
 
+## Step 6 — Place the file(s) and clean up
+
+After the download, each file sits at
+`<destination-folder>/<owner>/<repo>/<repo-internal-path>`. Move every wanted
+file to its final name directly in `<destination-folder>`, then delete the
+leftover `<destination-folder>/<owner>/` tree.
+
+Naming:
+- If the file's basename is already descriptive, keep it.
+- If it is generic (`diffusion_pytorch_model.safetensors`, `model.safetensors`,
+  `pytorch_model.bin`), rename it to something descriptive built from the repo
+  name, e.g. `wan2.2_vace_fun_a14b_high_noise.safetensors`.
+- If you downloaded **multiple files that share a basename** (common when a repo
+  has `high_noise_model/` and `low_noise_model/` subfolders), they MUST get
+  distinct names or they will overwrite each other.
+
+Example (PowerShell, moving two same-named files to distinct names):
+
+```powershell
+$d = "<destination-folder>"
+Move-Item "$d\alibaba-pai\Wan2.2-VACE-Fun-A14B\high_noise_model\diffusion_pytorch_model.safetensors" "$d\wan2.2_vace_fun_a14b_high_noise.safetensors"
+Move-Item "$d\alibaba-pai\Wan2.2-VACE-Fun-A14B\low_noise_model\diffusion_pytorch_model.safetensors"  "$d\wan2.2_vace_fun_a14b_low_noise.safetensors"
+Remove-Item "$d\alibaba-pai" -Recurse -Force
 ```
-hfdownloader download <repo-id> --local-dir <ComfyUI-models-dir> -E .md,LICENSE,.gitattributes --no-friendly --no-manifest -c 16
-```
 
-`--local-dir` preserves the repo's internal folder layout. When a repo is
-already organised with ComfyUI folder names (`diffusion_models/`, `loras/`,
-`vae/`, `text_encoders/`, …) every file routes to the right place
-automatically. Keep `--no-friendly` here too — otherwise every file is written
-twice (see the single-file notes above). Dry-run first; if the repo is large,
-narrow it with `-F`.
+## Step 7 — Verify
 
-### Dataset
-
-Add `--dataset` to any of the above.
-
-## Step 6 — Verify
-
-Confirm the file exists at the destination and its size matches the dry-run
-plan. If a download is interrupted, just re-run the **same command** —
-hfdownloader resumes from where it stopped.
+Confirm each final file exists and its size matches the dry-run plan (compare
+exact byte counts). Report the final paths to the user. If a download is
+interrupted, just re-run the **same Step 5 command** — hfdownloader resumes from
+where it stopped.
 
 ## Authentication — gated / private models
 
@@ -150,15 +187,15 @@ hfdownloader resumes from where it stopped.
 |---------|---------|
 | `hfdownloader version` | Check it is installed |
 | `hfdownloader analyze <repo>` | Inspect repo type/structure — no download |
-| `hfdownloader download <repo> --dry-run` | List planned files and sizes |
+| `hfdownloader download <repo> ... --dry-run` | List planned files and sizes |
 | `hfdownloader download <repo> ...` | Download |
 
-Key flags: `-F` include (LFS name filter) · `-E` exclude patterns · `-b`
-revision/branch · `-c` connections per file · `--max-active` concurrent files ·
-`--local-dir` keep repo layout · `--legacy -o` flat into one dir · `--no-friendly`
-skip the duplicate friendly-view copy (always use this) · `--no-manifest` skip
-the `hfd.yaml` file · `--dataset` treat as dataset · `-t` token · `--dry-run`
-plan only.
+Key flags: `-F` include filter (matches **basename** of LFS artifacts) · `-E`
+exclude patterns · `-b` revision/branch · `-c` connections per file ·
+`--max-active` concurrent files · `--local-dir DIR` stage into
+`DIR/<owner>/<repo>/...` · `--no-friendly` skip the duplicate friendly-view copy
+(always use) · `--no-manifest` skip the `hfd.yaml` file · `--dataset` treat as
+dataset · `-t` token · `--dry-run` plan only.
 
 ## Installation
 
