@@ -1,7 +1,7 @@
 {
   "name": "huggingface-downloader",
   "description": "Fast, resumable HuggingFace model/dataset downloads via the hfdownloader CLI — grab models for ComfyUI straight from a huggingface.co link.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "prerequisites": [],
   "install": {
     "check": "hfdownloader version",
@@ -27,8 +27,8 @@
     "notes": "Downloads the latest prebuilt binary from GitHub releases. The binary must be reachable on PATH as 'hfdownloader' ('hfdownloader.exe' on Windows). See the skill file for detailed install + PATH steps."
   },
   "post_install_hints": [
-    "Ensure the hfdownloader binary is on PATH. Linux/macOS: ~/.local/bin (add to PATH if it is not already). Windows: move hfdownloader.exe to a folder on PATH, e.g. add %USERPROFILE%\\bin to the user PATH.",
-    "For gated or private models, set the HF_TOKEN environment variable to a HuggingFace token with read access (https://huggingface.co/settings/tokens).",
+    "Ensure the hfdownloader binary is on PATH. Linux/macOS: ~/.local/bin (add to PATH if it is not already). Windows: place hfdownloader.exe in a folder that is on the user PATH (for example a 'bin' folder inside your user profile).",
+    "IMPORTANT: gated or private HuggingFace models (Llama, Gemma, etc.) need an access token. Create one with read access at https://huggingface.co/settings/tokens, then set the HF_TOKEN environment variable to it. Public models download without a token.",
     "Set COMFYUI_MODELS_DIR in ~/.claude/skills-config.sh to your ComfyUI models folder so the skill places downloads in the right location."
   ],
   "config_vars": {

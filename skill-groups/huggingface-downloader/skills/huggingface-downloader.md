@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.0.1
 ---
 
 # HuggingFace Downloader Skill
@@ -189,6 +189,23 @@ curl -sSL -o ~/.local/bin/hfdownloader "$URL" && chmod +x ~/.local/bin/hfdownloa
 ```
 
 Ensure the install directory is on `PATH`, then verify with `hfdownloader version`.
+
+### After installing — always tell the user about the token
+
+Whenever you install or first set up `hfdownloader` for the user (or run the
+skill-repo installer), **proactively inform the user** that gated or private
+HuggingFace models need an access token, and how to set it:
+
+> Gated/private models (Llama, Gemma, etc.) need a HuggingFace token. Create one
+> with **read** access at https://huggingface.co/settings/tokens, then set it
+> once:
+> - **Windows:** `[Environment]::SetEnvironmentVariable("HF_TOKEN", "hf_xxx", "User")` (open a new terminal afterward)
+> - **macOS/Linux:** add `export HF_TOKEN="hf_xxx"` to `~/.bashrc` or `~/.zshrc`
+>
+> Public models download fine without a token.
+
+Do this even if the current download target is public — the user should know
+before they hit their first gated model.
 
 ## Web UI (optional)
 
