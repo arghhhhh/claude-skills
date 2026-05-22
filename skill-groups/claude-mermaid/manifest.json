@@ -1,0 +1,56 @@
+{
+  "name": "claude-mermaid",
+  "description": "Mermaid diagram rendering with live-reload browser preview via the claude-mermaid MCP server — flowcharts, graphs, sequence/state/class diagrams exported to SVG/PNG/PDF.",
+  "version": "1.0.0",
+  "prerequisites": [
+    {
+      "name": "node",
+      "check": "node --version",
+      "install_hint": "Install Node.js 18+ from https://nodejs.org/",
+      "required": true,
+      "note": "Runs the claude-mermaid MCP server"
+    },
+    {
+      "name": "npm",
+      "check": "npm --version",
+      "install_hint": "Bundled with Node.js from https://nodejs.org/",
+      "required": true,
+      "note": "Installs the claude-mermaid package globally"
+    }
+  ],
+  "install": {
+    "check": "claude-mermaid --version",
+    "methods": [
+      {
+        "name": "npm",
+        "platforms": ["windows", "macos", "linux"],
+        "check": "npm --version",
+        "command": "npm install -g claude-mermaid"
+      }
+    ],
+    "notes": "claude-mermaid is an MCP server. After install it must be registered with Claude Code (see post_install_hints)."
+  },
+  "test": {
+    "command": "claude-mermaid --version",
+    "expect_success": true
+  },
+  "skills": [
+    "claude-mermaid"
+  ],
+  "agents": [],
+  "mcp_servers": {
+    "mermaid": {
+      "command": "claude-mermaid",
+      "args": []
+    }
+  },
+  "post_install_hints": [
+    "Register the MCP server with Claude Code (user scope, so it works in every project):",
+    "  claude mcp add --scope user mermaid -- claude-mermaid",
+    "On Windows, if the .cmd shim fails to start, register the JS entrypoint directly with node instead:",
+    "  claude mcp add --scope user mermaid -- node \"$(npm root -g)/claude-mermaid/build/index.js\"",
+    "Restart Claude Code afterward so the mermaid_preview and mermaid_save tools load.",
+    "Verify with: claude mcp list  (the 'mermaid' entry should show Connected).",
+    "First render downloads a headless Chromium via Puppeteer — allow extra time on the initial diagram."
+  ]
+}
