@@ -1,7 +1,7 @@
 {
   "name": "claude-mermaid",
   "description": "Mermaid diagram rendering with live-reload browser preview via the claude-mermaid MCP server — flowcharts, graphs, sequence/state/class diagrams exported to SVG/PNG/PDF.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "prerequisites": [
     {
       "name": "node",
@@ -51,6 +51,9 @@
     "  claude mcp add --scope user mermaid -- node \"$(npm root -g)/claude-mermaid/build/index.js\"",
     "Restart Claude Code afterward so the mermaid_preview and mermaid_save tools load.",
     "Verify with: claude mcp list  (the 'mermaid' entry should show Connected).",
+    "Windows ONLY — claude-mermaid <= v1.6.3 crashes on browser-open ('spawn start ENOENT'). Apply the bundled patch (idempotent; re-run after every claude-mermaid update):",
+    "  node skill-groups/claude-mermaid/patch/fix-windows-open.mjs",
+    "For a preview that survives Claude Code restarts, run a persistent server: claude-mermaid --serve  (gallery at http://localhost:3737/).",
     "First render downloads a headless Chromium via Puppeteer — allow extra time on the initial diagram."
   ]
 }

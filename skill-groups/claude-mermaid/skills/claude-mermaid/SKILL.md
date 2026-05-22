@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.1.0
 name: claude-mermaid
 description: Render Mermaid diagrams with a live-reload browser preview and export them to SVG/PNG/PDF. Use whenever the user wants to create, edit, preview, or save a diagram — flowcharts, node graphs, sequence/state/class/ER diagrams, mind maps, Gantt charts, or architecture and data-flow diagrams.
 ---
@@ -44,6 +44,24 @@ Saves the current live diagram for a `preview_id` to a file.
 3. **Save** — once the user is happy, call `mermaid_save` with the same `preview_id` and a `save_path`. Ask the user where to save if they have not said.
 
 Always preview before saving. Show the diagram, confirm it is correct, then export.
+
+## Persistent preview server (`--serve`)
+
+The `mermaid_preview` MCP tool runs its live-reload web server **inside the MCP server process**. Claude Code owns that process's lifecycle — when it cycles, restarts, or stops the MCP connection, the web server dies and open preview tabs go to **"page not found"**. The MCP tool is fine for active back-and-forth in one turn, but not for a preview you want to keep open.
+
+For a stable preview that survives, run the standalone server as a **persistent background process**:
+
+```bash
+claude-mermaid --serve
+```
+
+This starts an independent gallery server (default `http://localhost:3737/`, ports 3737–3747) that registers every diagram already on disk and **rescans on each load** via `/api/diagrams`, so newly rendered diagrams appear after a refresh.
+
+- `http://localhost:3737/` — gallery of all diagrams (always reliable; rescans disk)
+- `http://localhost:3737/view/<id>` — static view of one diagram, reads disk directly (works for any diagram, no live reload)
+- `http://localhost:3737/<id>` — live-reload preview (only for diagrams registered when `--serve` started)
+
+Rendered diagrams persist on disk at `~/.config/claude-mermaid/live/<id>/diagram.svg` regardless of any server — that file is the durable artifact.
 
 ## Diagram types
 
@@ -98,6 +116,11 @@ flowchart LR
   Confirm with `claude mcp list` — the `mermaid` entry should show **Connected**.
 - **`claude-mermaid` command not found** — install it: `npm install -g claude-mermaid`.
 - **First render is slow or fails to render** — the renderer downloads a headless Chromium (Puppeteer) on first use. Retry once; allow time/network.
+- **Preview tab shows "page not found" / connection refused** — the MCP server's in-process web server is gone (Claude Code cycled the MCP connection). Use the persistent `claude-mermaid --serve` server instead — see *Persistent preview server* above. The diagram SVG itself still exists at `~/.config/claude-mermaid/live/<id>/diagram.svg`.
+- **Windows: server crashes right after rendering / `spawn start ENOENT`** — a claude-mermaid bug (≤ v1.6.3): `getOpenCommand()` returns the bare string `start`, which is a cmd.exe builtin that `execFile`/`spawn` cannot launch. The unhandled error crashes the MCP server and `--serve`. Fix by running the bundled patch (idempotent; re-run after every `npm install -g claude-mermaid`):
+  ```bash
+  node ~/.claude/.skill-repos/claude-skills/skill-groups/claude-mermaid/patch/fix-windows-open.mjs
+  ```
 - **Preview tab shows a red status dot** — the web server lost connection. Re-run `mermaid_preview`; the server reselects a free port in the range 3737–3747.
 - **Syntax errors** — Mermaid is whitespace- and keyword-sensitive. Verify the first line names a valid diagram type and that node ids are alphanumeric.
 
