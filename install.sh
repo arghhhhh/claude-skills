@@ -478,23 +478,32 @@ install_global_prerequisites() {
 # ─── Install shell aliases ──────────────────────────────────────────────────
 
 install_shell_aliases() {
-  # Adds a wrapper around `claude` so `claude --dsp` runs with
-  # --dangerously-skip-permissions. Idempotent: re-running replaces the
-  # managed block between BEGIN/END markers.
+  # Adds a wrapper around `claude` that expands short flags:
+  #   --dsp → --dangerously-skip-permissions
+  #   --chr → --chrome
+  #   --res → --continue
+  # Idempotent: re-running replaces the managed block between BEGIN/END markers.
   local marker_begin="# >>> claude-skills aliases >>>"
   local marker_end="# <<< claude-skills aliases <<<"
   local block
   block=$(cat <<'EOF'
 # >>> claude-skills aliases >>>
 # Managed by claude-skills installer — do not edit between markers.
-# `claude --dsp` is a shortcut for `claude --dangerously-skip-permissions`.
+# Wrapper around `claude` that expands short flags (any position, combinable):
+#   --dsp  → --dangerously-skip-permissions
+#   --chr  → --chrome (Claude in Chrome)
+#   --res  → --continue (resume most recent conversation in this directory)
 claude() {
-  if [ "${1:-}" = "--dsp" ]; then
-    shift
-    command claude --dangerously-skip-permissions "$@"
-  else
-    command claude "$@"
-  fi
+  local args=()
+  for a in "$@"; do
+    case "$a" in
+      --dsp) args+=(--dangerously-skip-permissions) ;;
+      --chr) args+=(--chrome) ;;
+      --res) args+=(--continue) ;;
+      *)     args+=("$a") ;;
+    esac
+  done
+  command claude "${args[@]}"
 }
 # <<< claude-skills aliases <<<
 EOF
@@ -528,9 +537,9 @@ EOF
     printf '%s\n' "$block" >> "$rc"
 
     if [ "$existed_already" = "true" ]; then
-      ok "Refreshed claude --dsp wrapper in $rc"
+      ok "Refreshed claude shell-alias wrapper in $rc"
     else
-      ok "Installed claude --dsp wrapper in $rc (restart shell to pick up)"
+      ok "Installed claude shell-alias wrapper in $rc (restart shell to pick up)"
     fi
   done
 }
