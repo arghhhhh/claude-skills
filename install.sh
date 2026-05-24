@@ -542,6 +542,76 @@ EOF
       ok "Installed claude shell-alias wrapper in $rc (restart shell to pick up)"
     fi
   done
+
+  # PowerShell profile (Windows only)
+  if [ "$PLATFORM" = "windows" ]; then
+    install_powershell_aliases
+  fi
+}
+
+install_powershell_aliases() {
+  local ps_marker_begin="# >>> claude-skills aliases >>>"
+  local ps_marker_end="# <<< claude-skills aliases <<<"
+  local ps_block
+  ps_block=$(cat <<'EOF'
+# >>> claude-skills aliases >>>
+# Managed by claude-skills installer — do not edit between markers.
+# Wrapper around `claude` that expands short flags (any position, combinable):
+#   --dsp  → --dangerously-skip-permissions
+#   --chr  → --chrome (Claude in Chrome)
+#   --res  → --continue (resume most recent conversation in this directory)
+function claude {
+    $exe = (Get-Command -CommandType Application -Name claude -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+    if (-not $exe) { Write-Error 'claude executable not found on PATH'; return }
+    $mapped = foreach ($a in $args) {
+        switch ($a) {
+            '--dsp' { '--dangerously-skip-permissions' }
+            '--chr' { '--chrome' }
+            '--res' { '--continue' }
+            default { $a }
+        }
+    }
+    & $exe @mapped
+}
+# <<< claude-skills aliases <<<
+EOF
+)
+
+  # Target both Windows PowerShell 5.1 and PowerShell 7+ profile paths.
+  local ps_targets=(
+    "$HOME/Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1"
+    "$HOME/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
+  )
+
+  for ps in "${ps_targets[@]}"; do
+    mkdir -p "$(dirname "$ps")"
+    [ -f "$ps" ] || touch "$ps"
+
+    local existed_already=false
+    if grep -qF "$ps_marker_begin" "$ps"; then
+      existed_already=true
+      local tmp
+      tmp=$(mktemp)
+      awk -v begin="$ps_marker_begin" -v end="$ps_marker_end" '
+        $0 == begin { skipping=1; next }
+        skipping && $0 == end { skipping=0; next }
+        !skipping { print }
+      ' "$ps" > "$tmp" && mv "$tmp" "$ps"
+    fi
+
+    if [ -s "$ps" ] && [ "$(tail -c1 "$ps" 2>/dev/null | od -An -c | tr -d ' ')" != "\n" ]; then
+      printf '\n' >> "$ps"
+    fi
+    printf '%s\n' "$ps_block" >> "$ps"
+
+    if [ "$existed_already" = "true" ]; then
+      ok "Refreshed claude shell-alias wrapper in $ps"
+    else
+      ok "Installed claude shell-alias wrapper in $ps (restart shell to pick up)"
+      info "If PowerShell execution policy blocks the profile, run once as user:"
+      info "  Set-ExecutionPolicy -Scope CurrentUser RemoteSigned"
+    fi
+  done
 }
 
 # ─── Install software dependency ────────────────────────────────────────────
