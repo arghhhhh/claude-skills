@@ -1,6 +1,6 @@
 ---
 name: notch
-version: 0.1.0
+version: 0.1.1
 description: Build and modify Notch (notch.one) scenes from JavaScript. Use when the user wants to author a Notch scene programmatically, look up a node's properties or CreateNode string, debug a Notch JS script, or extend automation of Notch Builder 2026.1. Trigger on "notch", "notch builder", ".dfx", "skybox", "video loader", "environment image", "javascript node", "nodegraph".
 ---
 
@@ -27,8 +27,8 @@ Notch is a real-time visual effects program. Its JavaScript API lets you create 
 
 1. **Make sure the user has a Notch project open** with a layer and a `Javascript Node` placed in it.
 2. **One-time setup** — choose a stable path for your script, e.g. `~/Documents/Notch/claude.js`. Touch the file (`touch claude.js`). In Notch's **Resources panel: right-click → Import Resource → Script → JavaScript** → browse to `claude.js`. Then on the Javascript Node, set its `Javascript File` attribute to point at that resource.
-3. **Enable file-watching for hot-reload.** In the Resources panel, **right-click the `claude.js` resource → Reflect Resource Changes**. Now any time you (Claude) overwrite the file, Notch auto-reloads it.
-4. **You write the script directly to the file path.** With Reflect Resource Changes on, Notch picks up the change automatically. Without it, the user has to right-click → **Reload Resource** manually.
+3. **Enable file-watching** — In the Resources panel, **right-click the `claude.js` resource → Reflect Resource Changes**. The docs claim this triggers auto-reload on disk changes, but as of 2026.1 v1.0.0.221 it **does not reliably fire**. Keep it enabled, but plan on manual reload as the actual workflow.
+4. **The actual reload workflow:** after overwriting the file, the user must **right-click the resource → Reload Resource** in Notch's Resources panel. Then hit play. Tell them this each time you push a script update — don't claim "auto-reload" will pick it up.
 5. **You read the log directly** from `C:\Users\<USER>\Documents\Notch\Logs\` — pick the most recently modified `notch_log__*.txt`, grep for `Javascript:`.
 
 ⚠️ **Do NOT tell the user to click "Create Javascript File" on the Javascript Node repeatedly.** That button creates a NEW file resource each time, accumulating duplicates in the Resources panel that all point at the same disk path. Use it exactly once (or skip it entirely in favor of the Import Resource workflow above) and then update by overwriting the file.
@@ -110,7 +110,7 @@ Start from `~/.claude/skills/notch/templates/build-script-template.js`. It demon
 6. **Sky Light doesn't exist as `Skylight`.** It's `Sky Light` (two words) — `Lighting::Sky Light`.
 7. **JS scripts cannot save the project.** All session work is lost if the user closes without saving manually. Remind them to save.
 8. **Duplicate JS resources in the Resources panel.** Sign that the user clicked "Create Javascript File" multiple times. Tell them to delete duplicates and use the right-click → Reflect Resource Changes workflow instead (see Workflow §3).
-9. **Edits to the .js file don't take effect.** Either Reflect Resource Changes is off (right-click the resource to enable) or the user is editing a different file than the resource points at. The resource's effective file path is shown in its attribute panel.
+9. **Edits to the .js file don't take effect.** The likely cause: the user thinks "Reflect Resource Changes" auto-reloads — it doesn't, reliably. They have to right-click the resource → **Reload Resource** manually after each edit. Other possibilities: the resource points at a different file than the one you're editing (check its attribute panel for the effective path), or the user is editing a duplicate resource (delete extras).
 
 ## Log location
 
