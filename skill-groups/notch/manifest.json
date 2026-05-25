@@ -1,0 +1,35 @@
+{
+  "name": "notch",
+  "description": "Notch (notch.one) Builder 2026.1 scene authoring via the in-Notch JavaScript API — node creation, wiring, property setting, plus a CLI to look up any of 651 nodes' properties.",
+  "version": "0.1.0",
+  "prerequisites": [
+    {
+      "name": "node",
+      "check": "node --version",
+      "install_hint": "Install Node.js from https://nodejs.org/ — needed for the notch-node-info.js property-lookup CLI.",
+      "required": true
+    }
+  ],
+  "install": {
+    "check": "node --version",
+    "methods": [],
+    "notes": "No third-party software to install. Notch Builder itself is licensed from notch.one and is the user's responsibility. This skill assumes Builder 2026.1 is installed and the user can open it."
+  },
+  "test": {
+    "command": "node --version",
+    "expect_success": true
+  },
+  "integration_test": {
+    "command": "node ~/.claude/skills/notch/notch-node-info.js Skybox",
+    "expect_success": true,
+    "description": "Confirms the property-lookup CLI can fetch and parse a node doc page from the Notch manual."
+  },
+  "skills": [
+    "notch"
+  ],
+  "agents": [],
+  "post_install_hints": [
+    "Notch's JS API cannot save .dfx files or open projects — scenes are built by writing a .js file that Notch loads via a Javascript Node. See SKILL.md §Workflow for the one-time setup (Resources → Import Resource → Script → JavaScript, then right-click → Reflect Resource Changes for hot-reload).",
+    "Logs at C:/Users/<USER>/Documents/Notch/Logs/ (Windows) or equivalent. The most recently modified notch_log__*.txt is the live session."
+  ]
+}
