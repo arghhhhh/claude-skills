@@ -78,29 +78,55 @@ function parseProperties(article) {
     //   | <PropName> | <description>
     //   ...
     // We capture each section heading and the property names that follow it.
+    // Categories are ARBITRARY per node: Transform/Attributes/Time/Parent Transform
+    // are common, but also Colours (Colour Ramp), Rendering (Gradient), BSDF/BRDF
+    // (materials), Lines, FX, Misc, Shader. Detect section headings dynamically.
     const lines = article.split('\n').map(l => l.trim());
     const sections = [];
     let cur = null;
-    const knownCategories = ['Transform', 'Parent Transform', 'Attributes', 'Time', 'Distortion'];
+    let pendingHeading = null;
+
+    function looksLikeHeading(line) {
+        if (!line || line.length > 40) return false;
+        if (line.indexOf('|') >= 0) return false;
+        if (line.indexOf(':') >= 0) return false;
+        if (line.indexOf('.') >= 0) return false;
+        if (/^[#\-*]/.test(line)) return false;
+        if (!/^[A-Z][A-Za-z0-9 \-]+$/.test(line)) return false;
+        if (line === 'Parameters' || line === 'Method' || line === 'Inputs') return false;
+        return true;
+    }
+
     for (let i = 0; i < lines.length; i++) {
         const L = lines[i];
-        if (knownCategories.indexOf(L) >= 0) {
-            cur = { name: L, properties: [] };
-            sections.push(cur);
+
+        // Table header row triggers section start with the most recent heading.
+        if (L.indexOf('Parameter | Details') >= 0) {
+            if (pendingHeading) {
+                cur = { name: pendingHeading, properties: [] };
+                sections.push(cur);
+                pendingHeading = null;
+            }
             continue;
         }
         if (L === 'Inputs') {
             cur = { name: 'INPUTS', properties: [] };
             sections.push(cur);
+            pendingHeading = null;
             continue;
         }
-        // property rows start with "| <name> |" but our HTML stripper makes
-        // them just "| Name |" - we look for lines starting with single "|"
-        // and ending with another "|". Skip header row.
-        if (cur && L.startsWith('| ') && L.indexOf('Parameter') < 0 && L.indexOf('Name') < 0) {
-            // strip leading "| " and take first segment before next "|"
+        if (L.indexOf('Name | Description') >= 0) continue;
+
+        if (looksLikeHeading(L)) {
+            pendingHeading = L;
+            continue;
+        }
+
+        if (cur && L.startsWith('| ')) {
             const m = L.match(/^\|\s*([^|]+?)\s*(?:\||$)/);
-            if (m && m[1] && m[1] !== '' && cur) cur.properties.push(m[1].trim());
+            if (m && m[1] && m[1] !== 'Parameter' && m[1] !== 'Name') {
+                cur.properties.push(m[1].trim());
+            }
         }
     }
     return sections;

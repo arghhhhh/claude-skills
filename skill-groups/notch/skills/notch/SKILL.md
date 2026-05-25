@@ -1,6 +1,6 @@
 ---
 name: notch
-version: 0.2.0
+version: 0.3.0
 description: Build and modify Notch (notch.one) scenes from JavaScript. Use when the user wants to author a Notch scene programmatically, look up a node's properties or CreateNode string, debug a Notch JS script, or extend automation of Notch Builder 2026.1. Trigger on "notch", "notch builder", ".dfx", "skybox", "video loader", "environment image", "javascript node", "nodegraph".
 ---
 
@@ -73,27 +73,36 @@ node.SetString("Attributes.Filename", path);
 
 Without the prefix, `Set*` appears to succeed (no exception) but writes nothing, and `Get*` returns `undefined`. This is the single most common Notch-JS bug to look for.
 
-**Categories you'll encounter** (this is a non-exhaustive list — read the node's doc page to find its exact categories):
+### Categories are ARBITRARY per node — always verify
 
-- `Transform` — Position X/Y/Z, Rotation Heading/Pitch/Bank, Scale X/Y/Z (every spatial node)
-- `Parent Transform` — Inherit-toggles for parented transforms
-- `Attributes` — node-specific config (the most common)
-- `Time` — Duration, Node Time, Time Segment Enabled
-- `BSDF` / `BRDF` — Material BSDF/BRDF properties (Colour, Brightness, Emissiveness on Material nodes)
-- `Material` — Material wrapper properties
-- `Rendering` — Visibility, render mode, etc. (some 3D nodes)
-- `Lines` — Lines Visible, Thick Lines, Line Width, Colour (on primitives with line modes)
-- `FX` / `Misc` — Glow Amount, post-FX wrappers
-- `Shader` — Shader resource assignment slot
-- `Distortion` — Distortion sub-section on some generators
+A common mistake is assuming every property lives under `Attributes`. **It doesn't.** Each node defines its own attribute-panel sections, and the JS API uses those section names verbatim. Examples we've hit the hard way:
 
-**When unsure, try multiple candidate names per call.** A defensive helper:
+| Node | Property | Wrong (intuitive) | Right (actual) |
+|---|---|---|---|
+| Colour Ramp | Colour 0/1/2 | `Attributes.Colour 0` | `Colours.Colour 0` |
+| Generators::Gradient | Colour | `Attributes.Colour` | `Rendering.Colour` |
+| Materials::Emissive Material | Brightness | `Attributes.Brightness` | `BSDF.Brightness` (or `BRDF.Brightness`) |
+| 3D Primitive (lines mode) | Line colour | `Attributes.Colour` | `Lines.Colour` |
+
+**Always run `notch-node-info.js <NodeName>`** before writing any `Set*` calls. The extractor now detects arbitrary section names dynamically. Common sections in the wild: `Transform`, `Parent Transform`, `Attributes`, `Time`, `Distortion`, `Colours`, `Rendering`, `BSDF`, `BRDF`, `Material`, `Lines`, `FX`, `Misc`, `Shader`. There can be others.
+
+### Color setter pattern
+
+Colors are written as a comma-separated string via `SetString`:
+
+```js
+node.SetString("Colours.Colour 0", "0.1,0.2,0.55,1.0"); // r,g,b,a
+```
+
+`GetString` reads back the same property as **comma-separated, 6-decimal precision**, e.g. `"0.100000,0.200000,0.550000,1.000000"`. So strict-equality on readback will fail — verify by substring or just trust the write if no exception. Per-channel float setters (`"Colour 0 R"`, `".R"`, `"[0]"`) do NOT work — we've probed them.
+
+### When unsure, try multiple candidate names per call
 
 ```js
 function trySetFloatAny(node, names, value) {
     for (var i = 0; i < names.length; i++) {
         node.SetFloat(names[i], value);
-        if (node.GetFloat(names[i]) === value) return names[i]; // confirmed
+        if (node.GetFloat(names[i]) === value) return names[i];
     }
     return null;
 }
@@ -204,6 +213,29 @@ function findRoot(layer) {
 }
 ```
 
+## Easy-to-confuse nodes (don't pick the wrong one)
+
+Notch has multiple nodes with similar names that do very different things. The doc page title is the source of truth — always look up properties before assuming.
+
+| Name | Group | What it actually does |
+|---|---|---|
+| `Generators::Gradient` | Generators | **Single-color sampler** — takes a Colour Ramp input and outputs ONE color (sampled at one position). NOT a 2D gradient image. |
+| `Post-FX::Generators::Gradient 2D` | Post-FX | **Spatial 2D gradient renderer** with `Mode` (Linear/Radial) and `Apply Mode` (Background/3D Quad/Object Shading/None). |
+| `Particles::Rendering::Gradient 2D Renderer` | Particles | Particle-specific renderer; not a general gradient image source. |
+| `Lighting::Sky Light` | Lighting | Two words. `Lighting::Skylight` (one word) does NOT exist. |
+| `3D::Skybox` | 3D | Visual sky background. Takes an image; produces no IBL by itself. |
+| `Lighting::Environment Image` | Lighting | Preps an HDR image for IBL. Feeds Sky Light. |
+
+### Post-FX generator caveat: Apply Mode controls where they draw, not whether they output
+
+Post-FX generators (`Gradient 2D`, `Composite Image`, etc.) have an `Apply Mode` enum:
+- `0` = **Background** — draws the gradient directly to the scene background (visible)
+- `1` = **3D Quad** — renders as a 2D plane in the scene
+- `2` = **Object Shading** — per-pixel based on rendered 3D depths
+- `3` = **None** — doesn't draw anywhere
+
+Critically: **these nodes don't appear to expose their output as an image port for downstream nodes** like a Skybox or Render To Texture. If you wire them to a Skybox's `Skybox Image` input and Apply Mode is `None`, the Skybox gets nothing. If Apply Mode is `Background`, the gradient draws as the visible sky but the Skybox still gets nothing. To feed an actual rendered image into a Skybox, the proven path is **Video Loader (Filename = absolute path) → Skybox.Skybox Image**, not a Post-FX generator. For animated procedural skies feeding reflections, you likely need a **Custom Shader Post Effect** with a procedural sky shader (`.fx` resource) — that's the approach Notch sample projects use.
+
 ## Confirmed CreateNode strings
 
 | Node | String |
@@ -265,7 +297,16 @@ For Video Loader's `Video` attribute specifically, this is unverified — the pr
 
 ## Common gotchas
 
-1. **UI looks like it didn't refresh.** It did — your new nodes are off-screen. Place them relative to the existing Javascript Node: `var p = layer.FindNode("Javascript Node").GetNodeGraphPosition(); var ox = p[0] - 700;`
+1. **UI looks like it didn't refresh.** It did — your new nodes are off-screen, or stacked on top of the root node. Place them away from BOTH the JS node and the root:
+    ```js
+    var jsn  = layer.FindNode("Javascript Node");
+    var root = layer.FindNode("Root") || layer.GetNode(0);
+    var jp = jsn  ? jsn.GetNodeGraphPosition()  : [0, 0];
+    var rp = root ? root.GetNodeGraphPosition() : [0, 0];
+    // Place below the root and to the left of the JS node so nothing overlaps.
+    var ox = Math.min(jp[0], rp[0]) - 900;
+    var oy = Math.max(jp[1], rp[1]) + 250;
+    ```
 2. **Property won't take.** You forgot the `Category.` prefix. Use the MCP or extractor to get the exact name. Or try multiple candidate names per call.
 3. **Node created but doesn't render or affect lighting.** You forgot `AddChild(root, node)`. CreateNode adds to the layer but doesn't parent to the composition root.
 4. **Video Loader shows nothing.** `Filename` is dormant until `Load External File = 1` is set first.
