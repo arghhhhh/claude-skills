@@ -46,4 +46,36 @@ Post-FX generators (`Gradient 2D`, `Composite Image`, etc.) have an `Apply Mode`
 - `2` = **Object Shading** — per-pixel based on rendered 3D depths
 - `3` = **None** — doesn't draw anywhere
 
-Critically: **these nodes don't appear to expose their output as an image port for downstream nodes** like a Skybox or Render To Texture. If you wire them to a Skybox's `Skybox Image` input and Apply Mode is `None`, the Skybox gets nothing. If Apply Mode is `Background`, the gradient draws as the visible sky but the Skybox still gets nothing. To feed an actual rendered image into a Skybox, the proven path is **Video Loader (Filename = absolute path) → Skybox.Skybox Image**, not a Post-FX generator. For animated procedural skies feeding reflections, you likely need a **Custom Shader Post Effect** with a procedural sky shader (`.fx` resource) — that's the approach Notch sample projects use.
+Critically: **these nodes don't appear to expose their output as an image port for downstream nodes** like a Skybox or Render To Texture. If you wire them to a Skybox's `Skybox Image` input and Apply Mode is `None`, the Skybox gets nothing. If Apply Mode is `Background`, the gradient draws as the visible sky but the Skybox still gets nothing. To feed an actual rendered image into a Skybox, the proven path is **Video Loader (Filename = absolute path) → Skybox.Skybox Image**, not a Post-FX generator. For animated procedural skies feeding reflections, the verified path is **Custom Shader Post Effect inside a Render To Texture** with a procedural sky `.fx` — see [node-catalog.md → Verified pipeline: Custom Shader Post Effect → Skybox + IBL](./node-catalog.md).
+
+## Custom Shader Post Effect gotchas (Notch 2026.1 / 1.0.0.221)
+
+1. **`SetString("Attributes.Shader", ...)` works but `GetString` lies.** The setter binds the imported `.fx` resource correctly (visible in the UI dropdown), but the getter returns `"0"` (an internal index). Don't loop retrying because the readback "failed" — it didn't. See node-catalog.md → Resources panel API for the full pattern.
+
+2. **Shader uniforms do NOT auto-surface as JS-settable node attributes**, despite what the Notch manual implies ("Global single float variables are exposed as properties in the node attributes"). `SetFloat("Attributes.MyUniform", v)` / `GetFloat` return nothing for any naming variant (`Attributes.*`, `Shader.*`, `Custom.*`, camelCase, "Space Separated"). They MAY appear as **input pins** on the node (untested as of 2026-05-25), but `Attributes.*` access fails.
+
+   **Use `CURRENTTIME` for animation** instead of pushing uniforms from JS:
+   ```hlsl
+   float CurrentTime : CURRENTTIME;  // Notch auto-binds per frame
+   // inside pixel shader:
+   float tod = frac(CurrentTime / CYCLE_DURATION_SECONDS);
+   ```
+   Hardcode other tunables as `#define` constants at the top of the `.fx`. Reload Resource to pick up changes.
+
+3. **`AddInput(resource, "Shader")` is a hard crash trigger** — see node-catalog.md. AddInput requires a Node, not a Resource.
+
+4. **Custom Shader Post Effect inside an empty RTT doesn't paint anything.** The post-fx pass needs an upstream image inside the same RTT to chain off. Add a `Generators::Flat Colour` child as a framebuffer seed (see node-catalog.md pipeline diagram). Magenta is a useful "shader didn't paint" debug colour.
+
+5. **Don't put a `Cameras::Camera` inside the RTT** when using Custom Shader Post Effect. The shader is a fullscreen pixel pass and doesn't need a camera; a child camera conflicts with the post-fx render path and produces black output.
+
+6. **Verify the shader pipeline with a dumb shader first.** Before writing a complex `.fx`, drop in `return float4(In.Uv.x, In.Uv.y, 0, 1);` to confirm binding + post-fx + RTT all work end-to-end. Saves iteration cycles when something's black.
+
+## Resource introspection limits
+
+In 1.0.0.221, the JS API for Resources is read-mostly and minimal:
+- `Document.FindResourceByName(filename)` returns a Resource object (case-insensitive on basename).
+- The Resource object exposes **no** `GetName` / `GetUID` / `GetFilename` / `GetType` methods that return real values — they're undefined.
+- There is **no** `Document.GetNumResources()` / `GetResource(i)` enumeration API — you cannot list all imported resources from JS.
+- The only useful thing you can do with the Resource object is pass it to `SetExposedPropertyValue` (untested) or check it's non-null as a "did the user import this?" probe.
+
+Net effect: probe by filename only. If you need to know whether a specific resource is loaded, call `FindResourceByName` and null-check.
