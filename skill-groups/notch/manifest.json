@@ -1,7 +1,7 @@
 {
   "name": "notch",
   "description": "Notch (notch.one) Builder 2026.1 scene authoring via the in-Notch JavaScript API — node creation, wiring, property setting, plus a CLI to look up any of 651 nodes' properties.",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "prerequisites": [
     {
       "name": "node",
@@ -27,7 +27,9 @@
   "skills": [
     "notch"
   ],
-  "agents": [],
+  "agents": [
+    "notch"
+  ],
   "mcp_servers": {
     "notch-manual": {
       "command": "npx",
