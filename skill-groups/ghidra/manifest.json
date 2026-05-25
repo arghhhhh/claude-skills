@@ -1,0 +1,42 @@
+{
+  "name": "ghidra",
+  "description": "Reverse engineering via Ghidra CLI (akiselev/ghidra-cli) — headless analysis, decompilation, function/symbol/type editing, cross-refs, search, patching, and scripting from the terminal.",
+  "version": "0.1.0",
+  "prerequisites": [
+    "Rust 1.70+ (cargo on PATH)",
+    "JDK 17+ (Ghidra runtime)",
+    "Ghidra 10+ install (or run `ghidra setup` after install)"
+  ],
+  "install": {
+    "check": "ghidra version",
+    "methods": [
+      {
+        "name": "cargo-git",
+        "platforms": ["windows", "macos", "linux"],
+        "check": "cargo --version",
+        "command": "cargo install --git https://github.com/akiselev/ghidra-cli --locked"
+      }
+    ],
+    "notes": "ghidra-cli is a Rust CLI not yet published to crates.io; install from the GitHub source. Requires JDK 17+ and a Ghidra install. After install, run `ghidra setup` to auto-download Ghidra, or set GHIDRA_INSTALL_DIR / `ghidra config set ghidra_install_dir <path>`."
+  },
+  "test": {
+    "command": "ghidra version",
+    "expect_success": true
+  },
+  "integration_test": {
+    "command": "ghidra doctor",
+    "expect_success": true,
+    "description": "Verifies CLI sees Ghidra install and a working JDK."
+  },
+  "skills": [
+    "ghidra-cli"
+  ],
+  "agents": [
+    "ghidra"
+  ],
+  "post_install_hints": [
+    "Install a JDK 17+ if not present (Windows: `winget install Microsoft.OpenJDK.21`; macOS: `brew install openjdk@21`; Linux: `sudo apt install openjdk-21-jdk`).",
+    "Install Ghidra: either run `ghidra setup` to auto-download, or download from https://ghidra-sre.org and set GHIDRA_INSTALL_DIR (or `ghidra config set ghidra_install_dir <path>`).",
+    "Verify with `ghidra doctor` — it checks the Ghidra install, JDK, and project directory."
+  ]
+}
