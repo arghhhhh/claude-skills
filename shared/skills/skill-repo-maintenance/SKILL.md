@@ -1,5 +1,5 @@
 ---
-version: 1.3.0
+version: 1.4.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -247,3 +247,28 @@ Some skills require MCP server registration. Check post-install hints in the ins
 4. **Push after every change** — unpushed changes won't sync to other machines
 5. **Unity-cli skills live in a separate repo** — `arghhhhh/unity-cli`, not `arghhhhh/claude-skills`
 6. **Run `--verify` after changes** — catches broken symlinks, missing files, version mismatches
+
+## Skill Style Guide
+
+Follow these conventions when writing or editing any skill:
+
+### Before writing, read 1-2 existing skills as style templates
+
+Start with `skill-groups/comfyui/skills/comfy-cli.md` (flat single-file) or the notch skill (multi-reference structure). Match the density and formatting of what's already there.
+
+### File roles — one fact in one place
+
+| File | Contains |
+|---|---|
+| `SKILL.md` | Entry point: critical rules, capability table, workflow, globals, cross-references. Must be self-contained enough to guide the first action. |
+| `references/*.md` | Topic-scoped deep dives. `node-catalog.md` / similar = quick-lookup tables. `gotchas.md` = "this doesn't work as expected because…" narratives. `patterns.md` = reusable code. |
+
+Do not duplicate facts across files. If something belongs in gotchas, don't also put it in the catalog.
+
+### Write terse and dense
+
+- No preamble: don't open with "In this section we'll discuss…" or "Read this reference when you need to…" (one-line subtitle is fine).
+- No narrative recap: don't restate what was just said in prose after a table or code block.
+- Prefer tables and code over paragraphs.
+- Mark uncertainty explicitly (`⚠ Untested`, `❌ Dead end`, `✅ Verified`) — don't soften with hedging prose.
+- Say what doesn't work and why. "X silently no-ops because Y" is more useful than "X may not work in all cases".
