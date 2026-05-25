@@ -1,6 +1,6 @@
 # Notch JS — Gotchas and Easy-to-Confuse Nodes
 
-Read this when something "should work" but doesn't — silent no-ops, nodes that don't render, post-FX that doesn't feed downstream, or wrong-named lookalike nodes.
+Silent no-ops, nodes that don't render, post-FX that doesn't fire, lookalike-node traps, and Custom Shader Post Effect binding constraints.
 
 ## Common gotchas
 
@@ -50,7 +50,7 @@ Critically: **these nodes don't appear to expose their output as an image port f
 
 ## Custom Shader Post Effect gotchas (Notch 2026.1 / 1.0.0.221)
 
-1. **`SetString("Attributes.Shader", ...)` works but `GetString` lies.** The setter binds the imported `.fx` resource correctly (visible in the UI dropdown), but the getter returns `"0"` (an internal index). Don't loop retrying because the readback "failed" — it didn't. See node-catalog.md → Resources panel API for the full pattern.
+1. **`SetString("Attributes.Shader", filename)` does NOT bind the shader.** `Attributes.Shader` is a resource-typed attribute, not a string. `SetString` silently no-ops — no exception, no error, nothing changes. The only verified binding path is the **manual UI pick** (right-click the attribute dropdown in the Inspector). Once set manually, the binding survives JS reloads as long as you don't delete the node. See node-catalog.md → Assigning a Resource for the full picture and the untested `SetExposedPropertyValue` alternative.
 
 2. **Shader uniforms do NOT auto-surface as JS-settable node attributes**, despite what the Notch manual implies ("Global single float variables are exposed as properties in the node attributes"). `SetFloat("Attributes.MyUniform", v)` / `GetFloat` return nothing for any naming variant (`Attributes.*`, `Shader.*`, `Custom.*`, camelCase, "Space Separated"). They MAY appear as **input pins** on the node (untested as of 2026-05-25), but `Attributes.*` access fails.
 

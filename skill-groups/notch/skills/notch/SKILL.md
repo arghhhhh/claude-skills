@@ -1,6 +1,6 @@
 ---
 name: notch
-version: 0.5.0
+version: 0.6.0
 description: Build and modify Notch (notch.one) scenes from JavaScript. Use when the user wants to author a Notch scene programmatically, look up a node's properties or CreateNode string, debug a Notch JS script, or extend automation of Notch Builder 2026.1. Trigger on "notch", "notch builder", ".dfx", "skybox", "video loader", "environment image", "javascript node", "nodegraph".
 ---
 
@@ -20,7 +20,7 @@ Notch is a real-time visual effects program. Its JavaScript API lets you create 
 | Read property values | ✅ | `node.GetFloat/Int/String("Category.PropertyName")` |
 | Set colors | ⚠️ | `SetString(node, "Colours.Colour 0", "r,g,b,a")` — see `references/node-catalog.md` |
 | Find a Resource by name | ✅ | `Document.FindResourceByName("filename.ext")` |
-| Assign a Resource to a node attribute | ⚠️ | Set the attribute string to the resource's filename — see `references/node-catalog.md` |
+| Assign a Resource to a node attribute | ❌ / ⚠️ | **No scriptable setter exists for resource-typed attributes.** Manual UI pick is the only verified path. See `references/node-catalog.md` for details and unverified alternatives. |
 | Save the `.dfx` file from JS | ❌ | Officially unsupported. |
 | Open a project from JS | ❌ | Same. |
 | Build a scene without a user running the script | ❌ | JS runs only inside a Javascript Node in a loaded scene. |

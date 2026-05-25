@@ -1,6 +1,6 @@
 # Notch — Confirmed CreateNode Strings, Inputs, and Resources
 
-Read this when you need a verified `CreateNode` string, the right input-connector name for `AddInput`, the color setter pattern, or how the Resources panel is addressed from JS.
+Quick-reference tables: `CreateNode` strings, `AddInput` connector names, color setter pattern, Resources panel API, and the verified RTT→Skybox+IBL pipeline.
 
 ## Confirmed CreateNode strings
 
@@ -62,15 +62,19 @@ if (r) Log("Resource found");
 
 ### Assigning a Resource to a node attribute
 
-The empirically-working pattern is `SetString` with the **filename** (after import):
+**There is no `SetResource`, `SetShader`, or `AssignResource` method.** The full Node Object setter list is: `SetEnvelopeValue`, `SetFloat`, `SetInt`, `SetName`, `SetNodeGraphPosition`, `SetPropertyArtnet*`, `SetString`, `SetTransformArray`, `SetVisible`. Resource-typed attributes have no scriptable setter in the public JS API.
 
-```js
-node.SetString("Attributes.Shader", "env_day_night_sky_simple.fx");
-```
+`SetString("Attributes.Shader", "filename.fx")` **silently no-ops** — the attribute is a resource reference, not a string. The previous v0.5.0 docs claimed this worked; it does not. Any apparent "success" was the user having manually picked the shader in the UI earlier and it persisting.
 
-⚠ **The `GetString` readback after this is misleading.** For `Custom Shader Post Effect` specifically, `GetString("Attributes.Shader")` returns `"0"` (an internal index, not the filename) even when the bind succeeded — verified by the UI dropdown showing the shader. **Do not treat `"0"` as a binding failure and do not loop retrying.** Confirm binding by checking `Document.FindResourceByName(name)` returns non-null, or just trust the write.
+**Known paths to bind a resource-typed attribute:**
 
-For Video Loader's `Video` attribute specifically, this is unverified — the proven escape hatch is `Attributes.Load External File=1` + `Attributes.Filename=<abs path>`.
+| Path | Status | Notes |
+|---|---|---|
+| **Manual UI pick** | ✅ Verified | Right-click attribute dropdown in the Inspector. Persists across JS reloads — do not delete the node on reload. |
+| **`Document.SetExposedPropertyValue(uid, value)`** | ⚠ Untested for resources | Requires user to first "Expose" the attribute in Builder (right-click → Expose). Generates a UID. Only known cross-cutting write path. |
+| **Video Loader escape hatch** | ✅ Verified (Video Loader only) | `Attributes.Load External File=1` + `Attributes.Filename=<abs path>`. Specific to Video Loader; does NOT generalize. |
+
+**Workflow implication for Custom Shader Post Effect:** have the user manually pick the shader once in the UI. Your JS find-or-create the node but do not delete it on reload — the bind survives. Force-rebuild only on explicit user action.
 
 ### Resource-binding crash: never AddInput a Resource as a node
 
@@ -80,7 +84,7 @@ var res = Document.FindResourceByName("foo.fx");
 node.AddInput(res, "Shader");
 ```
 
-`AddInput`'s first argument must be a **Node**. Passing a Resource crashes the editor. To assign a Resource to an attribute use `SetString` (above). To wire a Node use `AddInput`. Never mix them.
+`AddInput`'s first argument must be a **Node**. Passing a Resource crashes the editor. To bind a resource attribute, use the manual UI pick (see above). To wire a Node use `AddInput`. Never mix them.
 
 ## Verified pipeline: Custom Shader Post Effect → Skybox + IBL
 
@@ -97,7 +101,7 @@ Root
   │    │                              useful "shader didn't paint" signal.)
   │    └─ Post-FX::Image Processing::Custom Shader Post Effect
   │           Attributes.Active = 1
-  │           SetString("Attributes.Shader", "your-shader.fx")
+  │           Shader = manually picked in UI (no JS setter — see below)
   ├─ Skybox             ← AddInput(RTT, "Skybox Image")
   │                       + Attributes.Image Source Mapping = 2 (equirect)
   ├─ Environment Image  ← AddInput(RTT, "Envmap Image")
