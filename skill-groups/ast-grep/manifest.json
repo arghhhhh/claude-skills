@@ -1,7 +1,7 @@
 {
   "name": "ast-grep",
   "description": "Structural code search & rewriting using AST patterns — find code by structure, not text.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "prerequisites": [],
   "install": {
     "check": "sg --version || ast-grep --version",

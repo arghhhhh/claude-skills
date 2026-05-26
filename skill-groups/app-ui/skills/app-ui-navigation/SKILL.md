@@ -1,6 +1,6 @@
 ---
+version: 1.1.1
 name: app-ui-navigation
-version: 1.1.0
 description: "Expert for App UI navigation system - NavGraph, NavHost, NavController, destinations, and visual controllers (AppBar, Drawer, BottomNavBar). Use this skill whenever the user wants to add screens or pages to their Unity app, create a navigation graph, set up a bottom tab bar, implement a side drawer or hamburger menu, add an app bar or toolbar, navigate between views, pass data between screens, manage back stack behavior, create a multi-screen flow (onboarding, login, settings), or implement any kind of screen-to-screen navigation in App UI. Also trigger when the user mentions NavigationScreen, NavigationRail, NavAction, or asks about deep linking or nested navigation."
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---

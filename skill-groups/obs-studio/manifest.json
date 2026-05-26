@@ -1,7 +1,7 @@
 {
   "name": "obs-studio",
   "description": "OBS Studio streaming/recording control — scenes, sources, studio mode, virtual camera.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "prerequisites": [
     {
       "name": "go",

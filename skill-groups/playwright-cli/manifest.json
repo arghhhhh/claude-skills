@@ -1,7 +1,7 @@
 {
   "name": "playwright-cli",
   "description": "Browser automation via CLI — navigate, click, fill, snapshot, screenshot, test, and debug web pages.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "prerequisites": [
     {
       "name": "node",

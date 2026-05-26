@@ -1,4 +1,5 @@
 ---
+version: 1.0.0
 name: unity
 description: |
   Specialized agent for all Unity Editor automation via unity-cli. Handles scene inspection, GameObject/component editing, prefab workflows, C# code navigation and editing, asset management, input system, testing, and UI automation. Use this agent for ANY Unity-related task.
@@ -14,7 +15,7 @@ description: |
   user: "Create a PlayerController script with movement methods and run the EditMode tests"
   assistant: "I'll use the unity agent to scaffold the code and run tests."
   </example>
-allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent
+tools: Bash, Read, Write, Edit, Grep, Glob, Agent
 model: sonnet
 color: green
 ---

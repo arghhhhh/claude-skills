@@ -1,7 +1,7 @@
 {
   "name": "imagemagick",
   "description": "Image manipulation via ImageMagick CLI — resize, convert, composite, annotate, effects, and batch processing.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "prerequisites": [],
   "install": {
     "check": "magick --version",

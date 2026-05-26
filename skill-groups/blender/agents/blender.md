@@ -1,4 +1,5 @@
 ---
+version: 1.0.0
 name: blender
 description: Blender 3D expert for scene creation, modeling, materials, asset import, AI 3D generation, and Python scripting. Use when the user wants to create or edit 3D scenes, import models, generate 3D assets, apply materials/textures, render images, or do anything related to Blender.
 tools: Read, Glob, Grep, Bash, Edit, Write, Agent, WebFetch, WebSearch

@@ -1,7 +1,7 @@
 {
   "name": "ilspy",
   "description": "Agent-friendly .NET decompilation via ilspy-cli (akiselev/ghidra-cli, ilspy-cli crate) — type/method listing, single-method decompilation, regex search, assembly metadata, and .NET vs native detection using the ILSpy ICSharpCode.Decompiler engine.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "prerequisites": [
     "Rust 1.70+ (cargo on PATH, for source build)",
     ".NET 8 SDK (build) and .NET 8+ runtime (run)"

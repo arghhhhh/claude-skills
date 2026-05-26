@@ -1,4 +1,5 @@
 ---
+version: 1.0.0
 name: comfyui
 description: ComfyUI expert for image/video generation workflows. Use when the user wants to build, edit, run, or debug ComfyUI workflows, install nodes or models, generate images/videos, analyze output, or do anything related to ComfyUI.
 tools: Read, Glob, Grep, Bash, Edit, Write, Agent, WebFetch, WebSearch

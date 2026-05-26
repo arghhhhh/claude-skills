@@ -1,7 +1,7 @@
 {
   "name": "unity-cli",
   "description": "Unity Editor automation via unity-cli — scene inspection, GameObject editing, prefab workflows, C# navigation/editing, asset management, input system, testing, and UI automation.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "prerequisites": [
     {
       "name": "cargo",

@@ -1,7 +1,7 @@
 {
   "name": "find-docs",
   "description": "Retrieve up-to-date library/framework documentation via Context7 — API patterns, setup guides, migration docs.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "prerequisites": [
     {
       "name": "npx",

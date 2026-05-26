@@ -1,4 +1,5 @@
 ---
+version: 1.0.0
 name: houdini
 description: SideFX Houdini expert for procedural 3D, VFX, simulation, USD/Solaris, VEX, PDG, and rendering. Use when the user wants to build node networks, write VEX, set up sims (pyro/RBD/FLIP/Vellum), render with Karma/Mantra, work with USD/LOPs, PDG/TOPs, COPs, CHOPs, HDAs, or debug Houdini MCP connection issues.
 tools: Read, Glob, Grep, Bash, Edit, Write, Agent, WebFetch, WebSearch

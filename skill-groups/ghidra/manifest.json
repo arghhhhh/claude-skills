@@ -1,7 +1,7 @@
 {
   "name": "ghidra",
   "description": "Reverse engineering via Ghidra CLI (akiselev/ghidra-cli) — headless analysis, decompilation, function/symbol/type editing, cross-refs, search, patching, and scripting from the terminal.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "prerequisites": [
     "Rust 1.70+ (cargo on PATH)",
     "JDK 17+ (Ghidra runtime)",

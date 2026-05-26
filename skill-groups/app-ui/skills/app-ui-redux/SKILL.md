@@ -1,6 +1,6 @@
 ---
+version: 1.1.1
 name: app-ui-redux
-version: 1.1.0
 description: "Expert for App UI Redux state management - Store, Slices, Reducers, Actions, AsyncThunks, middleware, and Redux DevTools. Use this skill whenever the user wants to manage global state, create a Redux store, define actions and reducers, dispatch events, subscribe to state changes, implement async data fetching with thunks, add middleware for logging or analytics, use the Redux DevTools window, or architect a predictable state management layer in their Unity App UI project. Also trigger when the user mentions ActionCreator, StoreFactory, PartitionedState, or asks about centralized state, immutable records, or state slices."
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---

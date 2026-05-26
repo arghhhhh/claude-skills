@@ -1,6 +1,6 @@
 ---
+version: 1.1.1
 name: app-ui-theming
-version: 1.1.0
 description: "Expert for App UI theming and styling - USS variables, custom themes, dark/light mode, scale factors, and BEM conventions. Use this skill whenever the user wants to change colors, create a branded theme, customize fonts or typography, adjust spacing, implement dark/light mode switching, toggle between themes at runtime, set up responsive scaling (small/medium/large), register custom icons, style components with USS variables, apply BEM naming conventions, create a .tss or .uss file, or configure PanelSettings for theming. Also trigger when the user mentions design tokens, appui-- prefix, ThemeContext, ScaleContext, or asks about color palettes and USS variable overrides."
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---

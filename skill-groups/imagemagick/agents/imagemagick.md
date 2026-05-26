@@ -1,4 +1,5 @@
 ---
+version: 1.0.0
 name: imagemagick
 description: Image manipulation expert for resizing, converting, compositing, effects, batch processing, and any image editing via ImageMagick CLI. Use when the user wants to manipulate, convert, resize, crop, annotate, watermark, or batch process images.
 tools: Bash, Read, Glob, Grep, Edit

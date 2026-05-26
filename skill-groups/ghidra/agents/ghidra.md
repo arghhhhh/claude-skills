@@ -1,4 +1,5 @@
 ---
+version: 1.0.0
 name: ghidra
 description: Reverse engineering expert using the Ghidra CLI (akiselev/ghidra-cli). Use for binary analysis, decompilation, function/symbol/type editing, cross-references, string and pattern search, call graphs, patching, and headless Ghidra scripting.
 tools: Bash, Read, Glob, Grep, Edit, Write

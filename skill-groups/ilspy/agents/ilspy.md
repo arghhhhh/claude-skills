@@ -1,4 +1,5 @@
 ---
+version: 1.0.0
 name: ilspy
 description: .NET decompilation expert using the ilspy CLI (ICSharpCode.Decompiler engine). Use for inspecting managed .NET assemblies — listing types/methods, single-method or full-assembly decompilation, regex search over decompiled source, assembly metadata, and .NET vs native detection.
 tools: Bash, Read, Glob, Grep, Edit, Write

@@ -1,6 +1,6 @@
 ---
+version: 1.1.1
 name: app-ui-mvvm
-version: 1.1.0
 description: "Expert for App UI MVVM pattern and dependency injection - ObservableObject, RelayCommand, AppBuilder, service registration, and DI. Use this skill whenever the user wants to create a ViewModel, bind data to UI elements, set up dependency injection, register services, implement commands for button actions, use [ObservableProperty] or [RelayCommand] attributes, create an AppBuilder, or structure their Unity App UI project with the MVVM architecture pattern. Also trigger when the user asks about data binding in UXML, property change notifications, or service lifetimes (transient, singleton, scoped)."
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---

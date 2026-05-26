@@ -1,4 +1,5 @@
 ---
+version: 1.0.0
 name: notch
 description: Notch (notch.one) Builder 2026.1 expert for authoring scenes via the in-Notch JavaScript API. Use when the user wants to build/modify a Notch scene programmatically, look up a node's properties or CreateNode string, debug a Notch JS script, or extend automation of Notch Builder. Trigger on "notch", "notch builder", ".dfx", "skybox", "video loader", "environment image", "javascript node", "nodegraph".
 tools: Read, Glob, Grep, Bash, Edit, Write, Agent, WebFetch, WebSearch

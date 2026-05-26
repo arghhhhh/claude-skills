@@ -1,5 +1,5 @@
 ---
-version: 1.5.0
+version: 1.5.1
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -303,7 +303,7 @@ Do not use `allowed-tools` in agents — that field is for skills. Agents use `t
 ### Field conventions
 
 - **`name`** — kebab-case, matches the filename (without `.md`). If they must differ, use `agent_renames` in the manifest.
-- **`description`** — single line, no block scalar (`|`). Lead with what the agent is ("X expert for Y") then a "Use when …" clause listing trigger surfaces. No `<example>` blocks in frontmatter — put examples in the body if needed.
+- **`description`** — default to a single line. Lead with what the agent is ("X expert for Y") then a "Use when …" clause listing trigger surfaces. A block-scalar description (`description: |`) with `<example>` blocks is permitted **only when trigger surfaces overlap with other agents and the selector needs disambiguation hints** — Claude Code reads those examples for agent-selection heuristics. Default is still single-line; reach for examples only when ambiguity is observed in practice.
 - **`tools`** — comma-separated, no brackets. Standard set for a full-featured agent: `Read, Glob, Grep, Bash, Edit, Write, Agent, WebFetch, WebSearch`. Trim to what's actually needed (e.g. `imagemagick` agent omits `Write` and the web tools).
 - **`model`** — `haiku` for narrow CLI wrappers (imagemagick, obs-studio), `sonnet` for most domain experts, `opus` only if explicitly needed.
 - **`skills`** — list every skill the agent should consult, including shared ones like `find-docs`. The installer does not enforce this; it documents intent.

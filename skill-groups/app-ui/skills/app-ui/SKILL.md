@@ -1,6 +1,6 @@
 ---
+version: 1.1.1
 name: app-ui
-version: 1.1.0
 description: "Expert assistant for developing UI in Unity using App UI framework. Use when creating components, styling, MVVM architecture, navigation, or any UI-related tasks. Trigger this skill whenever the user mentions App UI, Unity UI Toolkit components like Panel/Button/TextField, UXML layouts with appui namespace, USS styling with appui variables, overlays (popover, modal, toast, menu), or building any Unity user interface. Also trigger when the user asks to create a form, dialog, settings screen, dashboard, or any visual component in Unity."
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---

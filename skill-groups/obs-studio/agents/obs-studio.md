@@ -1,4 +1,5 @@
 ---
+version: 1.0.0
 name: obs-studio
 description: OBS Studio controller for streaming, recording, scene management, and live production. Use when the user wants to start/stop streams or recordings, switch scenes, toggle sources, manage studio mode, control virtual camera, change OBS settings like resolution, or automate any OBS Studio operation.
 tools: Bash, Read, Glob, Grep, Edit
