@@ -1,7 +1,17 @@
 {
   "name": "unity-cli",
+  "type": "vendored",
   "description": "Unity Editor automation via unity-cli — scene inspection, GameObject editing, prefab workflows, C# navigation/editing, asset management, input system, testing, and UI automation.",
-  "version": "0.2.1",
+  "version": "0.3.0",
+  "source": {
+    "repo": "akiojin/unity-cli",
+    "ref": "cf84cdc40e25de486c5d148f87d5beed34741c63",
+    "ref_name": "main@2026-05-12",
+    "paths": {
+      "skills": ".claude-plugin/plugins/unity-cli/skills",
+      "agents": ".claude-plugin/plugins/unity-cli/agents"
+    }
+  },
   "prerequisites": [
     {
       "name": "cargo",
@@ -53,6 +63,8 @@
     "unity-cli-usage",
     "unity-csharp-edit",
     "unity-csharp-navigate",
+    "unity-csharp-reference",
+    "unity-development-loop",
     "unity-editor-tools",
     "unity-gameobject-edit",
     "unity-input-system",
@@ -65,12 +77,13 @@
   "agents": [
     "unity"
   ],
-  "source_repo": "https://github.com/akiojin/unity-cli.git",
-  "source_paths": {
-    "skills": ".claude-plugin/plugins/unity-cli/skills",
-    "agents": ".claude-plugin/plugins/unity-cli/agents",
-    "agent_renames": {
-      "unity-helper.md": "unity.md"
+  "overlays": {
+    "skills": {
+      "unity-gameobject-edit": "replace",
+      "unity-scene-inspect": "replace"
+    },
+    "agents": {
+      "unity-helper.md": "rename:unity.md"
     }
   }
 }
