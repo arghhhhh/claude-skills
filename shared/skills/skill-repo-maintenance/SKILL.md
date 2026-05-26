@@ -1,5 +1,5 @@
 ---
-version: 1.5.1
+version: 1.6.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -12,6 +12,18 @@ This skill governs how to keep the `claude-skills` repo (`arghhhhh/claude-skills
 
 The repo lives at `~/.claude/.skill-repos/claude-skills/`. All skill edits should happen in this directory, not directly in `~/.claude/skills/` (those are symlinks).
 
+## Group Types
+
+Each `skill-groups/<group>/manifest.json` declares a `type:`. Missing/empty defaults to `"authored"` for backwards compatibility.
+
+| Type | What lives in this repo | Where to edit | Install behavior |
+|---|---|---|---|
+| **`authored`** (default) | Full `SKILL.md` + agent files | `skill-groups/<group>/skills/<name>/SKILL.md` directly | Symlinks straight into `~/.claude/skills/` |
+| **`vendored`** | `manifest.json` (pinned `source.ref` SHA) + optional `overlays/` | Overlays at `skill-groups/<group>/overlays/{skills,agents}/...` mirroring upstream paths | Installer clones `source.repo` at the pinned SHA into `~/.claude/.skill-repos/<owner>-<repo>/`, then symlinks overlay files first and upstream files for the rest |
+| **`tool-only`** | `manifest.json` only — no `skills:`, no `agents:` | n/a | Installer runs `install` + `test` only; no symlinks under `~/.claude/skills/` |
+
+Today: `unity-cli` and `officecli` are vendored. `claude-notifications` is tool-only. Everything else is authored.
+
 ## Before Any Skill Edit
 
 **Always pull first** to avoid conflicts with changes made from other machines:
@@ -20,25 +32,23 @@ The repo lives at `~/.claude/.skill-repos/claude-skills/`. All skill edits shoul
 cd ~/.claude/.skill-repos/claude-skills && git pull origin main
 ```
 
-For unity-cli skills (sourced from a separate repo):
-
-```bash
-cd ~/.claude/.skill-repos/unity-cli && git pull origin main
-```
-
 If the pull has changes, re-run the installer to update local symlinks:
 
 ```bash
 cd ~/.claude/.skill-repos/claude-skills && bash install.sh --skills <affected-group> --skip-software
 ```
 
+For **vendored** groups, never edit upstream files in `~/.claude/.skill-repos/<owner>-<repo>/` — those are read-only mirrors. Customize via overlays (see below).
+
 ## Updating an Existing Skill
 
 ### 1. Edit the source file
 
-Skills live in `skill-groups/<group>/skills/<skill-name>/`. Edit the file there, NOT the symlink in `~/.claude/skills/`.
+For **authored** groups: edit `skill-groups/<group>/skills/<skill-name>/SKILL.md` directly. Never edit the symlink in `~/.claude/skills/`.
 
-For unity-cli skills, edit in `~/.claude/.skill-repos/unity-cli/.claude-plugin/plugins/unity-cli/skills/<skill-name>/SKILL.md`.
+For **vendored** groups: never edit upstream files in `~/.claude/.skill-repos/<owner>-<repo>/`. Instead, create an overlay at `skill-groups/<group>/overlays/skills/<skill-name>/SKILL.md` (mirroring the upstream path). The installer symlinks the overlay in place of the upstream file. Don't restyle unmodified upstream files just to match your conventions — every overlay is a permanent fork delta to re-reconcile on every re-vendor. Send style PRs upstream instead.
+
+For **tool-only** groups: no skill files to edit; only the manifest.
 
 ### 2. Bump the version
 
@@ -59,19 +69,12 @@ description: ...
 
 ```bash
 cd ~/.claude/.skill-repos/claude-skills
-git add skill-groups/<group>/skills/<skill-name>/
+git add skill-groups/<group>/skills/<skill-name>/   # or overlays/skills/... for vendored
 git commit -m "Update <skill-name> to v1.1.0 — <what changed>"
 git push origin main
 ```
 
-For unity-cli skills:
-
-```bash
-cd ~/.claude/.skill-repos/unity-cli
-git add .claude-plugin/plugins/unity-cli/skills/<skill-name>/
-git commit -m "Update <skill-name> to v1.1.0 — <what changed>"
-git push origin main
-```
+For vendored groups, if you want the change in upstream too: send a PR to `source.repo` so the next `--bump-vendor` brings it in and you can delete the overlay.
 
 ### 4. Verify
 
@@ -126,8 +129,11 @@ mkdir -p skill-groups/<name>/agents/  # if the group has an agent
 
 ### 2. Create manifest.json
 
-Must include: `name`, `description`, `version`, `prerequisites`, `install`, `test`, `skills`, `agents`.
-See any existing manifest for the template.
+First decide the group's `type:` — see the Group Types table above. Pick one of:
+
+- **`authored`** (or omit `type:` entirely) — you own the SKILL.md files. Must include: `name`, `description`, `version`, `prerequisites`, `install`, `test`, `skills`, `agents`. See any existing authored manifest for the template.
+- **`vendored`** — wrapping an upstream repo. Must include: `type: "vendored"`, `name`, `version`, `source: { repo, ref, ref_name, paths: { skills, agents } }`, `skills:` (explicit allow-list), `agents:`, optional `overlays:`, `install`, `test`. See `skill-groups/unity-cli/manifest.json` or `skill-groups/officecli/manifest.json` for templates.
+- **`tool-only`** — installs software, ships no skills. Must include: `type: "tool-only"`, `name`, `version`, `install`, `test`, `post_install_hints`. See `skill-groups/claude-notifications/manifest.json` for the template.
 
 Optional fields:
 - **`mcp_servers`**: Object mapping server names to `{ "command": "...", "args": [...] }`. The installer auto-generates `~/.mcporter/mcporter.json` and `~/.claude/.mcp.json` entries. Use `{{PLACEHOLDER}}` for machine-specific paths (resolved from `skills-config.sh`). Commands are auto-resolved to full paths on Windows.
@@ -151,6 +157,56 @@ git commit -m "Add <name> skill group"
 git push origin main
 bash install.sh --skills <name>
 ```
+
+## Maintaining Vendored Groups
+
+Vendored groups (`type: "vendored"`) pin a specific upstream commit. The installer clones `source.repo` into `~/.claude/.skill-repos/<owner>-<repo>/` and checks out the pinned `source.ref` (detached HEAD).
+
+### Check what's new upstream
+
+```bash
+cd ~/.claude/.skill-repos/claude-skills && bash install.sh --vendor-status
+```
+
+Lists every vendored group with: pinned SHA, upstream HEAD, commit delta, and whether the local clone is currently on the pinned ref.
+
+### Bump a vendored group to a newer upstream
+
+```bash
+bash install.sh --bump-vendor <group>
+```
+
+Fetches `source.repo`, shows `git log <pinned>..origin/main` so you can review what changed, then prompts to update the manifest's `source.ref` to the new HEAD SHA. After accepting, re-reconcile any overlays:
+
+1. For each file in `skill-groups/<group>/overlays/`, diff against the new upstream version at the new SHA.
+2. If upstream now incorporates your customization → delete the overlay.
+3. If upstream changed adjacent content → merge: take upstream as the base, re-apply your changes on top.
+4. If the file was renamed or deleted upstream → either rename your overlay to match or remove it.
+
+Then bump the manifest `version:` (minor for new upstream, patch for overlay-only edits) and commit.
+
+### Adding a new vendored skill from upstream
+
+When upstream adds skills, the installer **does not** auto-pick them up — the manifest `skills:` array is an explicit allow-list. After bumping, list the new upstream skills:
+
+```bash
+ls ~/.claude/.skill-repos/<owner>-<repo>/<source.paths.skills>/
+```
+
+Add new entries to `manifest.json`'s `skills:` array. Same for `agents:`.
+
+### Rules for vendored groups
+
+- `source.ref` must be a full commit SHA or an immutable tag. Branch names (`main`, `develop`) are rejected by the installer — they re-introduce silent drift.
+- Overlays are **replace-only** — an overlay at `overlays/skills/<name>/SKILL.md` whose path matches an upstream file overrides it. No additive siblings; author wholly new skills in their own group.
+- Overlay agent renames live in `manifest.json`'s `overlays.agents` as `{"upstream-name.md": "rename:new-name.md"}`.
+- CLAUDE.md snippet: if `shared/claude-md/<group>.md` exists, the installer uses it. Otherwise it auto-generates one from the manifest description. Author your own only when you want to override.
+
+## Maintaining Tool-only Groups
+
+Tool-only groups (`type: "tool-only"`) ship no skills or agents — they exist only to run `install` and `test` for a piece of external software (e.g., `claude-notifications` installs a Claude Code plugin). Manifest shape is minimal: `type`, `version`, `install`, `test`, `post_install_hints`.
+
+To update, edit `install` / `test` / `post_install_hints`, bump `version`, commit, push. No symlinks are created, so there's nothing to re-sync on other machines beyond rerunning the installer.
 
 ## Syncing Another Machine
 
@@ -245,8 +301,8 @@ Some skills require MCP server registration. Check post-install hints in the ins
 2. **Always bump the version** — even for small changes; `--status` depends on it
 3. **Edit source files, not symlinks** — `~/.claude/skills/` contains symlinks pointing to the repo
 4. **Push after every change** — unpushed changes won't sync to other machines
-5. **Unity-cli skills live in a separate repo** — `arghhhhh/unity-cli`, not `arghhhhh/claude-skills`
-6. **Run `--verify` after changes** — catches broken symlinks, missing files, version mismatches
+5. **For vendored groups, never edit upstream files** — customize via overlays in `skill-groups/<group>/overlays/`; upstream clones are read-only
+6. **Run `--verify` after changes** — catches broken symlinks, missing files, version mismatches. For vendored groups it also confirms the pinned SHA is checked out and overlay paths still match real upstream files
 
 ## Skill Style Guide
 
