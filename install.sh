@@ -420,18 +420,18 @@ vendored_ensure_clone() {
   local repo_url="https://github.com/${repo}.git"
 
   if [ ! -d "$clone_dir/.git" ]; then
-    info "Cloning $repo into $clone_dir..."
+    info "Cloning $repo into $clone_dir..." >&2
     if ! git clone --quiet "$repo_url" "$clone_dir" 2>/dev/null; then
-      fail "$group: failed to clone $repo_url"
+      fail "$group: failed to clone $repo_url" >&2
       return 1
     fi
   else
-    (cd "$clone_dir" && git fetch --quiet origin 2>/dev/null) || warn "$group: fetch failed for $repo"
+    (cd "$clone_dir" && git fetch --quiet origin 2>/dev/null) || warn "$group: fetch failed for $repo" >&2
   fi
 
   # Checkout the pinned ref (detached HEAD is expected/desired)
   if ! (cd "$clone_dir" && git checkout --quiet "$ref" 2>/dev/null); then
-    fail "$group: failed to checkout pinned ref $ref in $clone_dir"
+    fail "$group: failed to checkout pinned ref $ref in $clone_dir" >&2
     return 1
   fi
 
