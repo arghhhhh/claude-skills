@@ -1,7 +1,17 @@
 {
   "name": "officecli",
+  "type": "vendored",
   "description": "Create, read, analyze, and modify Office documents (.docx, .xlsx, .pptx) via CLI.",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "source": {
+    "repo": "iOfficeAI/OfficeCLI",
+    "ref": "9723b1bd245ea79ae2fda5e5ab277ad83bbe11e9",
+    "ref_name": "main@2026-05-25",
+    "paths": {
+      "skills": "skills",
+      "agents": null
+    }
+  },
   "prerequisites": [],
   "install": {
     "check": "officecli --version",
@@ -38,7 +48,9 @@
     "officecli-academic-paper",
     "officecli-data-dashboard",
     "officecli-financial-model",
-    "morph-ppt"
+    "officecli-word-form",
+    "morph-ppt",
+    "morph-ppt-3d"
   ],
   "agents": [],
   "post_install_hints": [
