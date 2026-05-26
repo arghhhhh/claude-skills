@@ -1,4 +1,19 @@
 #!/usr/bin/env bash
+
+# Re-exec under bash ≥ 4 if launched with macOS's stock bash 3.2.
+# Bash 3.2 mis-parses heredoc-in-$()-containing-case (see install_shell_aliases),
+# so we hand off to Homebrew's bash when present.
+if [ -n "${BASH_VERSINFO[0]:-}" ] && [ "${BASH_VERSINFO[0]}" -lt 4 ] && [ -z "${CLAUDE_SKILLS_BASH_REEXEC:-}" ]; then
+  for candidate in /opt/homebrew/bin/bash /usr/local/bin/bash; do
+    if [ -x "$candidate" ]; then
+      export CLAUDE_SKILLS_BASH_REEXEC=1
+      exec "$candidate" "$0" "$@"
+    fi
+  done
+  echo "install.sh requires bash ≥ 4. On macOS: brew install bash" >&2
+  exit 1
+fi
+
 set -euo pipefail
 
 # ─────────────────────────────────────────────────────────────────────────────
