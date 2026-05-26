@@ -116,7 +116,6 @@ When updating, the installer automatically backs up your existing skills to `~/.
 | `obs-studio` | [gobs-cli](https://github.com/muesli/obs-cli) | `go install` / brew / binary | `obs-cli` | `obs-studio` |
 | `officecli` | [OfficeCLI](https://github.com/iOfficeAI/OfficeCLI) | curl / PowerShell / binary | 9 skills (vendored from upstream) | — |
 | `playwright-cli` | [Playwright](https://playwright.dev/) | `npm` / `npx` | `playwright-cli` | — |
-| `tessl` | [Tessl CLI](https://tessl.io/) | install script / manual | `tessl` | — |
 | `unity-cli` | [unity-cli](https://github.com/akiojin/unity-cli) (upstream akiojin) | `cargo install` (requires Rust) | 13 skills (vendored) | `unity` |
 
 MCPorter-based skills (`comfyui`, `blender`, `houdini`, `claude-mermaid`) also need [mcporter](https://github.com/steipete/mcporter) (`npx mcporter` — auto-installed via npx).
@@ -148,7 +147,6 @@ claude-skills/
 │   ├── obs-studio/                     # OBS Studio + gobs-cli (+ agent)
 │   ├── officecli/                      # Office docs (9 skills, vendored)
 │   ├── playwright-cli/                 # Browser automation
-│   ├── tessl/                          # Tessl skill registry CLI
 │   └── unity-cli/                      # Unity Editor (13 skills, vendored from akiojin/unity-cli, + agent overlay)
 ├── shared/
 │   ├── skills/                         # mcp-setup.md, skill-repo-maintenance/
