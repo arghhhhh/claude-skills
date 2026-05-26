@@ -98,20 +98,30 @@ When updating, the installer automatically backs up your existing skills to `~/.
 
 | Group | Software | Install Method | Skills | Agent |
 |-------|----------|---------------|--------|-------|
-| `unity-cli` | [unity-cli](https://github.com/arghhhhh/unity-cli) | `cargo install` (requires Rust) | 13 skills | `unity` |
-| `comfyui` | [comfy-cli](https://github.com/Comfy-Org/comfy-cli) + [comfy-pilot](https://github.com/ConstantineB6/comfy-pilot) | `pip install` | `comfy-cli`, `comfy-pilot` | `comfyui` |
-| `obs-studio` | [gobs-cli](https://github.com/muesli/obs-cli) | `go install` / brew / binary | `obs-cli` | `obs-studio` |
-| `blender` | [Blender](https://www.blender.org/) + [blender-mcp](https://github.com/ahujasid/blender-mcp) | manual / `brew` | `blender-mcp` | `blender` |
 | `app-ui` | [Unity App UI](https://docs.unity3d.com/Packages/com.unity.dt.app-ui@2.2/manual/index.html) | Unity Package Manager | 5 skills | — |
-| `github-cli` | [gh](https://cli.github.com/) | `brew` / `winget` / binary | `github-cli` | — |
 | `ast-grep` | [ast-grep](https://ast-grep.github.io/) | `brew` / `npm` / `cargo` / `pip` | `ast-grep` | — |
+| `blender` | [Blender](https://www.blender.org/) + [blender-mcp](https://github.com/ahujasid/blender-mcp) | manual / `brew` | `blender-mcp` | `blender` |
+| `claude-mermaid` | [claude-mermaid](https://www.npmjs.com/package/claude-mermaid) MCP server | `npm` | `claude-mermaid` | — |
+| `claude-notifications` | Built-in Claude Code plugin | bootstrap script | — | — |
+| `comfyui` | [comfy-cli](https://github.com/Comfy-Org/comfy-cli) + [comfy-pilot](https://github.com/ConstantineB6/comfy-pilot) | `pip install` | `comfy-cli`, `comfy-pilot` | `comfyui` |
 | `find-docs` | [Context7](https://context7.com/) | `npx ctx7@latest` (no install) | `find-docs` | — |
 | `find-skills` | [skills.sh](https://skills.sh/) | `npx skills` (no install) | `find-skills` | — |
-| `officecli` | [OfficeCLI](https://github.com/iOfficeAI/OfficeCLI) | curl / PowerShell / binary | 9 skills | — |
+| `ghidra` | [ghidra-cli](https://github.com/akiselev/ghidra-cli) | `cargo install --git` | `ghidra-cli` | `ghidra` |
+| `github-cli` | [gh](https://cli.github.com/) | `brew` / `winget` / binary | `github-cli` | — |
+| `houdini` | [SideFX Houdini](https://www.sidefx.com/) + houdini-mcp | bootstrap script / manual | `houdini-mcp` | `houdini` |
+| `huggingface-downloader` | [hfdownloader](https://github.com/bodaay/HuggingFaceModelDownloader) | GitHub release binary | `huggingface-downloader` | — |
+| `ilspy` | [ilspy-cli](https://github.com/akiselev/ghidra-cli) (ilspy-cli crate) | `cargo install --git` | `ilspy-cli` | `ilspy` |
 | `imagemagick` | [ImageMagick](https://imagemagick.org/) | `winget` / `brew` / `apt` | `imagemagick-cli` | `imagemagick` |
+| `notch` | [Notch Builder 2026.1](https://www.notch.one/) + Node.js | manual (Notch); `node` for lookup CLI | `notch` | `notch` |
+| `obs-studio` | [gobs-cli](https://github.com/muesli/obs-cli) | `go install` / brew / binary | `obs-cli` | `obs-studio` |
+| `officecli` | [OfficeCLI](https://github.com/iOfficeAI/OfficeCLI) | curl / PowerShell / binary | 9 skills (vendored from upstream) | — |
 | `playwright-cli` | [Playwright](https://playwright.dev/) | `npm` / `npx` | `playwright-cli` | — |
+| `tessl` | [Tessl CLI](https://tessl.io/) | install script / manual | `tessl` | — |
+| `unity-cli` | [unity-cli](https://github.com/akiojin/unity-cli) (upstream akiojin) | `cargo install` (requires Rust) | 13 skills (vendored) | `unity` |
 
-MCPorter-based skills (comfyui, blender) also need [mcporter](https://github.com/steipete/mcporter) (`npx mcporter` — auto-installed via npx).
+MCPorter-based skills (`comfyui`, `blender`, `houdini`, `claude-mermaid`) also need [mcporter](https://github.com/steipete/mcporter) (`npx mcporter` — auto-installed via npx).
+
+**Vendored groups** (`officecli`, `unity-cli`) ship skills sourced from upstream repos rather than authored here. See each group's `manifest.json` for the `source_repo` reference. Local customizations live in an `overlays/` subfolder; everything else is pulled fresh on install.
 
 ## Directory Structure
 
@@ -122,16 +132,24 @@ claude-skills/
 ├── skill-groups/
 │   ├── app-ui/                         # Unity App UI (5 skills)
 │   ├── ast-grep/                       # Structural code search
-│   ├── blender/                        # Blender 3D + MCP addon
-│   ├── comfyui/                        # ComfyUI + comfy-pilot
+│   ├── blender/                        # Blender 3D + MCP addon (+ agent)
+│   ├── claude-mermaid/                 # Mermaid diagram rendering MCP
+│   ├── claude-notifications/           # Claude Code desktop notifications plugin
+│   ├── comfyui/                        # ComfyUI + comfy-pilot (+ agent)
 │   ├── find-docs/                      # Context7 doc lookup
 │   ├── find-skills/                    # skills.sh discovery
+│   ├── ghidra/                         # Ghidra reverse engineering (+ agent)
 │   ├── github-cli/                     # GitHub CLI (gh)
-│   ├── imagemagick/                    # ImageMagick image manipulation
-│   ├── obs-studio/                     # OBS Studio + gobs-cli
-│   ├── officecli/                      # Office docs (9 skills)
+│   ├── houdini/                        # SideFX Houdini + MCP (+ agent)
+│   ├── huggingface-downloader/         # Fast HuggingFace downloads
+│   ├── ilspy/                          # .NET decompilation (+ agent)
+│   ├── imagemagick/                    # Image manipulation (+ agent)
+│   ├── notch/                          # Notch Builder JS authoring (+ agent)
+│   ├── obs-studio/                     # OBS Studio + gobs-cli (+ agent)
+│   ├── officecli/                      # Office docs (9 skills, vendored)
 │   ├── playwright-cli/                 # Browser automation
-│   └── unity-cli/                      # Unity Editor (13 skills, from fork)
+│   ├── tessl/                          # Tessl skill registry CLI
+│   └── unity-cli/                      # Unity Editor (13 skills, vendored from akiojin/unity-cli, + agent overlay)
 ├── shared/
 │   ├── skills/                         # mcp-setup.md, skill-repo-maintenance/
 │   └── claude-md/                      # CLAUDE.md snippets per group
