@@ -5,7 +5,7 @@
   "version": "0.2.2",
   "source": {
     "repo": "iOfficeAI/OfficeCLI",
-    "ref": "dd5b90e204f9e834727dc501a0286510ae312cb9",
+    "ref": "d06bbbed3712445813928551960f8022a1a20994",
     "ref_name": "main@2026-05-26",
     "paths": {
       "skills": "skills",
