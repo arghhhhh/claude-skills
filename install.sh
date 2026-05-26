@@ -2144,14 +2144,29 @@ bump_vendor() {
     return 0
   fi
 
+  # Targeted in-place edit: replace only the ref string. Avoids the full
+  # JSON.parse → stringify round-trip, which would reflow inline arrays and
+  # other formatting choices and produce noisy diffs on every bump.
   node -e "
     const fs = require('fs');
     const p = process.argv[1];
-    const m = JSON.parse(fs.readFileSync(p, 'utf8'));
-    if (!m.source) m.source = {};
-    m.source.ref = process.argv[2];
-    fs.writeFileSync(p, JSON.stringify(m, null, 2) + '\n');
-  " "$manifest_file" "$upstream_head"
+    const oldRef = process.argv[2];
+    const newRef = process.argv[3];
+    const text = fs.readFileSync(p, 'utf8');
+    const re = new RegExp('(\"ref\"\\\\s*:\\\\s*\")' + oldRef.replace(/[.*+?^\${}()|[\\]\\\\]/g, '\\\\$&') + '(\")');
+    const out = text.replace(re, '\$1' + newRef + '\$2');
+    if (out === text) {
+      // Fallback: manifest may have had no ref or a non-matching one — fall
+      // back to a structural rewrite so the bump still succeeds.
+      const m = JSON.parse(text);
+      if (!m.source) m.source = {};
+      m.source.ref = newRef;
+      fs.writeFileSync(p, JSON.stringify(m, null, 2) + '\n');
+      process.stderr.write('warn: ref string not found inline; rewrote manifest structurally\n');
+    } else {
+      fs.writeFileSync(p, out);
+    }
+  " "$manifest_file" "$ref" "$upstream_head"
 
   (cd "$clone_dir" && git checkout --quiet "$upstream_head") || warn "Failed to checkout new ref locally"
 
