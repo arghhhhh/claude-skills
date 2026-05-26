@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 1.5.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -272,3 +272,61 @@ Do not duplicate facts across files. If something belongs in gotchas, don't also
 - Prefer tables and code over paragraphs.
 - Mark uncertainty explicitly (`⚠ Untested`, `❌ Dead end`, `✅ Verified`) — don't soften with hedging prose.
 - Say what doesn't work and why. "X silently no-ops because Y" is more useful than "X may not work in all cases".
+
+## Agent Style Guide
+
+Agents live at `skill-groups/<group>/agents/<agent-name>.md`. They are picked up by the installer and symlinked into `~/.claude/agents/`. Agents are optional — a group may ship skills only.
+
+### Frontmatter contract
+
+Required fields, in this order:
+
+```yaml
+---
+version: 1.0.0
+name: <agent-name>
+description: <one sentence capability statement>. Use when <trigger criteria>.
+tools: <comma-separated tool list>
+model: <sonnet|haiku|opus>
+---
+```
+
+The `version:` field is leading so it matches the skill frontmatter contract. Claude Code itself ignores it, but `install.sh --status` and the maintenance workflow depend on it.
+
+Optional fields, appended after `model:` in this order:
+
+- **`skills:`** — YAML list of skill names this agent should reach for. Use when the group ships skills the agent depends on, or when the agent borrows shared skills (e.g. `find-docs`).
+- **`color:`** — UI hint (`green`, `blue`, etc.). Only set if there's a reason; otherwise omit.
+
+Do not use `allowed-tools` in agents — that field is for skills. Agents use `tools`.
+
+### Field conventions
+
+- **`name`** — kebab-case, matches the filename (without `.md`). If they must differ, use `agent_renames` in the manifest.
+- **`description`** — single line, no block scalar (`|`). Lead with what the agent is ("X expert for Y") then a "Use when …" clause listing trigger surfaces. No `<example>` blocks in frontmatter — put examples in the body if needed.
+- **`tools`** — comma-separated, no brackets. Standard set for a full-featured agent: `Read, Glob, Grep, Bash, Edit, Write, Agent, WebFetch, WebSearch`. Trim to what's actually needed (e.g. `imagemagick` agent omits `Write` and the web tools).
+- **`model`** — `haiku` for narrow CLI wrappers (imagemagick, obs-studio), `sonnet` for most domain experts, `opus` only if explicitly needed.
+- **`skills`** — list every skill the agent should consult, including shared ones like `find-docs`. The installer does not enforce this; it documents intent.
+
+### Body structure
+
+Match the density of existing agents (see `skill-groups/blender/agents/blender.md` or `skill-groups/ghidra/agents/ghidra.md` as templates). Typical sections:
+
+| Section | Purpose |
+|---|---|
+| `# Your Tools` | What the agent has access to (CLI, MCP, skills) and how to invoke each. |
+| `# Operational Rules` | Hard rules the agent must follow — what to never do, what to always check first. |
+| `# Workflow` | Step-by-step pattern for common requests. Optional. |
+| `# Connection Diagnostics` / `# Troubleshooting` | If the agent depends on external software, how to detect and report it missing. |
+
+Same rules as skills: terse, dense, tables over paragraphs, no preamble, mark uncertainty explicitly.
+
+### Versioning
+
+Agents carry their own `version:` field in frontmatter, using the same semver rules as skills:
+
+- **Patch** (1.0.0 → 1.0.1): Typo fixes, clarifications, minor wording changes.
+- **Minor** (1.0.0 → 1.1.0): New sections, expanded guidance, added tool to `tools:`, added skill to `skills:`.
+- **Major** (1.0.0 → 2.0.0): Restructured agent, changed `model:`, removed a tool, breaking workflow changes.
+
+Bump the agent's `version:` for any content change. Also bump the **group manifest's** `version:` so `install.sh --status` flags the group as updated and downstream machines re-sync.
