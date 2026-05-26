@@ -2,11 +2,11 @@
   "name": "officecli",
   "type": "vendored",
   "description": "Create, read, analyze, and modify Office documents (.docx, .xlsx, .pptx) via CLI.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "source": {
     "repo": "iOfficeAI/OfficeCLI",
-    "ref": "9723b1bd245ea79ae2fda5e5ab277ad83bbe11e9",
-    "ref_name": "main@2026-05-25",
+    "ref": "1b4cc6cb13c51bf2030b8387d226a54dd9f52490",
+    "ref_name": "main@2026-05-26",
     "paths": {
       "skills": "skills",
       "agents": null
@@ -18,19 +18,28 @@
     "methods": [
       {
         "name": "curl",
-        "platforms": ["macos", "linux"],
+        "platforms": [
+          "macos",
+          "linux"
+        ],
         "check": "curl --version",
         "command": "curl -fsSL https://raw.githubusercontent.com/iOfficeAI/OfficeCLI/main/install.sh | bash"
       },
       {
         "name": "powershell",
-        "platforms": ["windows"],
+        "platforms": [
+          "windows"
+        ],
         "check": "powershell -Command \"echo ok\"",
         "command": "powershell -Command \"irm https://raw.githubusercontent.com/iOfficeAI/OfficeCLI/main/install.ps1 | iex\""
       },
       {
         "name": "manual",
-        "platforms": ["macos", "linux", "windows"],
+        "platforms": [
+          "macos",
+          "linux",
+          "windows"
+        ],
         "url": "https://github.com/iOfficeAI/OfficeCLI/releases"
       }
     ]
