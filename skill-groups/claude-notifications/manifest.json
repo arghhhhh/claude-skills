@@ -1,7 +1,8 @@
 {
   "name": "claude-notifications",
+  "type": "tool-only",
   "description": "Smart desktop notifications for Claude Code — task complete, questions, plan ready, sounds, click-to-focus.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "prerequisites": [
     {
       "name": "claude",
@@ -28,7 +29,5 @@
   "post_install_hints": [
     "Restart Claude Code for notification hooks to take effect",
     "Run /claude-notifications-go:settings inside Claude Code to configure sounds and webhooks"
-  ],
-  "skills": [],
-  "agents": []
+  ]
 }
