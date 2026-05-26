@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ─────────────────────────────────────────────────────────────────────────────
-# claude-skills installer v2.3 — content overlay support + shell aliases
+# claude-skills installer v2.4 — typed groups (authored / vendored / tool-only)
 # Cross-platform (macOS, Linux, Windows via Git Bash/WSL)
 # Installs, updates, and syncs skill groups: software + skills + agents → ~/.claude/
 # ─────────────────────────────────────────────────────────────────────────────
@@ -343,6 +343,137 @@ resolve_skill_path() {
   else
     echo ""
   fi
+}
+
+# ─── Group type dispatch (authored / vendored / tool-only) ──────────────────
+
+# Read the "type" field from a manifest; default to "authored" if absent.
+group_type() {
+  local group="$1"
+  local manifest_file="$SKILL_GROUPS_DIR/$group/manifest.json"
+  [ -f "$manifest_file" ] || { echo "authored"; return; }
+  local t
+  t=$(node -e "
+    try {
+      const m = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+      process.stdout.write(m.type || 'authored');
+    } catch(e) { process.stdout.write('authored'); }
+  " "$manifest_file" 2>/dev/null) || t="authored"
+  echo "$t"
+}
+
+# Read a value from a vendored manifest's "source" block via node.
+# Args: <group> <path-into-source> e.g. "repo", "ref", "ref_name", "paths.skills", "paths.agents"
+vendored_source_get() {
+  local group="$1" path="$2"
+  local manifest_file="$SKILL_GROUPS_DIR/$group/manifest.json"
+  node -e "
+    try {
+      const m = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+      const parts = process.argv[2].split('.');
+      let v = m.source || {};
+      for (const p of parts) { if (v == null) break; v = v[p]; }
+      if (v == null) process.stdout.write('');
+      else process.stdout.write(String(v));
+    } catch(e) { process.stdout.write(''); }
+  " "$manifest_file" "$path" 2>/dev/null || true
+}
+
+# Slug a "owner/repo" string into a filesystem-safe directory name.
+repo_slug() {
+  echo "$1" | tr '/' '-' | sed 's/\.git$//'
+}
+
+# Validate that source.ref looks like a full SHA or a tag (NOT a branch name).
+# Branches like "main", "develop", "master", "HEAD" are rejected.
+validate_vendor_ref() {
+  local ref="$1"
+  case "$ref" in
+    main|master|develop|HEAD|trunk|dev) return 1 ;;
+  esac
+  # Anything else passes — full SHAs (40 hex chars) or tags (semantic versions, etc.)
+  [ -n "$ref" ]
+}
+
+# Clone (or fetch) the upstream repo for a vendored group, then checkout the pinned ref.
+# Echoes the clone directory path on success.
+vendored_ensure_clone() {
+  local group="$1"
+  local repo ref slug clone_dir
+  repo=$(vendored_source_get "$group" "repo")
+  ref=$(vendored_source_get "$group" "ref")
+
+  if [ -z "$repo" ] || [ -z "$ref" ]; then
+    fail "$group: vendored manifest missing source.repo or source.ref"
+    return 1
+  fi
+
+  if ! validate_vendor_ref "$ref"; then
+    fail "$group: source.ref '$ref' looks like a branch name — use a full SHA or tag"
+    return 1
+  fi
+
+  slug=$(repo_slug "$repo")
+  clone_dir="$CLAUDE_DIR/.skill-repos/$slug"
+  mkdir -p "$CLAUDE_DIR/.skill-repos"
+
+  local repo_url="https://github.com/${repo}.git"
+
+  if [ ! -d "$clone_dir/.git" ]; then
+    info "Cloning $repo into $clone_dir..."
+    if ! git clone --quiet "$repo_url" "$clone_dir" 2>/dev/null; then
+      fail "$group: failed to clone $repo_url"
+      return 1
+    fi
+  else
+    (cd "$clone_dir" && git fetch --quiet origin 2>/dev/null) || warn "$group: fetch failed for $repo"
+  fi
+
+  # Checkout the pinned ref (detached HEAD is expected/desired)
+  if ! (cd "$clone_dir" && git checkout --quiet "$ref" 2>/dev/null); then
+    fail "$group: failed to checkout pinned ref $ref in $clone_dir"
+    return 1
+  fi
+
+  echo "$clone_dir"
+}
+
+# Read vendored overlay metadata (agent renames + presence). Echoes the rename
+# target for an agent overlay filename, e.g. "unity.md" for "rename:unity.md".
+vendored_agent_rename() {
+  local group="$1" upstream_filename="$2"
+  local manifest_file="$SKILL_GROUPS_DIR/$group/manifest.json"
+  node -e "
+    try {
+      const m = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+      const agents = (m.overlays && m.overlays.agents) || {};
+      const v = agents[process.argv[2]];
+      if (v && typeof v === 'string' && v.startsWith('rename:')) {
+        process.stdout.write(v.slice('rename:'.length));
+      }
+    } catch(e) {}
+  " "$manifest_file" "$upstream_filename" 2>/dev/null || true
+}
+
+# Generate a default CLAUDE.md snippet for a vendored group when no
+# shared/claude-md/<group>.md exists. Echoes the snippet to stdout.
+generate_default_vendored_snippet() {
+  local group="$1"
+  local manifest_file="$SKILL_GROUPS_DIR/$group/manifest.json"
+  local desc
+  desc=$(node -e "
+    try {
+      const m = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+      process.stdout.write(m.description || '');
+    } catch(e) {}
+  " "$manifest_file" 2>/dev/null) || true
+  cat <<EOF
+## $group (vendored)
+
+$desc
+
+Trigger phrases: "$group"
+EOF
 }
 
 # ─── List available groups ───────────────────────────────────────────────────
@@ -708,32 +839,50 @@ install_skills() {
   local manifest
   manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
 
+  local gtype
+  gtype=$(group_type "$group")
+
+  # Tool-only groups install software only — no symlinks
+  if [ "$gtype" = "tool-only" ]; then
+    info "$group: tool-only group — no skills to symlink"
+    return 0
+  fi
+
   mkdir -p "$SKILLS_DIR" "$AGENTS_DIR"
 
-  local source_repo
-  source_repo=$(json_get "$manifest" "source_repo")
-
   local skills_source_dir agents_source_dir
-  if [ -n "$source_repo" ]; then
-    local repo_cache="$CLAUDE_DIR/.skill-repos/$group"
-    mkdir -p "$CLAUDE_DIR/.skill-repos"
-    if [ -d "$repo_cache" ]; then
-      info "Updating $group source repo..."
-      (cd "$repo_cache" && git pull --quiet 2>/dev/null) || true
-    else
-      info "Cloning $group source repo..."
-      git clone --quiet "$source_repo" "$repo_cache" 2>/dev/null
-    fi
 
+  if [ "$gtype" = "vendored" ]; then
+    local clone_dir
+    clone_dir=$(vendored_ensure_clone "$group") || return 1
     local skills_path agents_path
-    skills_path=$(echo "$manifest" | grep -A1 '"source_paths"' | grep '"skills"' | sed 's/.*: *"//;s/".*//')
-    agents_path=$(echo "$manifest" | grep -A2 '"source_paths"' | grep '"agents"' | sed 's/.*: *"//;s/".*//')
-
-    skills_source_dir="$repo_cache/$skills_path"
-    agents_source_dir="$repo_cache/$agents_path"
+    skills_path=$(vendored_source_get "$group" "paths.skills")
+    agents_path=$(vendored_source_get "$group" "paths.agents")
+    skills_source_dir="$clone_dir/$skills_path"
+    [ -n "$agents_path" ] && agents_source_dir="$clone_dir/$agents_path"
   else
-    skills_source_dir="$SKILL_GROUPS_DIR/$group/skills"
-    agents_source_dir="$SKILL_GROUPS_DIR/$group/agents"
+    # Backwards-compat: legacy authored manifest with source_repo (pre-vendored schema)
+    local source_repo
+    source_repo=$(json_get "$manifest" "source_repo")
+    if [ -n "$source_repo" ]; then
+      local repo_cache="$CLAUDE_DIR/.skill-repos/$group"
+      mkdir -p "$CLAUDE_DIR/.skill-repos"
+      if [ -d "$repo_cache" ]; then
+        info "Updating $group source repo..."
+        (cd "$repo_cache" && git pull --quiet 2>/dev/null) || true
+      else
+        info "Cloning $group source repo..."
+        git clone --quiet "$source_repo" "$repo_cache" 2>/dev/null
+      fi
+      local skills_path agents_path
+      skills_path=$(echo "$manifest" | grep -A1 '"source_paths"' | grep '"skills"' | sed 's/.*: *"//;s/".*//')
+      agents_path=$(echo "$manifest" | grep -A2 '"source_paths"' | grep '"agents"' | sed 's/.*: *"//;s/".*//')
+      skills_source_dir="$repo_cache/$skills_path"
+      agents_source_dir="$repo_cache/$agents_path"
+    else
+      skills_source_dir="$SKILL_GROUPS_DIR/$group/skills"
+      agents_source_dir="$SKILL_GROUPS_DIR/$group/agents"
+    fi
   fi
 
   local skills
@@ -775,14 +924,36 @@ install_skills() {
 
   local agents
   agents=$(json_array "$manifest" "agents")
+
+  # For vendored groups, build a reverse rename map from overlays.agents
+  # ("upstream-filename.md" -> "rename:new-name.md"). For authored/legacy
+  # groups, fall back to the old "agent_renames" map.
   local renames
   renames=$(echo "$manifest" | grep -A10 '"agent_renames"' 2>/dev/null || true)
 
   for agent in $agents; do
     local src_file="$agent.md"
-    local rename_from
-    rename_from=$(echo "$renames" | sed -n "s/.*\"\([^\"]*\)\"[[:space:]]*:[[:space:]]*\"$agent.md\".*/\1/p")
-    [ -n "$rename_from" ] && src_file="$rename_from"
+
+    if [ "$gtype" = "vendored" ]; then
+      # Look for an upstream filename whose overlays.agents value is "rename:<agent>.md"
+      local mapped
+      mapped=$(node -e "
+        try {
+          const m = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+          const agents = (m.overlays && m.overlays.agents) || {};
+          for (const [up, v] of Object.entries(agents)) {
+            if (typeof v === 'string' && v === 'rename:' + process.argv[2] + '.md') {
+              process.stdout.write(up); break;
+            }
+          }
+        } catch(e) {}
+      " "$SKILL_GROUPS_DIR/$group/manifest.json" "$agent" 2>/dev/null) || true
+      [ -n "$mapped" ] && src_file="$mapped"
+    else
+      local rename_from
+      rename_from=$(echo "$renames" | sed -n "s/.*\"\([^\"]*\)\"[[:space:]]*:[[:space:]]*\"$agent.md\".*/\1/p")
+      [ -n "$rename_from" ] && src_file="$rename_from"
+    fi
 
     local src="$agents_source_dir/$src_file"
     local dest="$AGENTS_DIR/$agent.md"
@@ -1140,8 +1311,18 @@ install_mcp_config() {
 install_claude_md_snippet() {
   local group="$1"
   local snippet_file="$SHARED_DIR/claude-md/$group.md"
+  local gtype
+  gtype=$(group_type "$group")
 
-  [ -f "$snippet_file" ] || return 0
+  # If no curated snippet exists for a vendored group, generate a minimal default.
+  local snippet_content=""
+  if [ -f "$snippet_file" ]; then
+    snippet_content=$(cat "$snippet_file")
+  elif [ "$gtype" = "vendored" ]; then
+    snippet_content=$(generate_default_vendored_snippet "$group")
+  else
+    return 0
+  fi
 
   if [ ! -f "$CLAUDE_MD" ]; then
     echo "# Global Rules" > "$CLAUDE_MD"
@@ -1149,7 +1330,7 @@ install_claude_md_snippet() {
   fi
 
   local marker
-  marker=$(grep -m1 '^## ' "$snippet_file" 2>/dev/null || head -1 "$snippet_file")
+  marker=$(echo "$snippet_content" | grep -m1 '^## ' || echo "$snippet_content" | head -1)
   if grep -qF "$marker" "$CLAUDE_MD" 2>/dev/null; then
     ok "CLAUDE.md: $group snippet already present"
     return 0
@@ -1158,7 +1339,7 @@ install_claude_md_snippet() {
   echo "" >> "$CLAUDE_MD"
   echo "---" >> "$CLAUDE_MD"
   echo "" >> "$CLAUDE_MD"
-  cat "$snippet_file" >> "$CLAUDE_MD"
+  echo "$snippet_content" >> "$CLAUDE_MD"
   ok "CLAUDE.md: appended $group trigger phrases"
 }
 
@@ -1259,8 +1440,69 @@ verify_group() {
   local group="$1"
   local manifest
   manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
+  local gtype
+  gtype=$(group_type "$group")
 
-  header "Verifying: $group"
+  header "Verifying: $group ($gtype)"
+
+  # Vendored: confirm pinned SHA is checked out + overlay paths still valid
+  if [ "$gtype" = "vendored" ]; then
+    info "Vendored source:"
+    local repo ref slug clone_dir
+    repo=$(vendored_source_get "$group" "repo")
+    ref=$(vendored_source_get "$group" "ref")
+    slug=$(repo_slug "$repo")
+    clone_dir="$CLAUDE_DIR/.skill-repos/$slug"
+    if [ ! -d "$clone_dir/.git" ]; then
+      fail "Source clone missing: $clone_dir (run install.sh --skills $group)"
+    else
+      local head
+      head=$(cd "$clone_dir" && git rev-parse HEAD 2>/dev/null)
+      if [ "$head" = "$ref" ] || [ "${head#$ref}" != "$head" ] || [ "${ref#$head}" != "$ref" ]; then
+        ok "Pinned ref $ref is checked out"
+      else
+        # Try resolving ref (tag) to a SHA for comparison
+        local resolved
+        resolved=$(cd "$clone_dir" && git rev-parse "$ref" 2>/dev/null) || resolved=""
+        if [ -n "$resolved" ] && [ "$resolved" = "$head" ]; then
+          ok "Pinned ref $ref ($resolved) is checked out"
+        else
+          fail "Pinned ref $ref not checked out (HEAD=$head)"
+        fi
+      fi
+    fi
+
+    # Check overlay paths still exist in upstream
+    local overlay_dir="$SKILL_GROUPS_DIR/$group/overlays/skills"
+    if [ -d "$overlay_dir" ]; then
+      local skills_path
+      skills_path=$(vendored_source_get "$group" "paths.skills")
+      while IFS= read -r ovsk; do
+        [ -z "$ovsk" ] && continue
+        local upstream_skill="$clone_dir/$skills_path/$ovsk"
+        if [ -d "$upstream_skill" ] || [ -f "$upstream_skill" ] || [ -f "${upstream_skill}.md" ]; then
+          ok "Overlay $ovsk maps to upstream"
+        else
+          fail "Overlay $ovsk has no matching upstream path ($upstream_skill)"
+        fi
+      done < <(ls -1 "$overlay_dir" 2>/dev/null)
+    fi
+  fi
+
+  # Tool-only: only software check + test
+  if [ "$gtype" = "tool-only" ]; then
+    info "Software:"
+    local check_cmd
+    check_cmd=$(json_get_install_check "$manifest")
+    if [ -n "$check_cmd" ] && [ "$check_cmd" != "true" ]; then
+      if eval "$check_cmd" >/dev/null 2>&1; then
+        ok "Software check passed ($check_cmd)"
+      else
+        fail "Software check failed ($check_cmd)"
+      fi
+    fi
+    return 0
+  fi
 
   # 1. Check prerequisites
   info "Prerequisites:"
@@ -1438,33 +1680,51 @@ update_group() {
   local group="$1"
   local manifest
   manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
+  local gtype
+  gtype=$(group_type "$group")
 
   header "Updating: $group"
 
-  local source_repo
-  source_repo=$(json_get "$manifest" "source_repo")
+  # Tool-only groups have nothing to symlink/update at the skill level
+  if [ "$gtype" = "tool-only" ]; then
+    info "$group: tool-only — nothing to update"
+    return 0
+  fi
 
   local skills_source_dir agents_source_dir
-  if [ -n "$source_repo" ]; then
-    local repo_cache="$CLAUDE_DIR/.skill-repos/$group"
-    if [ -d "$repo_cache" ]; then
-      info "Pulling latest from $group source repo..."
-      (cd "$repo_cache" && git pull --quiet 2>/dev/null) || warn "Could not pull $group source repo"
-    else
-      info "Cloning $group source repo..."
-      mkdir -p "$CLAUDE_DIR/.skill-repos"
-      git clone --quiet "$source_repo" "$repo_cache" 2>/dev/null
-    fi
 
+  if [ "$gtype" = "vendored" ]; then
+    local clone_dir
+    clone_dir=$(vendored_ensure_clone "$group") || return 1
     local skills_path agents_path
-    skills_path=$(echo "$manifest" | grep -A1 '"source_paths"' | grep '"skills"' | sed 's/.*: *"//;s/".*//')
-    agents_path=$(echo "$manifest" | grep -A2 '"source_paths"' | grep '"agents"' | sed 's/.*: *"//;s/".*//')
-
-    skills_source_dir="$repo_cache/$skills_path"
-    agents_source_dir="$repo_cache/$agents_path"
+    skills_path=$(vendored_source_get "$group" "paths.skills")
+    agents_path=$(vendored_source_get "$group" "paths.agents")
+    skills_source_dir="$clone_dir/$skills_path"
+    [ -n "$agents_path" ] && agents_source_dir="$clone_dir/$agents_path"
   else
-    skills_source_dir="$SKILL_GROUPS_DIR/$group/skills"
-    agents_source_dir="$SKILL_GROUPS_DIR/$group/agents"
+    local source_repo
+    source_repo=$(json_get "$manifest" "source_repo")
+    if [ -n "$source_repo" ]; then
+      local repo_cache="$CLAUDE_DIR/.skill-repos/$group"
+      if [ -d "$repo_cache" ]; then
+        info "Pulling latest from $group source repo..."
+        (cd "$repo_cache" && git pull --quiet 2>/dev/null) || warn "Could not pull $group source repo"
+      else
+        info "Cloning $group source repo..."
+        mkdir -p "$CLAUDE_DIR/.skill-repos"
+        git clone --quiet "$source_repo" "$repo_cache" 2>/dev/null
+      fi
+
+      local skills_path agents_path
+      skills_path=$(echo "$manifest" | grep -A1 '"source_paths"' | grep '"skills"' | sed 's/.*: *"//;s/".*//')
+      agents_path=$(echo "$manifest" | grep -A2 '"source_paths"' | grep '"agents"' | sed 's/.*: *"//;s/".*//')
+
+      skills_source_dir="$repo_cache/$skills_path"
+      agents_source_dir="$repo_cache/$agents_path"
+    else
+      skills_source_dir="$SKILL_GROUPS_DIR/$group/skills"
+      agents_source_dir="$SKILL_GROUPS_DIR/$group/agents"
+    fi
   fi
 
   local skills
@@ -1668,16 +1928,29 @@ show_status() {
     local manifest
     manifest=$(tr -d '\r' < "$group_dir/manifest.json")
 
-    local source_repo
-    source_repo=$(json_get "$manifest" "source_repo")
+    local gtype
+    gtype=$(group_type "$group")
+    [ "$gtype" = "tool-only" ] && continue
+
     local skills_source_dir
-    if [ -n "$source_repo" ]; then
-      local repo_cache="$CLAUDE_DIR/.skill-repos/$group"
+    if [ "$gtype" = "vendored" ]; then
+      local repo slug
+      repo=$(vendored_source_get "$group" "repo")
+      slug=$(repo_slug "$repo")
       local skills_path
-      skills_path=$(echo "$manifest" | grep -A1 '"source_paths"' | grep '"skills"' | sed 's/.*: *"//;s/".*//')
-      skills_source_dir="$repo_cache/$skills_path"
+      skills_path=$(vendored_source_get "$group" "paths.skills")
+      skills_source_dir="$CLAUDE_DIR/.skill-repos/$slug/$skills_path"
     else
-      skills_source_dir="$SKILL_GROUPS_DIR/$group/skills"
+      local source_repo
+      source_repo=$(json_get "$manifest" "source_repo")
+      if [ -n "$source_repo" ]; then
+        local repo_cache="$CLAUDE_DIR/.skill-repos/$group"
+        local skills_path
+        skills_path=$(echo "$manifest" | grep -A1 '"source_paths"' | grep '"skills"' | sed 's/.*: *"//;s/".*//')
+        skills_source_dir="$repo_cache/$skills_path"
+      else
+        skills_source_dir="$SKILL_GROUPS_DIR/$group/skills"
+      fi
     fi
 
     local skills
@@ -1770,6 +2043,122 @@ show_status() {
   echo ""
 }
 
+# ─── Vendor status (--vendor-status) ────────────────────────────────────────
+
+show_vendor_status() {
+  header "Vendored groups"
+  echo ""
+  printf "  ${BOLD}%-20s %-12s %-12s %s${NC}\n" "Group" "Pinned" "Upstream" "Delta"
+  printf "  %-20s %-12s %-12s %s\n" "────────────────────" "────────────" "────────────" "──────────────────"
+
+  for group_dir in "$SKILL_GROUPS_DIR"/*/; do
+    [ -f "$group_dir/manifest.json" ] || continue
+    local group
+    group=$(basename "$group_dir")
+    local gtype
+    gtype=$(group_type "$group")
+    [ "$gtype" = "vendored" ] || continue
+
+    local repo ref slug clone_dir
+    repo=$(vendored_source_get "$group" "repo")
+    ref=$(vendored_source_get "$group" "ref")
+    slug=$(repo_slug "$repo")
+    clone_dir="$CLAUDE_DIR/.skill-repos/$slug"
+
+    local upstream_head="-" delta="-" head_short="-" ref_short
+    ref_short="${ref:0:10}"
+    if [ -d "$clone_dir/.git" ]; then
+      (cd "$clone_dir" && git fetch --quiet origin 2>/dev/null) || true
+      upstream_head=$(cd "$clone_dir" && git rev-parse origin/HEAD 2>/dev/null || git rev-parse origin/main 2>/dev/null || echo "-")
+      head_short="${upstream_head:0:10}"
+      if [ "$upstream_head" != "-" ]; then
+        local resolved
+        resolved=$(cd "$clone_dir" && git rev-parse "$ref" 2>/dev/null) || resolved="$ref"
+        local count
+        count=$(cd "$clone_dir" && git rev-list --count "$resolved..$upstream_head" 2>/dev/null) || count="?"
+        if [ "$count" = "0" ]; then
+          delta="up to date"
+        else
+          delta="$count commits behind"
+        fi
+      fi
+    else
+      delta="(not cloned)"
+    fi
+    printf "  %-20s %-12s %-12s %s\n" "$group" "$ref_short" "$head_short" "$delta"
+    info "    repo: $repo"
+  done
+  echo ""
+}
+
+# ─── Bump vendor (--bump-vendor <group>) ────────────────────────────────────
+
+bump_vendor() {
+  local group="$1"
+  local manifest_file="$SKILL_GROUPS_DIR/$group/manifest.json"
+  if [ ! -f "$manifest_file" ]; then
+    fail "Unknown group: $group"
+    return 1
+  fi
+  local gtype
+  gtype=$(group_type "$group")
+  if [ "$gtype" != "vendored" ]; then
+    fail "$group is type=$gtype, not vendored"
+    return 1
+  fi
+
+  local repo ref slug clone_dir
+  repo=$(vendored_source_get "$group" "repo")
+  ref=$(vendored_source_get "$group" "ref")
+  slug=$(repo_slug "$repo")
+  clone_dir="$CLAUDE_DIR/.skill-repos/$slug"
+
+  if [ ! -d "$clone_dir/.git" ]; then
+    info "Cloning $repo for first-time bump..."
+    git clone --quiet "https://github.com/${repo}.git" "$clone_dir" || { fail "Clone failed"; return 1; }
+  fi
+
+  (cd "$clone_dir" && git fetch --quiet origin) || warn "Fetch failed"
+
+  local upstream_head resolved
+  upstream_head=$(cd "$clone_dir" && git rev-parse origin/HEAD 2>/dev/null || git rev-parse origin/main 2>/dev/null)
+  resolved=$(cd "$clone_dir" && git rev-parse "$ref" 2>/dev/null) || resolved="$ref"
+
+  if [ "$resolved" = "$upstream_head" ]; then
+    ok "$group: already at upstream HEAD ($upstream_head)"
+    return 0
+  fi
+
+  header "Commits in $repo since $ref"
+  (cd "$clone_dir" && git log --oneline "$resolved..$upstream_head") || true
+  echo ""
+
+  if [ "$NON_INTERACTIVE" = "true" ]; then
+    info "Non-interactive: would bump $group $ref → $upstream_head"
+    return 0
+  fi
+
+  read -rp "Bump pinned ref to $upstream_head? [y/N]: " answer
+  if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
+    info "Aborted"
+    return 0
+  fi
+
+  node -e "
+    const fs = require('fs');
+    const p = process.argv[1];
+    const m = JSON.parse(fs.readFileSync(p, 'utf8'));
+    if (!m.source) m.source = {};
+    m.source.ref = process.argv[2];
+    fs.writeFileSync(p, JSON.stringify(m, null, 2) + '\n');
+  " "$manifest_file" "$upstream_head"
+
+  (cd "$clone_dir" && git checkout --quiet "$upstream_head") || warn "Failed to checkout new ref locally"
+
+  ok "$group: bumped $ref → $upstream_head in manifest"
+  info "Review the diff and commit: git -C $SCRIPT_DIR add skill-groups/$group/manifest.json && git commit"
+}
+
 # ─── Main ────────────────────────────────────────────────────────────────────
 
 main() {
@@ -1778,7 +2167,8 @@ main() {
   SYNC_MODE=false
   NON_INTERACTIVE=false
   INSTALL_SKIPPED=false
-  MODE="install"  # install, verify, test-integration, update, status
+  MODE="install"  # install, verify, test-integration, update, status, vendor-status, bump-vendor
+  BUMP_GROUP=""
 
   # Save original args for re-exec
   local original_args=("$@")
@@ -1818,6 +2208,19 @@ main() {
         MODE="status"
         shift
         ;;
+      --vendor-status)
+        MODE="vendor-status"
+        shift
+        ;;
+      --bump-vendor)
+        MODE="bump-vendor"
+        BUMP_GROUP="${2:-}"
+        if [ -z "$BUMP_GROUP" ]; then
+          fail "--bump-vendor requires a group name"
+          exit 1
+        fi
+        shift 2
+        ;;
       --list)
         list_groups | tr ' ' '\n'
         exit 0
@@ -1832,6 +2235,8 @@ main() {
         echo "  --update               Update installed skills from repo (newer repo → local)"
         echo "  --update --sync        Also sync newer local skills back to repo"
         echo "  --status               Show version table for all skills"
+        echo "  --vendor-status        Show pinned vs upstream SHA for vendored groups"
+        echo "  --bump-vendor GROUP    Bump pinned ref of a vendored group to upstream HEAD"
         echo ""
         echo "Options:"
         echo "  --skills GROUP1,GROUP2 Target specific skill groups (default: interactive)"
@@ -1878,6 +2283,18 @@ main() {
   if [ "$MODE" = "status" ]; then
     show_status
     exit 0
+  fi
+
+  # ── Vendor status mode ──
+  if [ "$MODE" = "vendor-status" ]; then
+    show_vendor_status
+    exit 0
+  fi
+
+  # ── Bump vendor mode ──
+  if [ "$MODE" = "bump-vendor" ]; then
+    bump_vendor "$BUMP_GROUP"
+    exit $?
   fi
 
   # ── Verify mode ──
