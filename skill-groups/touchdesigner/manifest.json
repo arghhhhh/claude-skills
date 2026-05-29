@@ -1,0 +1,62 @@
+{
+  "name": "touchdesigner",
+  "description": "TouchDesigner control via td-cli — operator/parameter editing, Python exec, screenshots, harness loop with backup/rollback.",
+  "version": "0.1.0",
+  "prerequisites": [
+    {
+      "name": "go",
+      "check": "go version",
+      "install_hint": "Install Go from https://go.dev/dl/ (needed to build td-cli — no prebuilt releases yet)",
+      "required": true
+    },
+    {
+      "name": "git",
+      "check": "git --version",
+      "install_hint": "Install Git from https://git-scm.com/",
+      "required": true
+    }
+  ],
+  "install": {
+    "check": "td-cli version",
+    "methods": [
+      {
+        "name": "source",
+        "platforms": ["macos", "linux", "windows"],
+        "check": "go version",
+        "command": "git clone https://github.com/0dot77/td-cli.git /tmp/td-cli-build && cd /tmp/td-cli-build && go install -ldflags \"-X main.version=0.1.0\" ./cmd/td-cli/ && rm -rf /tmp/td-cli-build"
+      }
+    ],
+    "notes": "TouchDesigner itself must be installed separately from https://derivative.ca/download. After install, the TDCliServer.tox component from https://github.com/0dot77/td-cli/tree/main/tox must be dropped into the user's TD project root and the Web Server DAT must run on port 9500."
+  },
+  "test": {
+    "command": "td-cli version",
+    "expect_success": true
+  },
+  "integration_test": {
+    "command": "td-cli status",
+    "expect_success": true,
+    "description": "TouchDesigner must be running with TDCliServer.tox loaded and webserver1 on port 9500"
+  },
+  "config_vars": {
+    "TD_CLI": {
+      "prompt": "Path to td-cli binary (leave blank to use td-cli from PATH)",
+      "example": "C:/Users/you/go/bin/td-cli.exe",
+      "fallback": "td-cli"
+    }
+  },
+  "post_install_hints": [
+    "TouchDesigner-side setup (one-time per project):",
+    "  1. Open your TouchDesigner project.",
+    "  2. Drag `tox/TDCliServer.tox` from https://github.com/0dot77/td-cli into the root network.",
+    "  3. Confirm the component is named `TDCliServer` and `webserver1` runs on port 9500.",
+    "  4. Verify with: td-cli status",
+    "",
+    "Optional auth: set TD_CLI_TOKEN in both your shell and TD's process env for HMAC-verified requests."
+  ],
+  "skills": [
+    "td-cli"
+  ],
+  "agents": [
+    "touchdesigner"
+  ]
+}
