@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.1.0
 name: td-cli
 description: Drive a live TouchDesigner session from the terminal via td-cli — operator/parameter editing, Python exec, screenshots, shader templates, harness loop with backup/rollback.
 ---
@@ -100,12 +100,14 @@ Inside exec: `td` is pre-imported; `_T('nullTOP')` is a shortcut for `getattr(td
 
 | Command | Purpose |
 |---|---|
-| `td-cli screenshot [path] [-o file]` | Capture TOP as PNG (default `.tmp/preview.png`) |
+| `td-cli screenshot [path] [-o file] [--opaque]` | Capture TOP as PNG (default `.tmp/preview.png`) |
 | `td-cli media info <path>` | TOP metadata |
 | `td-cli media export <path> <file>` | Export media |
 | `td-cli watch [path] [--interval ms]` | Real-time monitor |
 
 **Always screenshot + Read the file after a visual change** — the only way to know whether a render actually looks right.
+
+**⚠ Always pass `--opaque` when capturing for your own visual inspection.** Many TD shaders write `fragColor` with `alpha = 0` (sky/atmospheric shaders, GLSL templates that omit alpha, anything using alpha as a compositing flag). The PNG is technically correct but image viewers composite RGBA over white when alpha=0 — you'll see a blank-white image and reach wrong conclusions, while TD's node thumbnail shows the actual sky because its viewer ignores alpha. `--opaque` forces alpha=255 in the saved PNG so what you Read matches what the artist sees. Omit `--opaque` only when you genuinely need the alpha channel preserved for downstream compositing.
 
 ## Harness — Safe Mutation Loop
 
