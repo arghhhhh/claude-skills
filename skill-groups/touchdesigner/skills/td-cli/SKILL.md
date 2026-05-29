@@ -1,5 +1,5 @@
 ---
-version: 1.1.1
+version: 1.2.0
 name: td-cli
 description: Drive a live TouchDesigner session from the terminal via td-cli — operator/parameter editing, Python exec, screenshots, shader templates, harness loop with backup/rollback.
 ---
@@ -214,6 +214,17 @@ null_out.render = True
 # DO NOT: geo.par.pathsop = 'out'  ← cook loop
 ```
 
+## GLSL TOP — `premultrgbbyalpha` Silently Zeroes RGB (CRITICAL)
+
+Every GLSL TOP defaults `par.premultrgbbyalpha = True`. The output stage multiplies RGB by alpha — so anywhere the shader writes `alpha < 1.0`, the stored RGB gets scaled down (and at `alpha = 0`, RGB collapses to zero). The on-screen node thumbnail may still look fine, but the saved PNG or anything downstream that reads RGB will be black/dim wherever alpha was low.
+
+```python
+glsl.par.premultrgbbyalpha = False   # required whenever the shader writes RGB and alpha independently
+                                     # (e.g. RGB + density pairs, sky shaders that ignore alpha, etc.)
+```
+
+`td-cli screenshot --opaque` does **not** rescue this — it only forces output alpha to 255 in the PNG file. If TD already zeroed RGB during premultiplication, the file is genuinely black; `--opaque` will just hide the alpha=0 symptom and make the loss look like a "broken shader" instead of "premultiplication ate the RGB." Disable `premultrgbbyalpha` at the source.
+
 ## feedbackTOP — Wiring Pattern (CRITICAL)
 
 Needs **both** `par.top` AND a wire input from the **same independent upstream node**:
@@ -245,6 +256,46 @@ noise.par.type = 'simplex4d'
 noise.par['t4d'].expr = 'absTime.seconds * 0.5'
 noise.par['gain'].expr = "op('math_bass')['chan1'] * 0.8 + 0.15"
 ```
+
+## Parameter Expressions — `math.sin`, not `sin`
+
+Parameter expressions are Python, but the bare-name shortcuts you might expect from a shader/REPL aren't in scope. Use the `math` module explicitly:
+
+```python
+par.expr = "math.sin(absTime.seconds * 0.5) * 0.5 + 0.5"   # ✅
+par.expr = "sin(absTime.seconds)"                          # ❌ NameError
+```
+
+Same for `math.cos`, `math.pi`, `math.tau`, etc. `absTime`, `me`, `op(...)` are in scope.
+
+## Custom Parameter Names — One Leading Uppercase Only
+
+Custom parameter names (created via `appendFloat`, `appendInt`, etc.) must be **one leading uppercase letter, the rest lowercase**. TD rejects anything else silently or with a vague error.
+
+| Name | Valid? |
+|---|---|
+| `Tintred` | ✅ |
+| `Tint_red` | ✅ |
+| `TintRed` | ❌ second uppercase letter |
+| `tintred` | ❌ no leading uppercase |
+
+If you need a multi-word display label, set `.label` on the parameter — the name itself stays single-capitalized.
+
+## Sequence-Based Parameters — Use `.numBlocks`, Not Repeated `.par.X`
+
+Several operators expose their multi-slot parameters as **sequences**, not as `par.X` / `par.X1` / `par.X2`. Setting `par.X = N` on these doesn't expand slots — you have to grow the sequence:
+
+```python
+# constantCHOP — number of named channels
+chop.seq.const.numBlocks = 8       # ✅ creates 8 const slots
+chop.par.const = 8                 # ❌ doesn't do what you think
+
+# GLSL TOP — number of vector uniforms (when you need vec4+ or >3 slots)
+glsl.seq.vec.numBlocks = 6         # adds vec0..vec5
+# then: glsl.par.vec3name = 'iColor'; glsl.par.vec3valuex = 1.0; ...
+```
+
+Same pattern for any "Vectors" / "Channels" / similar repeating page in TD.
 
 ## Audio Signal Calibration (CRITICAL)
 
