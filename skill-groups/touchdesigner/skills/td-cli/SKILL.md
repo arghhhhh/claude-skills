@@ -1,5 +1,5 @@
 ---
-version: 1.2.0
+version: 1.3.0
 name: td-cli
 description: Drive a live TouchDesigner session from the terminal via td-cli — operator/parameter editing, Python exec, screenshots, shader templates, harness loop with backup/rollback.
 ---
@@ -355,17 +355,35 @@ Top-level cross-references can use relative paths; anything inside a COMP refere
 - Use `vUV.st` for texture coords. Apply `TDOutputSwizzle()` to final `fragColor`.
 - `root` is a `baseCOMP` object, not a function — `root.time`, not `root().time`
 
-## Node Layout — Always Position
+## Node Layout — Layout at End of Task
 
-When creating multiple ops, set `nodeCenterX`/`nodeCenterY`. Convention: left→right = data flow, top→bottom = parallel branches.
+**Don't position-as-you-go.** Mid-task iteration deletes and recreates nodes constantly; any positions you set get thrown away. Newly-created nodes pile on top of each other and on top of the user's existing network — illegible.
+
+**Do this instead:** track every op you create, then at the end of the task call TD's built-in layout on **only your new ops**:
 
 ```python
-def pos(op_ref, x, y):
-    op_ref.nodeCenterX = x
-    op_ref.nodeCenterY = y
+new_ops = []
+new_ops.append(p.create(td.noiseTOP, 'noise1'))
+new_ops.append(p.create(td.levelTOP, 'level1'))
+# ... iterate, wire, set params ...
+
+p.layout(ops=new_ops)   # one call, TD's algorithm, leaves user's existing nodes untouched
 ```
 
-Column spacing ~300px, row spacing ~150px. Audio CHOPs at x:-1800 to -900, processing -400 to 500, render 800 to 1400, post 1700+.
+`comp.layout()` with no args rearranges **every** child in the COMP — including the user's hand-laid-out work. Always pass `ops=[...]` with just your additions.
+
+Layout options: `p.layout(ops=new_ops, horizontal=True)`, `vertical=True`, or `gridRows=N`. Default arranges by wiring topology.
+
+### Fallback: manual positioning
+
+If you need a specific topology (e.g. audio CHOPs forced to the left), set positions yourself:
+
+```python
+op_ref.nodeCenterX = x
+op_ref.nodeCenterY = y
+```
+
+Convention: left→right = data flow, top→bottom = parallel branches. Column spacing ~300px, row spacing ~150px. Audio CHOPs at x:-1800 to -900, processing -400 to 500, render 800 to 1400, post 1700+.
 
 ## Node Naming — Suffix Collisions
 
@@ -396,7 +414,7 @@ If the `td_cli_handler` DAT has a compile error, **all POST routes fail** (inclu
 # Creating Networks — Checklist
 
 1. `import td`; use `td.lowercaseTypeCHOP` (not uppercase globals)
-2. Set node positions immediately after `create()`
+2. Track every op you `create()` in a list; call `parent.layout(ops=new_ops)` at end of task (not as you go)
 3. Wire inputs: `child.inputConnectors[0].connect(parent.outputConnectors[0])`
 4. `renderTOP`: `par.camera`, `par.geometry`, `par.lights` (not wires)
 5. `feedbackTOP`: wire + `par.top` to **same** independent upstream node
