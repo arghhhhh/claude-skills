@@ -1,7 +1,7 @@
 {
   "name": "touchdesigner",
   "description": "TouchDesigner control via td-cli — operator/parameter editing, Python exec, screenshots, harness loop with backup/rollback.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "prerequisites": [
     {
       "name": "go",
@@ -23,10 +23,10 @@
         "name": "source",
         "platforms": ["macos", "linux", "windows"],
         "check": "go version",
-        "command": "git clone https://github.com/0dot77/td-cli.git /tmp/td-cli-build && cd /tmp/td-cli-build && go install -ldflags \"-X main.version=0.1.0\" ./cmd/td-cli/ && rm -rf /tmp/td-cli-build"
+        "command": "git clone https://github.com/arghhhhh/td-cli.git /tmp/td-cli-build && cd /tmp/td-cli-build && go install -ldflags \"-X main.version=0.1.0-opaque\" ./cmd/td-cli/ && rm -rf /tmp/td-cli-build"
       }
     ],
-    "notes": "TouchDesigner itself must be installed separately from https://derivative.ca/download. After install, the TDCliServer.tox component from https://github.com/0dot77/td-cli/tree/main/tox must be dropped into the user's TD project root and the Web Server DAT must run on port 9500."
+    "notes": "Pinned to fork arghhhhh/td-cli (includes --opaque flag — PR https://github.com/0dot77/td-cli/pull/2). Revert to 0dot77/td-cli after upstream merges. TouchDesigner itself must be installed separately from https://derivative.ca/download. After install, the TDCliServer.tox component from https://github.com/arghhhhh/td-cli/tree/main/tox must be dropped into the user's TD project root and the Web Server DAT must run on port 9500."
   },
   "test": {
     "command": "td-cli version",
@@ -47,7 +47,7 @@
   "post_install_hints": [
     "TouchDesigner-side setup (one-time per project):",
     "  1. Open your TouchDesigner project.",
-    "  2. Drag `tox/TDCliServer.tox` from https://github.com/0dot77/td-cli into the root network.",
+    "  2. Drag `tox/TDCliServer.tox` from https://github.com/arghhhhh/td-cli into the root network.",
     "  3. Confirm the component is named `TDCliServer` and `webserver1` runs on port 9500.",
     "  4. Verify with: td-cli status",
     "",
