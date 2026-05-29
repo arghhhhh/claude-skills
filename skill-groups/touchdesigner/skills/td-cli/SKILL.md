@@ -1,5 +1,5 @@
 ---
-version: 1.1.0
+version: 1.1.1
 name: td-cli
 description: Drive a live TouchDesigner session from the terminal via td-cli — operator/parameter editing, Python exec, screenshots, shader templates, harness loop with backup/rollback.
 ---
