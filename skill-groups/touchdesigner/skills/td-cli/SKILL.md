@@ -1,5 +1,5 @@
 ---
-version: 1.3.0
+version: 1.4.0
 name: td-cli
 description: Drive a live TouchDesigner session from the terminal via td-cli — operator/parameter editing, Python exec, screenshots, shader templates, harness loop with backup/rollback.
 ---
@@ -354,6 +354,11 @@ Top-level cross-references can use relative paths; anything inside a COMP refere
 - macOS does **not** support geometry shaders — use raymarching in GLSL TOP instead
 - Use `vUV.st` for texture coords. Apply `TDOutputSwizzle()` to final `fragColor`.
 - `root` is a `baseCOMP` object, not a function — `root.time`, not `root().time`
+- **The Constants page silently does NOT bind to `uniform float` declarations.** Even when the const name matches the uniform name, no value reaches the GPU — the uniform reads whatever garbage was at that memory location, often differing frame to frame (flicker). Put all scalar float uniforms on **vec slots** instead and read from `.x` in the shader; TD wires those correctly. The only signal TD gives you is a small `Uniform 'X' is not assigned` line in the GLSL TOP's `_info` DAT — easily missed because the shader still compiles without error.
+- **Always read the `_info` DAT after wiring uniforms.** `td-cli dat read /path/to/glsl_info` lists every "Uniform 'X' is not assigned" warning. If any uniform is unbound, the rest of your debugging is wasted. Check info DAT first, before sampling, before screenshotting.
+- **Don't use GLSL `out` parameters for sampling helpers.** A function like `void sampleCloud(vec3 d, out vec3 col, out float density)` called twice with different inputs can return identical results — the compiler optimizes one of the calls away, especially when both invocations look structurally similar. Inline the samples or return a struct.
+- **`g.seq.const.numBlocks = N` to expand slots can silently wipe existing names.** After every sequence resize, re-set every `constNname` (and re-bind expressions). Same caveat applies to `g.seq.vec.numBlocks`.
+- **The val/eval discrepancy is a red herring.** Expression-mode params often have `par.val == 0.0` (cached default) while `par.eval() == correct_value`. The GPU uses `eval()` at cook time, not `val`. Don't waste time forcing `par.val := par.eval()` — it does nothing for GPU behavior.
 
 ## Node Layout — Layout at End of Task
 
