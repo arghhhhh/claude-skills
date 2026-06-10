@@ -19,7 +19,7 @@ set -euo pipefail
 # ─────────────────────────────────────────────────────────────────────────────
 # claude-skills installer v2.4 — typed groups (authored / vendored / tool-only)
 # Cross-platform (macOS, Linux, Windows via Git Bash/WSL)
-# Installs, updates, and syncs skill groups: software + skills + agents → ~/.claude/
+# Installs, updates, and syncs skill groups: software + skills + agents + commands → ~/.claude/
 # ─────────────────────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,6 +28,7 @@ SHARED_DIR="$SCRIPT_DIR/shared"
 CLAUDE_DIR="$HOME/.claude"
 SKILLS_DIR="$CLAUDE_DIR/skills"
 AGENTS_DIR="$CLAUDE_DIR/agents"
+COMMANDS_DIR="$CLAUDE_DIR/commands"
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 CONFIG_FILE="$CLAUDE_DIR/skills-config.sh"
 META_DIR="$CLAUDE_DIR/.skills-meta"
@@ -863,9 +864,12 @@ install_skills() {
     return 0
   fi
 
-  mkdir -p "$SKILLS_DIR" "$AGENTS_DIR"
+  mkdir -p "$SKILLS_DIR" "$AGENTS_DIR" "$COMMANDS_DIR"
 
-  local skills_source_dir agents_source_dir
+  local skills_source_dir agents_source_dir commands_source_dir
+
+  # Commands always live in the local skill-group dir (no vendored equivalent).
+  commands_source_dir="$SKILL_GROUPS_DIR/$group/commands"
 
   if [ "$gtype" = "vendored" ]; then
     local clone_dir
@@ -987,6 +991,20 @@ install_skills() {
       ok "Agent: $agent"
     else
       warn "Agent not found: $agent (looked in $src)"
+    fi
+  done
+
+  # Slash commands: symlink skill-groups/<g>/commands/*.md → ~/.claude/commands/
+  local commands
+  commands=$(json_array "$manifest" "commands")
+  for cmd in $commands; do
+    local src="$commands_source_dir/$cmd.md"
+    local dest="$COMMANDS_DIR/$cmd.md"
+    if [ -f "$src" ]; then
+      create_symlink "$src" "$dest"
+      ok "Command: /$cmd"
+    else
+      warn "Command not found: /$cmd (looked in $src)"
     fi
   done
 }
@@ -1589,6 +1607,27 @@ verify_group() {
     fi
     if [ -L "$target" ] && [ ! -e "$target" ]; then
       fail "Agent: $agent.md (broken symlink → $(readlink "$target"))"
+    fi
+  done
+
+  # 4b. Check slash commands are linked
+  info "Commands:"
+  local commands
+  commands=$(json_array "$manifest" "commands")
+  if [ -z "$commands" ]; then
+    info "  (no commands defined)"
+  fi
+  for cmd in $commands; do
+    local target="$COMMANDS_DIR/$cmd.md"
+    if [ -f "$target" ] && [ -s "$target" ]; then
+      ok "Command: /$cmd (present, non-empty)"
+    elif [ -f "$target" ]; then
+      fail "Command: /$cmd (exists but is empty)"
+    else
+      fail "Command: /$cmd (not found at $target)"
+    fi
+    if [ -L "$target" ] && [ ! -e "$target" ]; then
+      fail "Command: /$cmd (broken symlink → $(readlink "$target"))"
     fi
   done
 

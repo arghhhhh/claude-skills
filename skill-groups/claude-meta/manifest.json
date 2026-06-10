@@ -1,0 +1,25 @@
+{
+  "name": "claude-meta",
+  "description": "Meta-utilities for working with Claude itself — slash commands and agents that query Claude's own model list, version info, etc.",
+  "version": "0.1.0",
+  "prerequisites": [],
+  "install": {
+    "check": "true",
+    "methods": [
+      {
+        "name": "noop",
+        "platforms": ["macos", "linux", "windows"],
+        "check": "true",
+        "command": "true"
+      }
+    ],
+    "notes": "No software dependencies — pure markdown commands and agents."
+  },
+  "test": {
+    "command": "true",
+    "expect_success": true
+  },
+  "skills": [],
+  "agents": ["model-lister"],
+  "commands": ["models"]
+}
