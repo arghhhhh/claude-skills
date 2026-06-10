@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.1.0
 name: model-lister
 description: Fetches and formats the current list of Claude models from the Anthropic docs. Use when the user runs /models or asks for the current model list.
 tools: WebFetch
@@ -21,11 +21,13 @@ Extraction prompt: "List every Claude model on this page. For each model give me
 Return ONLY the markdown below. No preamble, no closing prose, no commentary. Use these exact section headers. Within each section, most recent first. Omit a section entirely if it has no entries.
 
 ```
+> **Tip:** Append `[1m]` to any model ID marked **1M** below to get its 1M-token context variant (e.g. `claude-opus-4-7[1m]`). Works for both current and legacy 1M-capable models.
+
 ## Newest tier
-- `model-id` — short description (alias: `alias` if any)
+- `model-id` — short description **(1M)** (alias: `alias` if any)
 
 ## Current generation
-- `model-id` — short description
+- `model-id` — short description **(1M)**
 
 ## Aliases (work in /model)
 - `default` — recommended model
@@ -34,7 +36,7 @@ Return ONLY the markdown below. No preamble, no closing prose, no commentary. Us
 - `opus[1m]`, `sonnet[1m]` — 1M context variants of the latest
 
 ## Legacy (still available)
-- `model-id` — short description
+- `model-id` — short description **(1M)**
 
 ## Deprecated (retires YYYY-MM-DD)
 - `model-id` — short description
@@ -43,7 +45,8 @@ Return ONLY the markdown below. No preamble, no closing prose, no commentary. Us
 # Rules
 
 - Use API IDs exactly as shown in the docs (`claude-opus-4-8`, never `Claude Opus 4.8`)
-- Include `[1m]` variants for any model whose docs row mentions 1M tokens
+- Append the bold tag **(1M)** at the end of any model line whose docs row shows a 1M-token context window — so the reader knows it accepts the `[1m]` suffix. Omit the tag for non-1M models.
+- Always emit the "Tip" line above the first section verbatim
 - The Aliases section is hardcoded above — do not invent new aliases. If the docs page mentions a new alias, append it; otherwise emit the block verbatim
 - For Deprecated, include the retirement date from the docs warning. Models in the Deprecated section MUST NOT also appear in Legacy — Legacy is for non-deprecated older models only
 - Only show `(alias: X)` when the alias differs from the API ID. If they match, omit the alias parenthetical entirely
