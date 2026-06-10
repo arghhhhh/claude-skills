@@ -1,0 +1,42 @@
+{
+  "name": "claude-code-sessions",
+  "type": "tool-only",
+  "description": "TUI for browsing every local Claude Code session (CLI + Mac-app Local) in one place. Reads ~/.claude/projects/**/*.jsonl directly.",
+  "version": "0.1.0",
+  "prerequisites": [
+    {
+      "name": "go",
+      "check": "go version",
+      "install_hint": "Install Go 1.21+: https://go.dev/dl/  (macOS: brew install go  ·  Windows: winget install GoLang.Go)",
+      "required": true
+    },
+    {
+      "name": "git",
+      "check": "git --version",
+      "install_hint": "Install git",
+      "required": true
+    }
+  ],
+  "install": {
+    "check": "test -x \"$HOME/.local/share/claude-code-sessions/claude-code-sessions\" || test -x \"$HOME/.local/share/claude-code-sessions/claude-code-sessions.exe\"",
+    "methods": [
+      {
+        "name": "git+go",
+        "platforms": ["macos", "linux", "windows"],
+        "check": "go version && git --version",
+        "command": "mkdir -p \"$HOME/.local/share\" && { [ -d \"$HOME/.local/share/claude-code-sessions/.git\" ] && git -C \"$HOME/.local/share/claude-code-sessions\" pull --ff-only || git clone https://github.com/arghhhhh/claude-code-sessions.git \"$HOME/.local/share/claude-code-sessions\"; } && cd \"$HOME/.local/share/claude-code-sessions\" && go build -o claude-code-sessions ."
+      }
+    ]
+  },
+  "test": {
+    "command": "test -x \"$HOME/.local/share/claude-code-sessions/claude-code-sessions\" || test -x \"$HOME/.local/share/claude-code-sessions/claude-code-sessions.exe\"",
+    "expect_success": true
+  },
+  "post_install_hints": [
+    "Binary installed at ~/.local/share/claude-code-sessions/claude-code-sessions",
+    "Add this shell function to ~/.zshrc or ~/.bashrc, then `source` it:",
+    "  cs() { cmd=$(~/.local/share/claude-code-sessions/claude-code-sessions) && [ -n \"$cmd\" ] && eval \"$cmd\"; }",
+    "Then run `cs` from any directory to open the session picker.",
+    "Keys: ↑/↓ navigate · enter resume · d +--dangerously-skip-permissions · c +--chrome · D both · / search · q quit"
+  ]
+}
