@@ -2,7 +2,7 @@
   "name": "claude-code-sessions",
   "type": "tool-only",
   "description": "TUI for browsing every local Claude Code session (CLI + Mac-app Local) in one place. Reads ~/.claude/projects/**/*.jsonl directly.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "prerequisites": [
     {
       "name": "go",
@@ -18,18 +18,18 @@
     }
   ],
   "install": {
-    "check": "test -x \"$HOME/.local/share/claude-code-sessions/claude-code-sessions\" || test -x \"$HOME/.local/share/claude-code-sessions/claude-code-sessions.exe\"",
+    "check": "test -x $HOME/.local/share/claude-code-sessions/claude-code-sessions || test -x $HOME/.local/share/claude-code-sessions/claude-code-sessions.exe",
     "methods": [
       {
         "name": "git+go",
         "platforms": ["macos", "linux", "windows"],
         "check": "go version && git --version",
-        "command": "mkdir -p \"$HOME/.local/share\" && { [ -d \"$HOME/.local/share/claude-code-sessions/.git\" ] && git -C \"$HOME/.local/share/claude-code-sessions\" pull --ff-only || git clone https://github.com/arghhhhh/claude-code-sessions.git \"$HOME/.local/share/claude-code-sessions\"; } && cd \"$HOME/.local/share/claude-code-sessions\" && go build -o claude-code-sessions ."
+        "command": "mkdir -p $HOME/.local/share && { [ -d $HOME/.local/share/claude-code-sessions/.git ] && git -C $HOME/.local/share/claude-code-sessions pull --ff-only || git clone https://github.com/arghhhhh/claude-code-sessions.git $HOME/.local/share/claude-code-sessions; } && cd $HOME/.local/share/claude-code-sessions && go build -o claude-code-sessions ."
       }
     ]
   },
   "test": {
-    "command": "test -x \"$HOME/.local/share/claude-code-sessions/claude-code-sessions\" || test -x \"$HOME/.local/share/claude-code-sessions/claude-code-sessions.exe\"",
+    "command": "test -x $HOME/.local/share/claude-code-sessions/claude-code-sessions || test -x $HOME/.local/share/claude-code-sessions/claude-code-sessions.exe",
     "expect_success": true
   },
   "post_install_hints": [
