@@ -1009,52 +1009,82 @@ install_skills() {
   done
 }
 
-# ─── Orphan sweep: prune ~/.claude/commands/ symlinks not in any manifest ───
+# ─── Orphan sweep: prune managed symlinks no longer listed in any manifest ──
 
-# Removes symlinks in $COMMANDS_DIR that point into our canonical repo but no
-# longer correspond to any `commands: [...]` entry in any manifest. Leaves
-# regular files (hand-authored commands) and symlinks pointing elsewhere alone.
-sweep_command_orphans() {
-  [ -d "$COMMANDS_DIR" ] || return 0
+# Removes symlinks in $target_dir that point into our managed area
+# ($CLAUDE_DIR/.skill-repos/) but no longer correspond to any entry in any
+# manifest's $manifest_key array. If $shared_subdir is provided, names found
+# in $SHARED_DIR/$shared_subdir/ are also kept (shared skills aren't in any
+# manifest's array but ship with the repo).
+#
+# Safety: only touches symlinks pointing inside $CLAUDE_DIR/.skill-repos/.
+# Regular files (hand-authored) and symlinks pointing elsewhere are left alone.
+#
+# Args: <target_dir> <manifest_key> <label> [shared_subdir]
+sweep_orphans_in() {
+  local target_dir="$1"
+  local manifest_key="$2"
+  local label="$3"
+  local shared_subdir="${4:-}"
+
+  [ -d "$target_dir" ] || return 0
+
+  local shared_path=""
+  [ -n "$shared_subdir" ] && shared_path="$SHARED_DIR/$shared_subdir"
 
   local keep_set
   keep_set=$(node -e "
     const fs = require('fs');
     const path = require('path');
     const dir = process.argv[1];
+    const key = process.argv[2];
+    const sharedDir = process.argv[3] || '';
     const keep = new Set();
     for (const g of fs.readdirSync(dir)) {
       const m = path.join(dir, g, 'manifest.json');
       if (!fs.existsSync(m)) continue;
       try {
         const j = JSON.parse(fs.readFileSync(m, 'utf8'));
-        for (const c of (j.commands || [])) keep.add(c);
+        for (const c of (j[key] || [])) keep.add(String(c).replace(/\.md$/, ''));
       } catch(e) {}
     }
+    if (sharedDir && fs.existsSync(sharedDir)) {
+      for (const e of fs.readdirSync(sharedDir)) {
+        keep.add(e.replace(/\.md$/, ''));
+      }
+    }
     process.stdout.write([...keep].join('\n'));
-  " "$SKILL_GROUPS_DIR" 2>/dev/null) || keep_set=""
+  " "$SKILL_GROUPS_DIR" "$manifest_key" "$shared_path" 2>/dev/null) || keep_set=""
 
   local removed=0
-  while IFS= read -r -d '' file; do
-    [ -L "$file" ] || continue
+  while IFS= read -r -d '' entry; do
+    [ -L "$entry" ] || continue
     local target
-    target=$(readlink "$file")
+    target=$(readlink "$entry")
     case "$target" in
-      "$CANONICAL_DIR"/skill-groups/*/commands/*) ;;
+      "$CLAUDE_DIR/.skill-repos/"*) ;;
       *) continue ;;
     esac
     local base
-    base=$(basename "$file" .md)
+    base=$(basename "$entry")
+    base="${base%.md}"
     if ! grep -qFx "$base" <<< "$keep_set"; then
-      rm -f "$file"
-      info "Removed orphan command: /$base (no longer in any manifest)"
+      rm -f "$entry"
+      info "Removed orphan $label: $base (no longer in any manifest)"
       removed=$((removed + 1))
     fi
-  done < <(find "$COMMANDS_DIR" -maxdepth 1 -name "*.md" -print0 2>/dev/null)
+  done < <(find "$target_dir" -maxdepth 1 -mindepth 1 -print0 2>/dev/null)
 
   if [ "$removed" -gt 0 ]; then
-    ok "Pruned $removed orphan command symlink(s)"
+    ok "Pruned $removed orphan $label symlink(s)"
   fi
+}
+
+# Sweep all three managed dirs. Run at the end of install/update modes.
+sweep_orphans() {
+  sweep_orphans_in "$COMMANDS_DIR" "commands" "command" ""
+  sweep_orphans_in "$AGENTS_DIR"   "agents"   "agent"   ""
+  sweep_orphans_in "$SKILLS_DIR"   "skills"   "skill"   "skills"
 }
 
 # ─── Configure template variables ───────────────────────────────────────────
@@ -2463,6 +2493,9 @@ main() {
       update_group "$group"
     done
 
+    # Prune managed symlinks no longer in any manifest
+    sweep_orphans
+
     echo ""
     header "Update Summary"
     echo -e "  ${GREEN}$PASS_COUNT passed${NC}  ${YELLOW}$WARN_COUNT warnings${NC}  ${RED}$FAIL_COUNT failed${NC}"
@@ -2541,8 +2574,8 @@ main() {
   header "── shared ──"
   install_shared_skills
 
-  # Prune slash-command symlinks whose entries were removed from manifests
-  sweep_command_orphans
+  # Prune managed symlinks (commands, agents, skills) no longer in any manifest
+  sweep_orphans
 
   echo ""
   header "Install Summary"
