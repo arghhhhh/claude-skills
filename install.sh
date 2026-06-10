@@ -1009,6 +1009,54 @@ install_skills() {
   done
 }
 
+# ─── Orphan sweep: prune ~/.claude/commands/ symlinks not in any manifest ───
+
+# Removes symlinks in $COMMANDS_DIR that point into our canonical repo but no
+# longer correspond to any `commands: [...]` entry in any manifest. Leaves
+# regular files (hand-authored commands) and symlinks pointing elsewhere alone.
+sweep_command_orphans() {
+  [ -d "$COMMANDS_DIR" ] || return 0
+
+  local keep_set
+  keep_set=$(node -e "
+    const fs = require('fs');
+    const path = require('path');
+    const dir = process.argv[1];
+    const keep = new Set();
+    for (const g of fs.readdirSync(dir)) {
+      const m = path.join(dir, g, 'manifest.json');
+      if (!fs.existsSync(m)) continue;
+      try {
+        const j = JSON.parse(fs.readFileSync(m, 'utf8'));
+        for (const c of (j.commands || [])) keep.add(c);
+      } catch(e) {}
+    }
+    process.stdout.write([...keep].join('\n'));
+  " "$SKILL_GROUPS_DIR" 2>/dev/null) || keep_set=""
+
+  local removed=0
+  while IFS= read -r -d '' file; do
+    [ -L "$file" ] || continue
+    local target
+    target=$(readlink "$file")
+    case "$target" in
+      "$CANONICAL_DIR"/skill-groups/*/commands/*) ;;
+      *) continue ;;
+    esac
+    local base
+    base=$(basename "$file" .md)
+    if ! grep -qFx "$base" <<< "$keep_set"; then
+      rm -f "$file"
+      info "Removed orphan command: /$base (no longer in any manifest)"
+      removed=$((removed + 1))
+    fi
+  done < <(find "$COMMANDS_DIR" -maxdepth 1 -name "*.md" -print0 2>/dev/null)
+
+  if [ "$removed" -gt 0 ]; then
+    ok "Pruned $removed orphan command symlink(s)"
+  fi
+}
+
 # ─── Configure template variables ───────────────────────────────────────────
 
 configure_skills() {
@@ -2492,6 +2540,9 @@ main() {
   # Install shared skills
   header "── shared ──"
   install_shared_skills
+
+  # Prune slash-command symlinks whose entries were removed from manifests
+  sweep_command_orphans
 
   echo ""
   header "Install Summary"
