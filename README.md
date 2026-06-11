@@ -68,9 +68,14 @@ For each selected skill group, the installer:
 2. **Installs the software** (e.g. `cargo install unity-cli`, `pip install comfy-cli`)
 3. **Symlinks skills** into `~/.claude/skills/` (with version tracking)
 4. **Symlinks agents** into `~/.claude/agents/`
-5. **Configures placeholders** from `~/.claude/skills-config.sh`
-6. **Appends trigger phrases** to `~/.claude/CLAUDE.md`
-7. **Runs a smoke test** to verify the software works
+5. **Symlinks slash commands** into `~/.claude/commands/` (e.g. `/models-list` from the `claude-meta` group)
+6. **Configures placeholders** from `~/.claude/skills-config.sh`
+7. **Appends trigger phrases** to `~/.claude/CLAUDE.md`
+8. **Runs a smoke test** to verify the software works
+
+Across all runs, the installer also:
+- **Installs shell aliases** for the `claude` CLI — `--chr` → `--chrome`, `--dsp` → `--dangerously-skip-permissions` (added to `~/.zshrc` / `~/.bashrc` / PowerShell profile)
+- **Sweeps orphan symlinks** — symlinks under `~/.claude/{skills,agents,commands}/` that no longer correspond to any manifest entry are pruned at the end of each install/update run. Hand-authored files and symlinks pointing outside the managed dir are left alone.
 
 On first run from a temporary directory (e.g. `/tmp`), the repo is automatically copied to `~/.claude/.skill-repos/claude-skills/` so symlinks survive reboots.
 
@@ -96,31 +101,18 @@ When updating, the installer automatically backs up your existing skills to `~/.
 
 ## Skill Groups
 
-| Group | Software | Install Method | Skills | Agent |
-|-------|----------|---------------|--------|-------|
-| `app-ui` | [Unity App UI](https://docs.unity3d.com/Packages/com.unity.dt.app-ui@2.2/manual/index.html) | Unity Package Manager | 5 skills | — |
-| `ast-grep` | [ast-grep](https://ast-grep.github.io/) | `brew` / `npm` / `cargo` / `pip` | `ast-grep` | — |
-| `blender` | [Blender](https://www.blender.org/) + [blender-mcp](https://github.com/ahujasid/blender-mcp) | manual / `brew` | `blender-mcp` | `blender` |
-| `claude-mermaid` | [claude-mermaid](https://www.npmjs.com/package/claude-mermaid) MCP server | `npm` | `claude-mermaid` | — |
-| `claude-notifications` | Built-in Claude Code plugin | bootstrap script | — | — |
-| `comfyui` | [comfy-cli](https://github.com/Comfy-Org/comfy-cli) + [comfy-pilot](https://github.com/ConstantineB6/comfy-pilot) | `pip install` | `comfy-cli`, `comfy-pilot` | `comfyui` |
-| `find-docs` | [Context7](https://context7.com/) | `npx ctx7@latest` (no install) | `find-docs` | — |
-| `find-skills` | [skills.sh](https://skills.sh/) | `npx skills` (no install) | `find-skills` | — |
-| `ghidra` | [ghidra-cli](https://github.com/akiselev/ghidra-cli) | `cargo install --git` | `ghidra-cli` | `ghidra` |
-| `github-cli` | [gh](https://cli.github.com/) | `brew` / `winget` / binary | `github-cli` | — |
-| `houdini` | [SideFX Houdini](https://www.sidefx.com/) + houdini-mcp | bootstrap script / manual | `houdini-mcp` | `houdini` |
-| `huggingface-downloader` | [hfdownloader](https://github.com/bodaay/HuggingFaceModelDownloader) | GitHub release binary | `huggingface-downloader` | — |
-| `ilspy` | [ilspy-cli](https://github.com/akiselev/ghidra-cli) (ilspy-cli crate) | `cargo install --git` | `ilspy-cli` | `ilspy` |
-| `imagemagick` | [ImageMagick](https://imagemagick.org/) | `winget` / `brew` / `apt` | `imagemagick-cli` | `imagemagick` |
-| `notch` | [Notch Builder 2026.1](https://www.notch.one/) + Node.js | manual (Notch); `node` for lookup CLI | `notch` | `notch` |
-| `obs-studio` | [gobs-cli](https://github.com/muesli/obs-cli) | `go install` / brew / binary | `obs-cli` | `obs-studio` |
-| `officecli` | [OfficeCLI](https://github.com/iOfficeAI/OfficeCLI) | curl / PowerShell / binary | 9 skills (vendored from upstream) | — |
-| `playwright-cli` | [Playwright](https://playwright.dev/) | `npm` / `npx` | `playwright-cli` | — |
-| `unity-cli` | [unity-cli](https://github.com/akiojin/unity-cli) (upstream akiojin) | `cargo install` (requires Rust) | 13 skills (vendored) | `unity` |
+The full current list (with descriptions) is the source of truth in `skill-groups/*/manifest.json`. To see it from the CLI:
 
-MCPorter-based skills (`comfyui`, `blender`, `houdini`, `claude-mermaid`) also need [mcporter](https://github.com/steipete/mcporter) (`npx mcporter` — auto-installed via npx).
+```bash
+bash install.sh --list      # group names
+bash install.sh --status    # group + skill versions, plus what's installed locally
+```
 
-**Vendored groups** (`officecli`, `unity-cli`) ship skills sourced from upstream repos rather than authored here. See each group's `manifest.json` for the `source_repo` reference. Local customizations live in an `overlays/` subfolder; everything else is pulled fresh on install.
+Notable categories:
+
+- **MCPorter-based skills** (e.g. `comfyui`, `blender`, `houdini`, `claude-mermaid`) also need [mcporter](https://github.com/steipete/mcporter) (`npx mcporter` — auto-installed via npx)
+- **Vendored groups** (e.g. `officecli`, `unity-cli`) ship skills sourced from upstream repos rather than authored here. See each group's `manifest.json` for the `source` block. Local customizations live in an `overlays/` subfolder; everything else is pulled fresh on install
+- **Meta groups** (e.g. `claude-meta`) install slash commands and agents that operate on Claude itself rather than external software
 
 ## Directory Structure
 
@@ -128,29 +120,15 @@ MCPorter-based skills (`comfyui`, `blender`, `houdini`, `claude-mermaid`) also n
 claude-skills/
 ├── install.sh                          # Cross-platform CLI installer
 ├── config.example.sh                   # Machine-specific config template
-├── skill-groups/
-│   ├── app-ui/                         # Unity App UI (5 skills)
-│   ├── ast-grep/                       # Structural code search
-│   ├── blender/                        # Blender 3D + MCP addon (+ agent)
-│   ├── claude-mermaid/                 # Mermaid diagram rendering MCP
-│   ├── claude-notifications/           # Claude Code desktop notifications plugin
-│   ├── comfyui/                        # ComfyUI + comfy-pilot (+ agent)
-│   ├── find-docs/                      # Context7 doc lookup
-│   ├── find-skills/                    # skills.sh discovery
-│   ├── ghidra/                         # Ghidra reverse engineering (+ agent)
-│   ├── github-cli/                     # GitHub CLI (gh)
-│   ├── houdini/                        # SideFX Houdini + MCP (+ agent)
-│   ├── huggingface-downloader/         # Fast HuggingFace downloads
-│   ├── ilspy/                          # .NET decompilation (+ agent)
-│   ├── imagemagick/                    # Image manipulation (+ agent)
-│   ├── notch/                          # Notch Builder JS authoring (+ agent)
-│   ├── obs-studio/                     # OBS Studio + gobs-cli (+ agent)
-│   ├── officecli/                      # Office docs (9 skills, vendored)
-│   ├── playwright-cli/                 # Browser automation
-│   └── unity-cli/                      # Unity Editor (13 skills, vendored from akiojin/unity-cli, + agent overlay)
+├── skill-groups/<group>/               # One dir per group; see install.sh --list
+│   ├── manifest.json                   # Software + prerequisites + skills/agents/commands arrays
+│   ├── skills/   <name>.md             # Skill content (or directory with SKILL.md)
+│   ├── agents/   <name>.md             # Agent definitions (subagent_type prompts)
+│   ├── commands/ <name>.md             # Slash command bodies (optional)
+│   └── overlays/                       # Local customizations for vendored groups
 ├── shared/
-│   ├── skills/                         # mcp-setup.md, skill-repo-maintenance/
-│   └── claude-md/                      # CLAUDE.md snippets per group
+│   ├── skills/                         # Cross-group skills (always installed)
+│   └── claude-md/                      # CLAUDE.md trigger-phrase snippets per group
 └── README.md
 ```
 
@@ -160,6 +138,7 @@ After installation, the following is created in `~/.claude/`:
 ~/.claude/
 ├── skills/                 # Symlinks (or copies with configured placeholders)
 ├── agents/                 # Symlinks to agent definitions
+├── commands/               # Symlinks to slash-command bodies
 ├── .skill-repos/
 │   └── claude-skills/      # Canonical repo copy (symlinks point here)
 ├── .skills-meta/
