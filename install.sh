@@ -761,6 +761,26 @@ EOF
   done
 }
 
+# ─── Install repo git hooks ─────────────────────────────────────────────────
+
+# Copy scripts/post-merge-hook.sh into the canonical repo's .git/hooks/post-merge
+# so future `git pull`s of claude-skills warn when vendored manifests change.
+# Idempotent — overwrites if source is newer.
+install_git_hooks() {
+  local src="$SCRIPT_DIR/scripts/post-merge-hook.sh"
+  local hooks_dir="$CANONICAL_DIR/.git/hooks"
+  local dest="$hooks_dir/post-merge"
+
+  [ -f "$src" ] || return 0
+  [ -d "$hooks_dir" ] || return 0
+
+  if [ ! -f "$dest" ] || ! cmp -s "$src" "$dest"; then
+    cp "$src" "$dest"
+    chmod +x "$dest"
+    ok "Installed claude-skills git post-merge hook"
+  fi
+}
+
 # ─── Install software dependency ────────────────────────────────────────────
 
 install_software() {
@@ -2485,6 +2505,7 @@ main() {
   # ── Update mode ──
   if [ "$MODE" = "update" ]; then
     install_shell_aliases
+    install_git_hooks
     for group in "${SELECTED_GROUPS[@]}"; do
       if [ ! -f "$SKILL_GROUPS_DIR/$group/manifest.json" ]; then
         fail "Unknown skill group: $group"
@@ -2510,6 +2531,7 @@ main() {
 
   install_global_prerequisites
   install_shell_aliases
+  install_git_hooks
 
   if [ ${#SELECTED_GROUPS[@]} -eq 0 ]; then
     select_groups
