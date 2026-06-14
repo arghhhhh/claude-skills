@@ -761,6 +761,117 @@ EOF
   done
 }
 
+# ─── Per-group shell aliases ────────────────────────────────────────────────
+
+# claude-code-sessions: install a `cs` shell function that runs the TUI and
+# evals the resume command it prints to stdout. Idempotent — replaces the
+# managed block between BEGIN/END markers.
+install_sessions_aliases() {
+  local marker_begin="# >>> claude-code-sessions cs() wrapper >>>"
+  local marker_end="# <<< claude-code-sessions cs() wrapper <<<"
+
+  # ─── bash / zsh ───
+  local bash_block
+  bash_block=$(cat <<'EOF'
+# >>> claude-code-sessions cs() wrapper >>>
+# Managed by claude-skills installer — do not edit between markers.
+# Runs the session picker TUI; on selection, the binary prints a `claude …`
+# command to stdout which this function evals to resume the session.
+cs() {
+  local exe="$HOME/.local/share/claude-code-sessions/claude-code-sessions.exe"
+  [ -x "$exe" ] || exe="$HOME/.local/share/claude-code-sessions/claude-code-sessions"
+  local cmd
+  cmd=$("$exe") && [ -n "$cmd" ] && eval "$cmd"
+}
+# <<< claude-code-sessions cs() wrapper <<<
+EOF
+)
+
+  local targets=("$HOME/.bashrc")
+  if [ "$PLATFORM" = "macos" ] || [ -f "$HOME/.zshrc" ]; then
+    targets+=("$HOME/.zshrc")
+  fi
+
+  for rc in "${targets[@]}"; do
+    [ -f "$rc" ] || touch "$rc"
+    local existed_already=false
+    if grep -qF "$marker_begin" "$rc"; then
+      existed_already=true
+      local tmp
+      tmp=$(mktemp)
+      awk -v begin="$marker_begin" -v end="$marker_end" '
+        $0 == begin { skipping=1; next }
+        skipping && $0 == end { skipping=0; next }
+        !skipping { print }
+      ' "$rc" > "$tmp" && mv "$tmp" "$rc"
+    fi
+    if [ -s "$rc" ] && [ "$(tail -c1 "$rc" 2>/dev/null | od -An -c | tr -d ' ')" != "\n" ]; then
+      printf '\n' >> "$rc"
+    fi
+    printf '%s\n' "$bash_block" >> "$rc"
+    if [ "$existed_already" = "true" ]; then
+      ok "Refreshed cs() wrapper in $rc"
+    else
+      ok "Installed cs() wrapper in $rc (restart shell to pick up)"
+    fi
+  done
+
+  # ─── PowerShell (Windows only) ───
+  if [ "$PLATFORM" = "windows" ]; then
+    local ps_block
+    ps_block=$(cat <<'EOF'
+# >>> claude-code-sessions cs() wrapper >>>
+# Managed by claude-skills installer — do not edit between markers.
+function cs {
+    $exe = Join-Path $HOME '.local\share\claude-code-sessions\claude-code-sessions.exe'
+    if (-not (Test-Path $exe)) {
+        $alt = Join-Path $HOME '.local\share\claude-code-sessions\claude-code-sessions'
+        if (Test-Path $alt) { $exe = $alt }
+    }
+    $cmd = & $exe
+    if ($cmd) { Invoke-Expression $cmd }
+}
+# <<< claude-code-sessions cs() wrapper <<<
+EOF
+)
+    local ps_targets=(
+      "$HOME/Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1"
+      "$HOME/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
+    )
+    for ps in "${ps_targets[@]}"; do
+      mkdir -p "$(dirname "$ps")"
+      [ -f "$ps" ] || touch "$ps"
+      local existed_already=false
+      if grep -qF "$marker_begin" "$ps"; then
+        existed_already=true
+        local tmp
+        tmp=$(mktemp)
+        awk -v begin="$marker_begin" -v end="$marker_end" '
+          $0 == begin { skipping=1; next }
+          skipping && $0 == end { skipping=0; next }
+          !skipping { print }
+        ' "$ps" > "$tmp" && mv "$tmp" "$ps"
+      fi
+      if [ -s "$ps" ] && [ "$(tail -c1 "$ps" 2>/dev/null | od -An -c | tr -d ' ')" != "\n" ]; then
+        printf '\n' >> "$ps"
+      fi
+      printf '%s\n' "$ps_block" >> "$ps"
+      if [ "$existed_already" = "true" ]; then
+        ok "Refreshed cs() wrapper in $ps"
+      else
+        ok "Installed cs() wrapper in $ps (restart shell to pick up)"
+      fi
+    done
+  fi
+}
+
+# Dispatcher: per-group shell-alias hooks. Called from the per-group install loop.
+install_group_shell_aliases() {
+  case "$1" in
+    claude-code-sessions) install_sessions_aliases ;;
+  esac
+}
+
 # ─── Install repo git hooks ─────────────────────────────────────────────────
 
 # Copy scripts/post-merge-hook.sh into the canonical repo's .git/hooks/post-merge
@@ -2587,6 +2698,9 @@ main() {
     elif [ "$INSTALL_SKIPPED" = "true" ]; then
       info "Smoke test: skipped (software install was skipped)"
     fi
+
+    # Step 8: Per-group shell aliases (e.g. cs() for claude-code-sessions)
+    install_group_shell_aliases "$group"
 
     # Step 8: Show post-install hints
     show_post_install_hints "$group"

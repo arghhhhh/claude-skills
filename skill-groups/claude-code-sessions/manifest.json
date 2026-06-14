@@ -2,7 +2,7 @@
   "name": "claude-code-sessions",
   "type": "tool-only",
   "description": "TUI for browsing every local Claude Code session (CLI + Mac-app Local) in one place. Reads ~/.claude/projects/**/*.jsonl directly.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "prerequisites": [
     {
       "name": "go",
@@ -24,7 +24,7 @@
         "name": "git+go",
         "platforms": ["macos", "linux", "windows"],
         "check": "go version && git --version",
-        "command": "mkdir -p $HOME/.local/share && { [ -d $HOME/.local/share/claude-code-sessions/.git ] && git -C $HOME/.local/share/claude-code-sessions pull --ff-only || git clone https://github.com/arghhhhh/claude-code-sessions.git $HOME/.local/share/claude-code-sessions; } && cd $HOME/.local/share/claude-code-sessions && go build -o claude-code-sessions ."
+        "command": "mkdir -p $HOME/.local/share && { [ -d $HOME/.local/share/claude-code-sessions/.git ] && git -C $HOME/.local/share/claude-code-sessions pull --ff-only || git clone https://github.com/arghhhhh/claude-code-sessions.git $HOME/.local/share/claude-code-sessions; } && cd $HOME/.local/share/claude-code-sessions && go build ."
       }
     ]
   },
@@ -33,10 +33,8 @@
     "expect_success": true
   },
   "post_install_hints": [
-    "Binary installed at ~/.local/share/claude-code-sessions/claude-code-sessions",
-    "Add this shell function to ~/.zshrc or ~/.bashrc, then `source` it:",
-    "  cs() { cmd=$(~/.local/share/claude-code-sessions/claude-code-sessions) && [ -n \"$cmd\" ] && eval \"$cmd\"; }",
-    "Then run `cs` from any directory to open the session picker.",
+    "Binary installed at ~/.local/share/claude-code-sessions/ (claude-code-sessions on macOS/Linux, claude-code-sessions.exe on Windows).",
+    "The `cs` shell function is installed automatically into ~/.bashrc, ~/.zshrc (when present), and the PowerShell profile (Windows). Restart your shell, then run `cs` from any directory.",
     "Keys: ↑/↓ navigate · enter resume · d +--dangerously-skip-permissions · c +--chrome · D both · / search · q quit"
   ]
 }
