@@ -1,0 +1,24 @@
+# Enforce LF line endings in the working tree on every platform.
+#
+# install.sh and its helpers run under bash on both macOS and Windows
+# (Git Bash). Mixed line endings cause two real problems:
+#
+# 1. Shell scripts with CRLF fail on macOS/Linux at the shebang line
+#    (#!/usr/bin/env bash\r is not a valid interpreter). Git Bash on
+#    Windows tolerates this, so the bug stays latent until the script
+#    runs on a Mac.
+#
+# 2. diff_skill in install.sh streams files through sed for placeholder
+#    substitution. On Git Bash, sed normalizes CRLF -> LF on output,
+#    which would silently corrupt the diff against an installed file
+#    that retained CRLF — making every update see false "content
+#    differs" drift for any placeholder-bearing skill.
+#
+# `text=auto eol=lf` makes git store and check out every text file with
+# LF on both platforms. Binary files are auto-detected and left alone.
+* text=auto eol=lf
+
+# Belt-and-braces for files that absolutely must be LF.
+*.sh text eol=lf
+*.mjs text eol=lf
+*.js text eol=lf
