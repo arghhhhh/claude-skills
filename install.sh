@@ -500,24 +500,50 @@ vendored_agent_rename() {
   " "$manifest_file" "$upstream_filename" 2>/dev/null || true
 }
 
-# Generate a default CLAUDE.md snippet for a vendored group when no
+# Generate a default CLAUDE.md snippet for a group when no
 # shared/claude-md/<group>.md exists. Echoes the snippet to stdout.
-generate_default_vendored_snippet() {
+# Builds trigger phrases from the group name, declared skills, and agents
+# so Claude has multiple handles to recognize when to load the skill.
+generate_default_snippet() {
   local group="$1"
   local manifest_file="$SKILL_GROUPS_DIR/$group/manifest.json"
-  local desc
-  desc=$(node -e "
+  local payload
+  payload=$(node -e "
     try {
       const m = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
-      process.stdout.write(m.description || '');
-    } catch(e) {}
-  " "$manifest_file" 2>/dev/null) || true
+      const desc = m.description || '';
+      const skills = Array.isArray(m.skills) ? m.skills : [];
+      const agents = Array.isArray(m.agents) ? m.agents : [];
+      // Trigger phrases: group name + skill names + agent names, deduped
+      const phrases = Array.from(new Set([m.name || '', ...skills, ...agents].filter(Boolean)));
+      // Pointer: prefer the first skill if any, else mention the agent
+      let pointer = '';
+      if (skills.length) pointer = \`read \\\`~/.claude/skills/\${skills[0]}/SKILL.md\\\`\`;
+      if (agents.length) pointer = pointer
+        ? \`\${pointer} or invoke the \\\`\${agents[0]}\\\` agent\`
+        : \`invoke the \\\`\${agents[0]}\\\` agent\`;
+      console.log(JSON.stringify({ desc, phrases, pointer }));
+    } catch(e) { console.log('{}'); }
+  " "$manifest_file" 2>/dev/null) || payload='{}'
+
+  local desc phrases pointer
+  desc=$(echo "$payload" | node -e "let s=''; process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(JSON.parse(s).desc||'')}catch(e){}})" 2>/dev/null)
+  phrases=$(echo "$payload" | node -e "let s=''; process.stdin.on('data',d=>s+=d).on('end',()=>{try{const p=JSON.parse(s).phrases||[];process.stdout.write(p.map(x=>'\"'+x+'\"').join(', '))}catch(e){}})" 2>/dev/null)
+  pointer=$(echo "$payload" | node -e "let s=''; process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(JSON.parse(s).pointer||'')}catch(e){}})" 2>/dev/null)
+
+  [ -z "$phrases" ] && phrases="\"$group\""
+  local use_line="When this matches the user's request"
+  [ -n "$pointer" ] && use_line="$use_line, $pointer"
+  use_line="$use_line."
+
   cat <<EOF
-## $group (vendored)
+## $group
 
 $desc
 
-Trigger phrases: "$group"
+$use_line
+
+Trigger phrases: $phrases
 EOF
 }
 
@@ -1585,14 +1611,16 @@ install_claude_md_snippet() {
   local gtype
   gtype=$(group_type "$group")
 
-  # If no curated snippet exists for a vendored group, generate a minimal default.
+  # Curated snippet wins; otherwise generate a default from the manifest so
+  # Claude has trigger phrases for every group that ships skills/agents.
+  # tool-only groups have no skills to load, so they're left alone.
   local snippet_content=""
   if [ -f "$snippet_file" ]; then
     snippet_content=$(cat "$snippet_file")
-  elif [ "$gtype" = "vendored" ]; then
-    snippet_content=$(generate_default_vendored_snippet "$group")
-  else
+  elif [ "$gtype" = "tool-only" ]; then
     return 0
+  else
+    snippet_content=$(generate_default_snippet "$group")
   fi
 
   if [ ! -f "$CLAUDE_MD" ]; then
@@ -2104,6 +2132,12 @@ update_group() {
       ok "Agent: $agent (installed)"
     fi
   done
+
+  # Ensure CLAUDE.md trigger phrases are present. install_claude_md_snippet is
+  # idempotent — it no-ops when the snippet's header is already in CLAUDE.md —
+  # so it's safe to call on every update and catches groups that were added
+  # after the last fresh install.
+  install_claude_md_snippet "$group"
 
   # Update slash commands: symlink skill-groups/<g>/commands/*.md → ~/.claude/commands/
   # Commands always live in the local skill-group dir (no vendored equivalent).
