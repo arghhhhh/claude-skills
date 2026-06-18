@@ -229,6 +229,35 @@ json_get_install_check() {
   echo "$json" | tr '\n' ' ' | sed -n 's/.*"install"[[:space:]]*:[[:space:]]*{[[:space:]]*"check"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | tr -d '\r'
 }
 
+# Substitute {{VAR}} placeholders in a string using values from $CONFIG_FILE.
+# Mirrors the install-time substitution (lines ~1311-1336) so verify and
+# integration tests don't fail on literal placeholders when the user has
+# actually configured the path. Returns the input unchanged when CONFIG_FILE
+# is missing or a variable isn't set.
+subst_placeholders() {
+  local s="$1"
+  [ -f "$CONFIG_FILE" ] || { printf '%s' "$s"; return; }
+  # Source in a subshell would lose vars; source here but only read names
+  # we know about from the config file.
+  # shellcheck disable=SC1090
+  source "$CONFIG_FILE"
+  local var val
+  for var in $(grep -oE '^[A-Z_]+=' "$CONFIG_FILE" | sed 's/=$//'); do
+    val="${!var:-}"
+    [ -z "$val" ] && continue
+    s="${s//\{\{${var}\}\}/$val}"
+  done
+  printf '%s' "$s"
+}
+
+# True if the group's manifest declares any mcp_servers. Used by verify to
+# distinguish "the app binary is missing" (MCP still works on other machines,
+# config is intact here) from a hard install failure.
+group_has_mcp_servers() {
+  local group="$1"
+  grep -q '"mcp_servers"' "$SKILL_GROUPS_DIR/$group/manifest.json" 2>/dev/null
+}
+
 json_array() {
   local json="$1" key="$2"
   # Collapse to single line, extract array content between [ and ], split by comma
@@ -1750,13 +1779,23 @@ verify_group() {
   info "Prerequisites:"
   check_prerequisites "$group" || true
 
-  # 2. Check software installed (using install-specific check command)
+  # 2. Check software installed (using install-specific check command).
+  # Substitute {{PLACEHOLDER}} vars from skills-config.sh so paths like
+  # {{HOUDINI_MCP_DIR}}/server.py resolve to the actual configured path
+  # before we run the check.
   info "Software:"
-  local check_cmd
-  check_cmd=$(json_get_install_check "$manifest")
+  local check_cmd raw_check_cmd
+  raw_check_cmd=$(json_get_install_check "$manifest")
+  check_cmd=$(subst_placeholders "$raw_check_cmd")
   if [ -n "$check_cmd" ] && [ "$check_cmd" != "true" ]; then
     if eval "$check_cmd" >/dev/null 2>&1; then
       ok "Software binary found ($check_cmd)"
+    elif group_has_mcp_servers "$group"; then
+      # MCP-style groups (blender, houdini, ...) keep their MCP server
+      # config intact even when the underlying app isn't on PATH. The MCP
+      # will fail at runtime if used, but this isn't a broken install — so
+      # warn instead of failing the verify summary.
+      warn "App binary not on PATH ($check_cmd) — MCP server is configured but will fail at runtime until resolved"
     else
       fail "Software not found ($check_cmd)"
     fi
@@ -1920,6 +1959,7 @@ integration_test_group() {
   local int_cmd int_desc
   int_cmd=$(echo "$manifest" | grep -A3 '"integration_test"' | grep '"command"' | sed 's/.*: *"//;s/".*//')
   int_desc=$(echo "$manifest" | grep -A3 '"integration_test"' | grep '"description"' | sed 's/.*: *"//;s/".*//')
+  int_cmd=$(subst_placeholders "$int_cmd")
 
   if [ -z "$int_cmd" ]; then
     info "No integration test defined for $group"
