@@ -1,10 +1,10 @@
 ---
-version: 1.0.0
+version: 1.1.0
 ---
 
 # ILSpy CLI Skill
 
-Use this skill to decompile .NET assemblies via the `ilspy` CLI (the `ilspy-cli` subcrate of [akiselev/ghidra-cli](https://github.com/akiselev/ghidra-cli)). It is a Rust front-end that loads the ILSpy `ICSharpCode.Decompiler` engine in-process via a small C# bridge — fast, agent-friendly, and supports **single-method decompilation** (which `ilspycmd` cannot do).
+Use this skill to decompile .NET assemblies via the `ilspy` CLI ([akiselev/ilspy-cli](https://github.com/akiselev/ilspy-cli) — standalone repo as of June 2026, previously a subcrate of `akiselev/ghidra-cli`). It is a Rust front-end that loads the ILSpy `ICSharpCode.Decompiler` engine in-process via a small C# bridge — fast, agent-friendly, and supports **single-method decompilation** (which `ilspycmd` cannot do).
 
 ## When to use this vs Ghidra
 
@@ -17,9 +17,9 @@ Use this skill to decompile .NET assemblies via the `ilspy` CLI (the `ilspy-cli`
 - **Binary**: `ilspy` (installs to `~/.cargo/bin/ilspy`)
 - **Verify**: `ilspy --version` then `ilspy doctor`
 - **Not installed?**
-  - `cargo install --git https://github.com/akiselev/ghidra-cli ilspy-cli --locked`
+  - `cargo install --git https://github.com/akiselev/ilspy-cli --locked`
   - Needs .NET 8 SDK to build, .NET 8+ runtime to run (`winget install Microsoft.DotNet.SDK.8`).
-- **Bridge DLL**: the build script produces `IlSpyBridge.dll` under `<repo>/ilspy-cli/target/release/bridge/`. Copy that folder to a stable location and set `ILSPY_BRIDGE_DIR` to survive `cargo clean`.
+- **Bridge DLL**: the build script produces `IlSpyBridge.dll` under `<repo>/target/release/bridge/`. Copy that folder to a stable location and set `ILSPY_BRIDGE_DIR` to survive `cargo clean`.
 
 ## Output formats
 

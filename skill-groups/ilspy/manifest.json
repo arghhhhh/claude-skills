@@ -1,7 +1,7 @@
 {
   "name": "ilspy",
-  "description": "Agent-friendly .NET decompilation via ilspy-cli (akiselev/ghidra-cli, ilspy-cli crate) — type/method listing, single-method decompilation, regex search, assembly metadata, and .NET vs native detection using the ILSpy ICSharpCode.Decompiler engine.",
-  "version": "0.1.1",
+  "description": "Agent-friendly .NET decompilation via ilspy-cli (akiselev/ilspy-cli) — type/method listing, single-method decompilation, regex search, assembly metadata, and .NET vs native detection using the ILSpy ICSharpCode.Decompiler engine.",
+  "version": "0.2.0",
   "prerequisites": [
     "Rust 1.70+ (cargo on PATH, for source build)",
     ".NET 8 SDK (build) and .NET 8+ runtime (run)"
@@ -13,10 +13,10 @@
         "name": "cargo-git",
         "platforms": ["windows", "macos", "linux"],
         "check": "cargo --version",
-        "command": "cargo install --git https://github.com/akiselev/ghidra-cli ilspy-cli --locked"
+        "command": "cargo install --git https://github.com/akiselev/ilspy-cli --locked"
       }
     ],
-    "notes": "ilspy-cli is a subcrate of github.com/akiselev/ghidra-cli — pass the package name with `--git ... ilspy-cli`. The build script runs `dotnet publish` on the C# bridge (IlSpyBridge.dll). After install, copy `<repo>/ilspy-cli/target/release/bridge/` to a stable location and set `ILSPY_BRIDGE_DIR` so the bridge survives a `cargo clean`."
+    "notes": "ilspy-cli is a standalone repo at github.com/akiselev/ilspy-cli (previously a subcrate of akiselev/ghidra-cli). The build script runs `dotnet publish` on the C# bridge (IlSpyBridge.dll). After install, copy `<repo>/target/release/bridge/` to a stable location and set `ILSPY_BRIDGE_DIR` so the bridge survives a `cargo clean`."
   },
   "test": {
     "command": "ilspy --version",
@@ -35,7 +35,7 @@
   ],
   "post_install_hints": [
     "Install .NET 8 SDK if missing (Windows: `winget install Microsoft.DotNet.SDK.8`; macOS: `brew install --cask dotnet-sdk`; Linux: see https://learn.microsoft.com/dotnet/core/install/linux).",
-    "Stage the bridge DLL to a stable location: copy `<repo-clone>/ilspy-cli/target/release/bridge/` to e.g. `~/tools/ilspy-bridge`, then set `ILSPY_BRIDGE_DIR` to that path (persist with `setx` on Windows or shell rc on Unix).",
+    "Stage the bridge DLL to a stable location: copy `<repo-clone>/target/release/bridge/` to e.g. `~/tools/ilspy-bridge`, then set `ILSPY_BRIDGE_DIR` to that path (persist with `setx` on Windows or shell rc on Unix).",
     "Run `ilspy doctor` — checks .NET runtime + bridge DLL load."
   ]
 }
