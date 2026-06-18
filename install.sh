@@ -2064,6 +2064,38 @@ update_group() {
       ok "Agent: $agent (installed)"
     fi
   done
+
+  # Update slash commands: symlink skill-groups/<g>/commands/*.md → ~/.claude/commands/
+  # Commands always live in the local skill-group dir (no vendored equivalent).
+  local commands_source_dir="$SKILL_GROUPS_DIR/$group/commands"
+  local commands
+  commands=$(json_array "$manifest" "commands")
+  for cmd in $commands; do
+    local repo_cmd="$commands_source_dir/$cmd.md"
+    local local_cmd="$COMMANDS_DIR/$cmd.md"
+
+    if [ ! -f "$repo_cmd" ]; then
+      warn "Command not found in repo: /$cmd (looked in $repo_cmd)"
+      continue
+    fi
+
+    mkdir -p "$COMMANDS_DIR"
+
+    if [ -f "$local_cmd" ]; then
+      if ! diff_skill "$local_cmd" "$repo_cmd"; then
+        info "Command /$cmd has changed in repo — updating"
+        backup_file "$local_cmd"
+        rm -f "$local_cmd"
+        create_symlink "$repo_cmd" "$local_cmd"
+        ok "Command: /$cmd (updated)"
+      else
+        ok "Command: /$cmd (up to date)"
+      fi
+    else
+      create_symlink "$repo_cmd" "$local_cmd"
+      ok "Command: /$cmd (installed)"
+    fi
+  done
 }
 
 update_skill() {
