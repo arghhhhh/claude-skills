@@ -326,7 +326,42 @@ semver_compare() {
   return 0
 }
 
-# Check if a local skill differs from its repo counterpart (content-wise)
+# Stream a placeholder-substituted version of a file to stdout. Mirrors the
+# install-time substitution (lines ~1311-1336) so a diff against the
+# installed file isn't fooled by resolved {{PLACEHOLDER}} vars.
+subst_file_to_stdout() {
+  local file="$1"
+  # Fast path 1: no config file → no substitutions possible
+  if [ ! -f "$CONFIG_FILE" ]; then
+    cat "$file"
+    return
+  fi
+  # Fast path 2: file contains no {{UPPER_SNAKE}} tokens → skip sed entirely.
+  # This is critical on Git Bash, where sed normalizes CRLF → LF and would
+  # silently corrupt diffs against CRLF-encoded installed files.
+  if ! grep -Eq '\{\{[A-Z_]+\}\}' "$file" 2>/dev/null; then
+    cat "$file"
+    return
+  fi
+  # shellcheck disable=SC1090
+  source "$CONFIG_FILE"
+  local var val val_esc expr=""
+  for var in $(grep -oE '^[A-Z_]+=' "$CONFIG_FILE" | sed 's/=$//'); do
+    val="${!var:-}"
+    [ -z "$val" ] && continue
+    val_esc=$(printf '%s' "$val" | sed 's/[|&\\]/\\&/g')
+    expr="${expr}s|{{${var}}}|${val_esc}|g;"
+  done
+  if [ -n "$expr" ]; then
+    sed -e "$expr" "$file"
+  else
+    cat "$file"
+  fi
+}
+
+# Check if a local skill differs from its repo counterpart (content-wise).
+# Substitution-aware: compares local against a placeholder-substituted view
+# of the repo file, so post-install substitution doesn't appear as drift.
 diff_skill() {
   local local_path="$1" repo_path="$2"
 
@@ -337,10 +372,24 @@ diff_skill() {
     [ "$target" = "$repo_path" ] && return 0
   fi
 
-  if [ -d "$local_path" ]; then
-    diff -rq "$local_path" "$repo_path" >/dev/null 2>&1
+  if [ -d "$local_path" ] && [ -d "$repo_path" ]; then
+    # Every repo file must have a content-equal twin in local
+    local rel f
+    while IFS= read -r -d '' f; do
+      rel="${f#$repo_path/}"
+      [ -f "$local_path/$rel" ] || return 1
+      diff -q "$local_path/$rel" <(subst_file_to_stdout "$f") >/dev/null 2>&1 || return 1
+    done < <(find "$repo_path" -type f -print0)
+    # And local must not have any extras
+    while IFS= read -r -d '' f; do
+      rel="${f#$local_path/}"
+      [ -f "$repo_path/$rel" ] || return 1
+    done < <(find "$local_path" -type f -print0)
+    return 0
+  elif [ -f "$local_path" ] && [ -f "$repo_path" ]; then
+    diff -q "$local_path" <(subst_file_to_stdout "$repo_path") >/dev/null 2>&1
   else
-    diff -q "$local_path" "$repo_path" >/dev/null 2>&1
+    return 1
   fi
 }
 
@@ -1924,19 +1973,23 @@ verify_group() {
     fail "CLAUDE.md does not exist at $CLAUDE_MD"
   fi
 
-  # 6. Check for unconfigured {{PLACEHOLDER}} vars
+  # 6. Check for unconfigured {{PLACEHOLDER}} vars.
+  # Match only the install-time substitution shape ({{UPPER_SNAKE}}) so
+  # skill files that document lowercase tokens like {{customer_name}} —
+  # e.g. officecli explaining what NOT to render — don't trip the check.
   info "Configuration:"
   local has_placeholders=false
+  local ph_pattern='\{\{[A-Z_]+\}\}'
   for skill in $skills; do
     local target="$SKILLS_DIR/$skill"
-    if [ -f "$target" ] && grep -q '{{' "$target" 2>/dev/null; then
+    if [ -f "$target" ] && grep -Eq "$ph_pattern" "$target" 2>/dev/null; then
       has_placeholders=true
     fi
-    if [ -f "$target.md" ] && grep -q '{{' "$target.md" 2>/dev/null; then
+    if [ -f "$target.md" ] && grep -Eq "$ph_pattern" "$target.md" 2>/dev/null; then
       has_placeholders=true
     fi
     if [ -d "$target" ]; then
-      if grep -rq '{{' "$target" 2>/dev/null; then
+      if grep -rEq "$ph_pattern" "$target" 2>/dev/null; then
         has_placeholders=true
       fi
     fi
