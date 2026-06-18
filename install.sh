@@ -115,8 +115,13 @@ ensure_canonical_location() {
       find "$SCRIPT_DIR" -mindepth 1 -maxdepth 1 ! -name '.git' -exec cp -r {} "$CANONICAL_DIR/" \;
     fi
   else
-    # Fresh copy
-    cp -r "$SCRIPT_DIR" "$CANONICAL_DIR"
+    # Fresh copy. If $CANONICAL_DIR exists as a non-git directory (e.g.,
+    # a partial copy from an interrupted previous run), `cp -r SRC DST`
+    # would copy SRC INSIDE DST, leaving install.sh one level too deep
+    # and breaking the re-exec below. Use `cp -r SRC/. DST/` so contents
+    # are copied into DST whether it exists or not.
+    mkdir -p "$CANONICAL_DIR"
+    cp -r "$SCRIPT_DIR/." "$CANONICAL_DIR/"
   fi
   ok "Copied to $CANONICAL_DIR"
 
@@ -250,6 +255,40 @@ subst_placeholders() {
   printf '%s' "$s"
 }
 
+# Escape a string for safe use on the replacement side of sed `s|...|REPL|`.
+# Without this, values containing `|` (delimiter), `&` (full-match backref),
+# or `\` (backslash escapes like `\n`/`\1`) corrupt the substitution. Hits
+# Windows paths hard: `C:\Users\…` would have `\U` interpreted as an escape.
+sed_escape_repl() {
+  printf '%s' "$1" | sed 's/[|&\\]/\\&/g'
+}
+
+# Source $CONFIG_FILE in a subshell and emit a JSON object of {VAR: value}
+# for every uppercase variable defined there. Used to hand placeholder
+# values to inline node scripts without parsing skills-config.sh in node
+# (the previous regex dropped values containing quotes, spaces, or empty
+# strings, and didn't expand $HOME etc.). Bash sources it correctly; node
+# just consumes the result.
+config_placeholders_json() {
+  [ -f "$CONFIG_FILE" ] || { printf '{}'; return; }
+  (
+    # shellcheck disable=SC1090
+    source "$CONFIG_FILE"
+    local var val first=1
+    printf '{'
+    for var in $(grep -oE '^[A-Z_]+=' "$CONFIG_FILE" | sed 's/=$//'); do
+      val="${!var:-}"
+      [ -z "$val" ] && continue
+      # JSON-escape: backslash, quote, control chars (covers Windows paths)
+      val=$(printf '%s' "$val" | sed 's/\\/\\\\/g; s/"/\\"/g')
+      [ $first -eq 1 ] || printf ','
+      printf '"%s":"%s"' "$var" "$val"
+      first=0
+    done
+    printf '}'
+  )
+}
+
 # True if the group's manifest declares any mcp_servers. Used by verify to
 # distinguish "the app binary is missing" (MCP still works on other machines,
 # config is intact here) from a hard install failure.
@@ -349,7 +388,7 @@ subst_file_to_stdout() {
   for var in $(grep -oE '^[A-Z_]+=' "$CONFIG_FILE" | sed 's/=$//'); do
     val="${!var:-}"
     [ -z "$val" ] && continue
-    val_esc=$(printf '%s' "$val" | sed 's/[|&\\]/\\&/g')
+    val_esc=$(sed_escape_repl "$val")
     expr="${expr}s|{{${var}}}|${val_esc}|g;"
   done
   if [ -n "$expr" ]; then
@@ -1267,7 +1306,12 @@ sweep_orphans_in() {
   local shared_path=""
   [ -n "$shared_subdir" ] && shared_path="$SHARED_DIR/$shared_subdir"
 
-  local keep_set
+  # Build the keep-set via node. If the node call fails for any reason
+  # (node missing, manifest unreadable, future regression), we must NOT
+  # fall through with an empty keep_set — that would make every managed
+  # symlink in $target_dir look like an orphan and delete them all. Track
+  # node's exit status separately and abort the sweep on failure.
+  local keep_set node_ok=true
   keep_set=$(node -e "
     const fs = require('fs');
     const path = require('path');
@@ -1289,7 +1333,12 @@ sweep_orphans_in() {
       }
     }
     process.stdout.write([...keep].join('\n'));
-  " "$SKILL_GROUPS_DIR" "$manifest_key" "$shared_path" 2>/dev/null) || keep_set=""
+  " "$SKILL_GROUPS_DIR" "$manifest_key" "$shared_path" 2>/dev/null) || node_ok=false
+
+  if [ "$node_ok" != "true" ]; then
+    warn "Orphan sweep skipped for $target_dir: failed to compute keep set"
+    return 0
+  fi
 
   local removed=0
   while IFS= read -r -d '' entry; do
@@ -1433,7 +1482,12 @@ configure_skills() {
       local val="${!var:-}"
       [ -z "$val" ] && continue
       if grep -q "{{${var}}}" "$f" 2>/dev/null; then
-        sed -i'' -e "s|{{${var}}}|${val}|g" "$f"
+        # Escape sed metacharacters in the value before splicing into the
+        # replacement side. Without this, Windows paths with backslashes
+        # (`C:\Users\...`) or values containing `|`/`&` corrupt the output.
+        local val_esc
+        val_esc=$(sed_escape_repl "$val")
+        sed -i'' -e "s|{{${var}}}|${val_esc}|g" "$f"
         any_substituted=true
       fi
     done
@@ -1472,9 +1526,17 @@ install_mcp_config() {
   local claude_mcp_config="$CLAUDE_DIR/.mcp.json"
   mkdir -p "$HOME/.mcporter"
 
+  # Bash sources skills-config.sh (correct semantics — handles quotes,
+  # spaces, $HOME expansion, empty strings) and passes the placeholder
+  # map to node as a JSON env var. The previous approach re-parsed the
+  # file in node with a regex that silently dropped any value containing
+  # quotes, spaces, or empty strings.
+  local placeholders_json
+  placeholders_json=$(config_placeholders_json)
+
   # Single node script: read manifest, resolve paths, substitute placeholders, merge configs
   local output
-  output=$(node -e "
+  output=$(CLAUDE_SKILLS_PLACEHOLDERS="$placeholders_json" node -e "
     const fs = require('fs');
     const { execSync } = require('child_process');
 
@@ -1484,14 +1546,9 @@ install_mcp_config() {
 
     const isWindows = !!process.env.MSYSTEM || process.platform === 'win32';
 
-    // Load placeholder config vars
-    const vars = {};
-    try {
-      for (const line of fs.readFileSync(process.argv[4], 'utf8').split('\n')) {
-        const m = line.match(/^([A-Z_]+)=['\"]?([^'\"]*)['\"]?$/);
-        if (m && m[2]) vars[m[1]] = m[2];
-      }
-    } catch(e) {}
+    // Placeholder map built by bash (see config_placeholders_json).
+    let vars = {};
+    try { vars = JSON.parse(process.env.CLAUDE_SKILLS_PLACEHOLDERS || '{}'); } catch(e) {}
 
     function subst(s) {
       return s.replace(/\{\{([A-Z_]+)\}\}/g, (_, k) => vars[k] || '{{' + k + '}}');
@@ -1582,7 +1639,7 @@ install_mcp_config() {
       mergeInto(process.argv[2], ready);
       mergeInto(process.argv[3], ready);
     }
-  " "$manifest_file" "$mcporter_config" "$claude_mcp_config" "$CONFIG_FILE" 2>/dev/null) || true
+  " "$manifest_file" "$mcporter_config" "$claude_mcp_config" 2>/dev/null) || true
 
   local has_missing_vars=false
   local missing_var_names=()
