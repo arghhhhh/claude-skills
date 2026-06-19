@@ -33,6 +33,7 @@ Steps:
 7. **Cross-OS path rewrite** — if the source OS (from step 2) differs from the current OS, OR the decoded source CWD differs from the current CWD, rewrite path prefixes in every `.jsonl` file under the target folder:
    - Replace every occurrence of the **source CWD** (e.g. `C:\Users\joss\Desktop\Projects\Mine`) with the **current CWD** (e.g. `/Users/joss/work/Mine`).
    - JSON-encoded form too: Windows backslashes appear as `\\` inside JSON strings, so also replace the JSON-escaped form (`C:\\Users\\joss\\Desktop\\Projects\\Mine` → `/Users/joss/work/Mine`).
+   - **Deeper sub-paths (Windows → POSIX only):** a prefix-only swap leaves the *tail* of nested paths still using backslashes — e.g. `C:\\…\\Mine\\testing-import\\_mermaid_test\\repro-spawn.mjs` becomes `/Users/joss/work/Mine\\testing-import\\_mermaid_test\\repro-spawn.mjs`, which won't resolve on macOS/Linux. After the prefix swap, convert the remaining `\\` (and raw `\`) **to `/` only within substrings that begin with the now-rewritten current-CWD prefix** — i.e. walk each occurrence of the current-CWD prefix and translate separators until the path token ends (closing quote, whitespace, or other delimiter). **Never** do a global `\`→`/` over the file: that would corrupt legitimate backslashes in message text (code blocks, regexes, escape sequences). This step is a no-op when the source OS is POSIX (no backslash separators to convert).
    - Use platform-native tools: `sed -i` on macOS/Linux (`sed -i ''` on macOS), or PowerShell `(Get-Content … -Raw) -replace … | Set-Content` on Windows.
    - Scope the rewrite to `.jsonl` files only. Do not touch `memory/` markdown (already portable).
    - Skip rewriting if source CWD equals current CWD (same path on both machines — no-op).
@@ -43,7 +44,7 @@ Steps:
    - number of `.jsonl` session files imported
    - whether `memory/` was imported
    - backup path (if any) and the manual-merge reminder
-   - whether a cross-OS / path rewrite happened, with the substitution applied (`<source-cwd>` → `<current-cwd>`) and the count of `.jsonl` files modified
+   - whether a cross-OS / path rewrite happened, with the substitution applied (`<source-cwd>` → `<current-cwd>`), the count of `.jsonl` files modified, and — for Windows→POSIX imports — the count of deeper sub-paths whose tail separators were converted
    - a note that file references *outside* the project CWD (e.g. paths into the source user's home dir, system paths) were not rewritten and will still 404 on this machine
 
 Do not delete the source zip.
