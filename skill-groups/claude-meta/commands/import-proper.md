@@ -42,6 +42,11 @@ Steps:
    - Scope the rewrite to `.jsonl` files only. Do not touch `memory/` markdown (already portable).
    - Skip rewriting if source CWD equals current CWD (same path on both machines — no-op).
    - Do **not** attempt to rewrite arbitrary other paths (home dir refs outside the project CWD, system paths, etc.) — those would break either way and broad rewrites are too risky.
+   - **CRITICAL — backslash transport hazard (POSIX → Windows imports):** the tool transport collapses `\\` → `\` in command arguments before the shell sees them. A heredoc like `python <<'EOF'` with `r'C:\\Users\\…'` arrives at Python as `'C:\Users\…'`, and `replace()` then writes **single** backslashes inside JSON strings — producing invalid JSON (`\U`, `\j`, `\D` are bad escapes) that fails to parse, so every line containing the path is silently dropped on resume. The session list still populates (sidecar records are short and have no path), but every conversation opens empty. To avoid this:
+     - **Do not pass Windows path literals through the Bash/PowerShell tool's command argument** — neither as `-c` strings nor inside heredocs.
+     - Write the rewrite script to disk via the Write tool (which does not process backslashes), then execute it with `python <path>` (or `pwsh -File <path>`).
+     - Inside the script, construct the Windows path from `chr(0x5C)` (Python) / `String.fromCharCode(92)` (JS) / `[char]0x5C` (PowerShell) rather than backslash literals — that way no transport layer between you and the file can collapse them.
+   - **Verify after rewriting:** parse every line of every `.jsonl` as JSON and assert zero failures, AND count `"type":"user"` / `"type":"assistant"` records per file. If any file shows `bad>0` or zero turns where the source had turns, the rewrite corrupted the file — stop and report rather than declaring success. (The session list uses sidecar records that survive most corruption, so list-populating is **not** evidence the import worked.)
 
 8. Report:
    - target path
