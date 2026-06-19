@@ -1,0 +1,39 @@
+{
+  "name": "claude-conversation-transfer",
+  "type": "tool-only",
+  "description": "Go CLI that exports a Claude Code project's conversation history to a portable zip and imports it on another machine, correctly retargeting paths across OSes.",
+  "version": "0.1.0",
+  "prerequisites": [
+    {
+      "name": "go",
+      "check": "go version",
+      "install_hint": "Install Go 1.23+: https://go.dev/dl/  (macOS: brew install go  ·  Windows: winget install GoLang.Go)",
+      "required": true
+    },
+    {
+      "name": "git",
+      "check": "git --version",
+      "install_hint": "Install git",
+      "required": true
+    }
+  ],
+  "install": {
+    "check": "test -x $HOME/.local/share/claude-conversation-transfer/claude-conversation-transfer || test -x $HOME/.local/share/claude-conversation-transfer/claude-conversation-transfer.exe",
+    "methods": [
+      {
+        "name": "git+go",
+        "platforms": ["macos", "linux", "windows"],
+        "check": "go version && git --version",
+        "command": "mkdir -p $HOME/.local/share && { [ -d $HOME/.local/share/claude-conversation-transfer/.git ] && git -C $HOME/.local/share/claude-conversation-transfer pull --ff-only || git clone https://github.com/arghhhhh/claude-conversation-transfer.git $HOME/.local/share/claude-conversation-transfer; } && cd $HOME/.local/share/claude-conversation-transfer && go build ."
+      }
+    ]
+  },
+  "test": {
+    "command": "test -x $HOME/.local/share/claude-conversation-transfer/claude-conversation-transfer || test -x $HOME/.local/share/claude-conversation-transfer/claude-conversation-transfer.exe",
+    "expect_success": true
+  },
+  "post_install_hints": [
+    "Binary installed at ~/.local/share/claude-conversation-transfer/ (claude-conversation-transfer on macOS/Linux, claude-conversation-transfer.exe on Windows).",
+    "Use it via the /export-proper and /import-proper slash commands (from the claude-meta group), which call this binary directly."
+  ]
+}

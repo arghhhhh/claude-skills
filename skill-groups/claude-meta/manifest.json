@@ -1,7 +1,8 @@
 {
   "name": "claude-meta",
   "description": "Meta-utilities for working with Claude itself — slash commands and agents that query Claude's own model list, version info, etc.",
-  "version": "0.3.5",
+  "version": "0.4.0",
+  "notes": "/export-proper and /import-proper now delegate to the claude-conversation-transfer binary (install the claude-conversation-transfer group too).",
   "prerequisites": [],
   "install": {
     "check": "true",

@@ -1,26 +1,23 @@
 ---
 description: Export the current conversation's full project folder (all sessions + memory) as a zip in the CWD
-allowed-tools: Bash, PowerShell, Read, Glob
+allowed-tools: Bash, PowerShell
 ---
 
-Export the active project folder from `~/.claude/projects/` into the current working directory as a zip archive. This is the portable version of yesterday's manual copy — it bundles every session jsonl, session subdir, and the `memory/` dir for this project.
+Export the active project folder from `~/.claude/projects/` into the current working directory as a zip archive. Bundles every session `.jsonl`, session subdir (including `subagents/`), and the `memory/` dir for this project. Pairs with `/import-proper`.
+
+This delegates to the `claude-conversation-transfer` binary — installed by the `claude-skills` installer under `~/.local/share/claude-conversation-transfer/`. **Do not** re-derive the export logic from prose; just invoke the binary. The binary handles encoded-folder-name computation, archive naming (`claude-convo-export-<encoded>-<YYYYMMDD-HHMMSS>.zip`), and bundling.
 
 Steps:
 
-1. Determine the current CWD.
-   - Windows: encoded folder name is the CWD with `:`, `\`, and `/` each replaced by `-`. Example: `C:\Users\joss\Desktop\Projects\Mine` → `C--Users-joss-Desktop-Projects-Mine`.
-   - macOS/Linux: replace `/` with `-`. Example: `/home/joss/work` → `-home-joss-work`.
+1. Locate the binary:
+   - macOS/Linux: `$HOME/.local/share/claude-conversation-transfer/claude-conversation-transfer`
+   - Windows: `$HOME/.local/share/claude-conversation-transfer/claude-conversation-transfer.exe`
+   - If missing: tell the user to run the `claude-skills` installer and pick the `claude-conversation-transfer` group.
 
-2. Locate the project folder: `~/.claude/projects/<encoded>/`. If it does not exist, stop and report that there is nothing to export for this CWD.
+2. Run it from the shell CWD with `--json` and parse the report:
+   - Bash: `"$HOME/.local/share/claude-conversation-transfer/claude-conversation-transfer" export --json`
+   - PowerShell: `& "$HOME\.local\share\claude-conversation-transfer\claude-conversation-transfer.exe" export --json`
 
-3. Build a timestamped archive name: `claude-convo-export-<encoded>-<YYYYMMDD-HHMMSS>.zip` and place it in the CWD.
-   - Use this name **verbatim**: hyphen-separated literal prefix (`claude-convo-export-`), the `<encoded>` folder name exactly as it appears under `~/.claude/projects/` (do not re-encode or "clean" it), and a full `<YYYYMMDD-HHMMSS>` timestamp.
-   - Do **not** substitute underscores for hyphens, collapse the `C--` drive prefix, or drop the time portion — `/import-proper` keys off this name. (The importer is tolerant of separator drift, but matching the canonical form keeps things predictable.)
-
-4. Zip the project folder's *contents* (not the wrapping folder itself) into the archive:
-   - Windows (PowerShell): `Compress-Archive -Path "<project-folder>\*" -DestinationPath "<cwd>\<archive>" -Force`
-   - macOS/Linux (Bash): `(cd "<project-folder>" && zip -r "<cwd>/<archive>" .)`
-
-5. Report: archive path, size, count of `.jsonl` files inside, and whether `memory/` was bundled.
+3. Report the archive path, size, `.jsonl` count, and whether `memory/` was bundled, from the JSON fields (`archive`, `size_bytes`, `jsonl_files`, `has_memory`).
 
 Do not delete or modify the original project folder.
