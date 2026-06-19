@@ -7,14 +7,16 @@ Import a `claude-convo-export-*.zip` archive sitting in the current working dire
 
 Steps:
 
-1. Glob the CWD for `claude-convo-export-*.zip`.
+1. Glob the CWD for the export archive. Match **tolerantly** — the literal prefix may use hyphens *or* underscores as word separators (some exporters emit `claude_convo_export_…`), so glob for both: `claude-convo-export-*.zip` **and** `claude_convo_export_*.zip` (treat the match case-insensitively). Do not assume the hyphen form only.
    - If none: stop and report.
    - If multiple: list them with sizes/mtimes and ask the user which to import.
 
-2. Detect the **source CWD and OS** from the archive name (or by peeking inside).
-   - Archive name format: `claude-convo-export-<source-encoded>-<timestamp>.zip`.
-   - If `<source-encoded>` starts with a drive letter followed by `--` (e.g. `C--Users-joss-...`): source was **Windows**, original CWD = `C:\Users\joss\...` (first `-` after the drive is `:\`, remaining `-` are `\`).
-   - If `<source-encoded>` starts with `-` (e.g. `-Users-joss-work-Mine`): source was **macOS/Linux**, original CWD = `/Users/joss/work/Mine` (every `-` is `/`).
+2. Detect the **source CWD and OS**. Prefer reading it from inside the archive — the filename is only a hint and may have been re-encoded (underscores, collapsed `C_` drive prefix, date-only timestamp).
+   - **Primary (authoritative):** peek into any session `.jsonl` in the archive and read its `"cwd"` field (e.g. `unzip -p "<zip>" "*.jsonl" | head` then find the first `"cwd":"…"`). That value *is* the source CWD; its shape (`C:\…` with backslashes vs `/…`) tells you the source OS. Use this whenever available.
+   - **Fallback (filename parse):** only if no `cwd` can be read. Strip the literal prefix (`claude-convo-export-`/`claude_convo_export_`) and trailing timestamp to get `<source-encoded>`, then decode:
+     - Drive-letter prefix (e.g. `C--Users-joss-…` or `C_Users_joss_…`): source was **Windows**, original CWD = `C:\Users\joss\…` (the separator(s) after the drive letter are `:\`, remaining separators are `\`).
+     - Leading separator (e.g. `-Users-joss-work-Mine`): source was **macOS/Linux**, original CWD = `/Users/joss/work/Mine` (every `-` is `/`).
+   - Note that the brittle filename parse is exactly why the in-archive `cwd` is preferred — separator drift in the name does not affect it.
 
 3. Compute the encoded folder name for the **current** CWD (same rule as `/export-proper`: Windows replaces `:` `\` `/` with `-`; macOS/Linux replaces `/` with `-`).
 

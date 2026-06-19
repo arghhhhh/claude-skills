@@ -14,6 +14,8 @@ Steps:
 2. Locate the project folder: `~/.claude/projects/<encoded>/`. If it does not exist, stop and report that there is nothing to export for this CWD.
 
 3. Build a timestamped archive name: `claude-convo-export-<encoded>-<YYYYMMDD-HHMMSS>.zip` and place it in the CWD.
+   - Use this name **verbatim**: hyphen-separated literal prefix (`claude-convo-export-`), the `<encoded>` folder name exactly as it appears under `~/.claude/projects/` (do not re-encode or "clean" it), and a full `<YYYYMMDD-HHMMSS>` timestamp.
+   - Do **not** substitute underscores for hyphens, collapse the `C--` drive prefix, or drop the time portion — `/import-proper` keys off this name. (The importer is tolerant of separator drift, but matching the canonical form keeps things predictable.)
 
 4. Zip the project folder's *contents* (not the wrapping folder itself) into the archive:
    - Windows (PowerShell): `Compress-Archive -Path "<project-folder>\*" -DestinationPath "<cwd>\<archive>" -Force`

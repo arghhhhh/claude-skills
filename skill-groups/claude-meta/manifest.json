@@ -1,7 +1,7 @@
 {
   "name": "claude-meta",
   "description": "Meta-utilities for working with Claude itself — slash commands and agents that query Claude's own model list, version info, etc.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "prerequisites": [],
   "install": {
     "check": "true",
