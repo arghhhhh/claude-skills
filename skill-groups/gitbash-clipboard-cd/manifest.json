@@ -1,0 +1,30 @@
+{
+  "name": "gitbash-clipboard-cd",
+  "description": "Windows Git Bash helpers (cdc / cdh) to cd into folder paths copied from Explorer — fixes backslash-path mangling and reads clipboard history.",
+  "version": "1.0.0",
+  "prerequisites": [],
+  "install": {
+    "check": "cmp -s $HOME/.claude/.skill-repos/claude-skills/skill-groups/gitbash-clipboard-cd/files/cdh-cliphist.ps1 $HOME/.cdh-cliphist.ps1 && cmp -s $HOME/.claude/.skill-repos/claude-skills/skill-groups/gitbash-clipboard-cd/files/clipboard-cd.sh $HOME/.clipboard-cd.sh && grep -q clipboard-cd.sh $HOME/.bashrc",
+    "methods": [
+      {
+        "name": "copy-and-source",
+        "platforms": ["windows"],
+        "command": "cp $HOME/.claude/.skill-repos/claude-skills/skill-groups/gitbash-clipboard-cd/files/cdh-cliphist.ps1 $HOME/.cdh-cliphist.ps1 && cp $HOME/.claude/.skill-repos/claude-skills/skill-groups/gitbash-clipboard-cd/files/clipboard-cd.sh $HOME/.clipboard-cd.sh && { grep -q clipboard-cd.sh $HOME/.bashrc 2>/dev/null || printf '\\n# gitbash-clipboard-cd skill (cdc / cdh)\\n[ -f ~/.clipboard-cd.sh ] && source ~/.clipboard-cd.sh\\n' >> $HOME/.bashrc; }"
+      }
+    ],
+    "notes": "Windows-only. Copies the cdh PowerShell helper to ~/.cdh-cliphist.ps1 and the shell functions to ~/.clipboard-cd.sh, then adds a source line to ~/.bashrc (idempotent). The install check uses cmp so a git pull that changes either file triggers a re-copy on the next install. Avoid double quotes in check/command — the installer's field extractor truncates at the first quote."
+  },
+  "test": {
+    "command": "bash -c 'source ~/.clipboard-cd.sh && type cdc >/dev/null && type cdh >/dev/null'",
+    "expect_success": true
+  },
+  "post_install_hints": [
+    "Open a new Git Bash window (or run: source ~/.bashrc) to load cdc / cdh.",
+    "cdh requires Windows Clipboard History — enable it at Settings -> System -> Clipboard, or press Win+V and turn it on.",
+    "Usage: copy a folder in Explorer (or right-click -> Copy as path), then type cdc (current clipboard) or cdh (most recent directory in clipboard history)."
+  ],
+  "skills": [
+    "gitbash-clipboard-cd"
+  ],
+  "agents": []
+}
