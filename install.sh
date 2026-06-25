@@ -1008,13 +1008,36 @@ EOF
   fi
 }
 
-# gitbash-clipboard-cd: install the cdc/cdh bash functions that cd into folder
-# paths copied from Windows Explorer (cdc = current clipboard, cdh = most recent
-# directory in clipboard history). Windows Git Bash only — they rely on
-# /dev/clipboard and the WinRT helper installed under ~/.local/share. Idempotent —
-# replaces the managed block between BEGIN/END markers.
+# gitbash-clipboard-cd: install the cdh clipboard-history helper plus the cdc/cdh
+# bash functions that cd into folder paths copied from Windows Explorer (cdc =
+# current clipboard, cdh = most recent directory in clipboard history). Windows
+# Git Bash only — they rely on /dev/clipboard and WinRT. Idempotent — rewrites the
+# helper and replaces the managed .bashrc block between BEGIN/END markers.
 install_gitbash_clipboard_cd_aliases() {
   [ "$PLATFORM" = "windows" ] || return 0
+
+  # cdh's clipboard-history reader. Inlined here (like the cs() PowerShell
+  # wrapper above) rather than shipped as a repo payload. Rewritten every run.
+  local helper_dir="$HOME/.local/share/gitbash-clipboard-cd"
+  mkdir -p "$helper_dir"
+  cat > "$helper_dir/cdh-cliphist.ps1" <<'PS1EOF'
+$ErrorActionPreference = "Stop"
+[Windows.ApplicationModel.DataTransfer.Clipboard,Windows.ApplicationModel.DataTransfer,ContentType=WindowsRuntime] | Out-Null
+Add-Type -AssemblyName System.Runtime.WindowsRuntime
+$asTask = [System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq "AsTask" -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq "IAsyncOperation``1" } | Select-Object -First 1
+function Await($op, $t) { $task = $asTask.MakeGenericMethod($t).Invoke($null, @($op)); $task.Wait(-1) | Out-Null; $task.Result }
+$res = Await ([Windows.ApplicationModel.DataTransfer.Clipboard]::GetHistoryItemsAsync()) ([Windows.ApplicationModel.DataTransfer.ClipboardHistoryItemsResult])
+foreach ($it in $res.Items) {
+  try {
+    $txt = Await ($it.Content.GetTextAsync()) ([string])
+    if (-not $txt) { continue }
+    $c = $txt.Trim().Trim('"')
+    if ($c -match "[\r\n]") { continue }
+    if (Test-Path -LiteralPath $c -PathType Container) { [Console]::Out.Write($c); exit 0 }
+  } catch {}
+}
+exit 1
+PS1EOF
 
   local marker_begin="# >>> gitbash-clipboard-cd (cdc/cdh) >>>"
   local marker_end="# <<< gitbash-clipboard-cd (cdc/cdh) <<<"
