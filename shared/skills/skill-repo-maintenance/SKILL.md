@@ -1,5 +1,5 @@
 ---
-version: 1.6.0
+version: 1.7.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -217,6 +217,8 @@ cd ~/.claude/.skill-repos/claude-skills
 git pull origin main
 bash install.sh --update --sync
 ```
+
+**`--update` only refreshes groups already installed on that machine** — it never silently installs groups the user didn't pick. If the pull brought in groups that machine doesn't have, they're listed and the user is prompted whether to install them (skipped with a notice under `-y`). A ledger at `~/.claude/.skills-meta/known-groups` records what's already been offered, so a declined group isn't re-prompted on every sync. Net effect: syncing a Mac won't drag in a Windows-only group unless the user says yes.
 
 Or for a fresh machine:
 

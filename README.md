@@ -94,7 +94,7 @@ version: 1.2.0
 
 The installer tracks versions to enable:
 - **`--status`**: See which skills are up to date, have updates available, or are newer locally
-- **`--update`**: Pull newer versions from the repo into your local install
+- **`--update`**: Pull newer versions into your local install — but only for groups you **already have installed**. It never silently adds groups. Groups newly added to the repo are listed and you're prompted whether to install them (skipped automatically in `-y` mode, with a notice). A ledger at `~/.claude/.skills-meta/known-groups` remembers what you've already been shown so declined groups aren't re-offered.
 - **`--update --sync`**: Also push locally-improved skills back into the repo
 
 When updating, the installer automatically backs up your existing skills to `~/.claude/.skill-backups/`.

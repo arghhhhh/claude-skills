@@ -32,6 +32,7 @@ COMMANDS_DIR="$CLAUDE_DIR/commands"
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 CONFIG_FILE="$CLAUDE_DIR/skills-config.sh"
 META_DIR="$CLAUDE_DIR/.skills-meta"
+KNOWN_GROUPS_FILE="$META_DIR/known-groups"
 BACKUP_DIR="$CLAUDE_DIR/.skill-backups"
 CANONICAL_DIR="$HOME/.claude/.skill-repos/claude-skills"
 
@@ -2202,6 +2203,31 @@ integration_test_group() {
 
 # ─── Update mode (--update) ─────────────────────────────────────────────────
 
+# Returns 0 if the group already has a local footprint: any declared skill or
+# agent symlinked, or — for tool-only groups — its install check passes. Update
+# mode uses this to refresh only installed groups and to spot genuinely-new ones.
+group_is_installed() {
+  local group="$1" manifest gtype
+  manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
+  gtype=$(group_type "$group")
+
+  if [ "$gtype" = "tool-only" ]; then
+    local chk
+    chk=$(json_get_install_check "$manifest")
+    [ -n "$chk" ] && eval "$chk" >/dev/null 2>&1
+    return
+  fi
+
+  local skill agent
+  for skill in $(json_array "$manifest" "skills"); do
+    [ -n "$(resolve_skill_path "$SKILLS_DIR/$skill")" ] && return 0
+  done
+  for agent in $(json_array "$manifest" "agents"); do
+    [ -e "$AGENTS_DIR/$agent.md" ] && return 0
+  done
+  return 1
+}
+
 update_group() {
   local group="$1"
   local manifest
@@ -2811,7 +2837,7 @@ main() {
         echo "  (default)              Install skill groups (software + skills + agents)"
         echo "  --verify               Check installed groups: symlinks, files, CLAUDE.md, software"
         echo "  --test-integration     Test live connections (Unity running, ComfyUI server, etc.)"
-        echo "  --update               Update installed skills from repo (newer repo → local)"
+        echo "  --update               Update only ALREADY-INSTALLED groups; prompts before adding new ones"
         echo "  --update --sync        Also sync newer local skills back to repo"
         echo "  --status               Show version table for all skills"
         echo "  --vendor-status        Show pinned vs upstream SHA for vendored groups"
@@ -2918,16 +2944,70 @@ main() {
   if [ "$MODE" = "update" ]; then
     install_shell_aliases
     install_git_hooks
+
+    # Update refreshes only groups already installed locally — it never silently
+    # adds new ones. Groups present in the repo but not installed are surfaced as
+    # "new" and offered. A ledger ($KNOWN_GROUPS_FILE) records groups already shown
+    # so declined ones aren't re-offered every run. On the first update after this
+    # feature lands the ledger is absent, so we seed it with all current groups and
+    # offer nothing — only groups added *later* count as new.
+    local ledger_seeded=true
+    [ -f "$KNOWN_GROUPS_FILE" ] || ledger_seeded=false
+
+    local update_targets=() new_groups=()
     for group in "${SELECTED_GROUPS[@]}"; do
       if [ ! -f "$SKILL_GROUPS_DIR/$group/manifest.json" ]; then
         fail "Unknown skill group: $group"
         continue
       fi
+      if group_is_installed "$group"; then
+        update_targets+=("$group")
+      elif [ "$ledger_seeded" = true ] && ! grep -qxF "$group" "$KNOWN_GROUPS_FILE" 2>/dev/null; then
+        new_groups+=("$group")
+      fi
+    done
+
+    for group in "${update_targets[@]}"; do
       update_group "$group"
     done
 
     # Prune managed symlinks no longer in any manifest
     sweep_orphans
+
+    # Surface genuinely-new groups and offer to install them.
+    local chosen_new=()
+    if [ ${#new_groups[@]} -gt 0 ]; then
+      echo ""
+      header "New skill group(s) available in the repo:"
+      for g in "${new_groups[@]}"; do
+        local gdesc
+        gdesc=$(json_get "$(tr -d '\r' < "$SKILL_GROUPS_DIR/$g/manifest.json")" "description")
+        printf "  ${BOLD}%s${NC} — %s\n" "$g" "$gdesc"
+      done
+      echo ""
+      if [ "$NON_INTERACTIVE" = true ]; then
+        info "Non-interactive: not installing. Add any later with: install.sh --skills <group>"
+      else
+        local sel
+        read -rp "Install any now? (comma-separated names, 'a' for all, Enter to skip): " sel
+        if [ "$sel" = a ] || [ "$sel" = A ]; then
+          chosen_new=("${new_groups[@]}")
+        elif [ -n "$sel" ]; then
+          local pick g
+          IFS=',' read -ra _picks <<< "$sel"
+          for pick in "${_picks[@]}"; do
+            pick=$(echo "$pick" | tr -d ' ')
+            for g in "${new_groups[@]}"; do
+              [ "$pick" = "$g" ] && chosen_new+=("$g")
+            done
+          done
+        fi
+      fi
+    fi
+
+    # Record all current repo groups as known so declined ones aren't re-offered.
+    mkdir -p "$META_DIR"
+    printf '%s\n' $(list_groups) > "$KNOWN_GROUPS_FILE"
 
     echo ""
     header "Update Summary"
@@ -2935,6 +3015,15 @@ main() {
     if [ "$SYNC_MODE" = "true" ] && [ "$WARN_COUNT" -gt 0 ]; then
       echo ""
       info "Don't forget to commit and push repo changes if you synced skills back"
+    fi
+
+    # Full install for any newly-chosen groups (reuse the standard install path).
+    if [ ${#chosen_new[@]} -gt 0 ]; then
+      echo ""
+      header "Installing newly selected group(s): ${chosen_new[*]}"
+      local joined
+      joined=$(IFS=,; echo "${chosen_new[*]}")
+      "$SCRIPT_DIR/install.sh" --skills "$joined"
     fi
     exit 0
   fi
