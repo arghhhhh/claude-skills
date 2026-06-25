@@ -1008,10 +1008,72 @@ EOF
   fi
 }
 
+# gitbash-clipboard-cd: install the cdc/cdh bash functions that cd into folder
+# paths copied from Windows Explorer (cdc = current clipboard, cdh = most recent
+# directory in clipboard history). Windows Git Bash only — they rely on
+# /dev/clipboard and the WinRT helper installed under ~/.local/share. Idempotent —
+# replaces the managed block between BEGIN/END markers.
+install_gitbash_clipboard_cd_aliases() {
+  [ "$PLATFORM" = "windows" ] || return 0
+
+  local marker_begin="# >>> gitbash-clipboard-cd (cdc/cdh) >>>"
+  local marker_end="# <<< gitbash-clipboard-cd (cdc/cdh) <<<"
+  local block
+  block=$(cat <<'EOF'
+# >>> gitbash-clipboard-cd (cdc/cdh) >>>
+# Managed by claude-skills installer — do not edit between markers.
+# cdc: cd into the folder path currently on the Windows clipboard.
+# cdh: cd into the most recent existing directory in Windows clipboard history.
+cdc() {
+  local p
+  p="$(cat /dev/clipboard)"
+  p="${p//$'\r'/}"; p="${p//$'\n'/}"
+  p="${p%\"}"; p="${p#\"}"
+  cd "$(printf '%s' "$p" | tr '\134' '/')"
+}
+cdh() {
+  local p
+  p="$(powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME/.local/share/gitbash-clipboard-cd/cdh-cliphist.ps1" 2>/dev/null)"
+  p="${p//$'\r'/}"; p="${p//$'\n'/}"
+  if [ -z "$p" ]; then
+    echo "cdh: no directory path found in clipboard history" >&2
+    return 1
+  fi
+  cd "$(printf '%s' "$p" | tr '\134' '/')"
+}
+# <<< gitbash-clipboard-cd (cdc/cdh) <<<
+EOF
+)
+
+  local rc="$HOME/.bashrc"
+  [ -f "$rc" ] || touch "$rc"
+  local existed_already=false
+  if grep -qF "$marker_begin" "$rc"; then
+    existed_already=true
+    local tmp
+    tmp=$(mktemp)
+    awk -v begin="$marker_begin" -v end="$marker_end" '
+      $0 == begin { skipping=1; next }
+      skipping && $0 == end { skipping=0; next }
+      !skipping { print }
+    ' "$rc" > "$tmp" && mv "$tmp" "$rc"
+  fi
+  if [ -s "$rc" ] && [ "$(tail -c1 "$rc" 2>/dev/null | od -An -c | tr -d ' ')" != "\n" ]; then
+    printf '\n' >> "$rc"
+  fi
+  printf '%s\n' "$block" >> "$rc"
+  if [ "$existed_already" = "true" ]; then
+    ok "Refreshed cdc/cdh functions in $rc"
+  else
+    ok "Installed cdc/cdh functions in $rc (restart shell to pick up)"
+  fi
+}
+
 # Dispatcher: per-group shell-alias hooks. Called from the per-group install loop.
 install_group_shell_aliases() {
   case "$1" in
     claude-code-sessions) install_sessions_aliases ;;
+    gitbash-clipboard-cd) install_gitbash_clipboard_cd_aliases ;;
   esac
 }
 

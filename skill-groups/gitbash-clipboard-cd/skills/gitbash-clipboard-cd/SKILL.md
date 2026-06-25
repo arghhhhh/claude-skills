@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.1.0
 name: gitbash-clipboard-cd
 description: Windows Git Bash helpers (cdc / cdh) that cd into folder paths copied from Explorer, fixing backslash-path mangling and reading clipboard history. Use when a user on Windows wants to jump to a copied/dragged folder without manually quoting or fixing slashes.
 ---
@@ -38,6 +38,6 @@ Two shell functions that let you `cd` into a folder you copied in Windows Explor
 
 ## Files
 
-The installer copies:
-- `~/.clipboard-cd.sh` — the `cdc` / `cdh` function definitions (sourced from `~/.bashrc`).
-- `~/.cdh-cliphist.ps1` — the clipboard-history reader used by `cdh`.
+The installer sets up:
+- `cdc` / `cdh` function definitions — injected into `~/.bashrc` between `# >>> gitbash-clipboard-cd (cdc/cdh) >>>` markers by the per-group shell-alias hook in `install.sh` (idempotent; re-running replaces the block).
+- `~/.local/share/gitbash-clipboard-cd/cdh-cliphist.ps1` — the clipboard-history reader used by `cdh`, copied from the group's `files/` payload.
