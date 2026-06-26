@@ -707,7 +707,7 @@ check_prerequisites() {
 
   while IFS='|' read -r name check hint required note; do
     [ -z "$name" ] && continue
-    if eval "$check" >/dev/null 2>&1; then
+    if eval "$check" </dev/null >/dev/null 2>&1; then
       ok "Prerequisite: $name"
     else
       if [ "$required" = "true" ]; then
@@ -1131,7 +1131,7 @@ install_software() {
   local check_cmd
   check_cmd=$(json_get_install_check "$manifest")
 
-  if [ -n "$check_cmd" ] && [ "$check_cmd" != "true" ] && eval "$check_cmd" >/dev/null 2>&1; then
+  if [ -n "$check_cmd" ] && [ "$check_cmd" != "true" ] && eval "$check_cmd" </dev/null >/dev/null 2>&1; then
     ok "$group software already installed"
     return 0
   fi
@@ -1896,7 +1896,7 @@ run_test() {
   [ -z "$test_cmd" ] && return 0
 
   info "Smoke test: $test_cmd"
-  if eval "$test_cmd" >/dev/null 2>&1; then
+  if eval "$test_cmd" </dev/null >/dev/null 2>&1; then
     ok "$group smoke test passed"
   else
     warn "$group smoke test failed — software may need manual configuration"
@@ -1986,7 +1986,7 @@ verify_group() {
     local check_cmd
     check_cmd=$(json_get_install_check "$manifest")
     if [ -n "$check_cmd" ] && [ "$check_cmd" != "true" ]; then
-      if eval "$check_cmd" >/dev/null 2>&1; then
+      if eval "$check_cmd" </dev/null >/dev/null 2>&1; then
         ok "Software check passed ($check_cmd)"
       else
         fail "Software check failed ($check_cmd)"
@@ -2008,7 +2008,7 @@ verify_group() {
   raw_check_cmd=$(json_get_install_check "$manifest")
   check_cmd=$(subst_placeholders "$raw_check_cmd")
   if [ -n "$check_cmd" ] && [ "$check_cmd" != "true" ]; then
-    if eval "$check_cmd" >/dev/null 2>&1; then
+    if eval "$check_cmd" </dev/null >/dev/null 2>&1; then
       ok "Software binary found ($check_cmd)"
     elif group_has_mcp_servers "$group"; then
       # MCP-style groups (blender, houdini, ...) keep their MCP server
@@ -2193,7 +2193,7 @@ integration_test_group() {
   info "Requires: $int_desc"
   info "Running: $int_cmd"
 
-  if eval "$int_cmd" >/dev/null 2>&1; then
+  if eval "$int_cmd" </dev/null >/dev/null 2>&1; then
     ok "$group integration test passed — software is live and responding"
   else
     fail "$group integration test failed"
@@ -2214,7 +2214,7 @@ group_is_installed() {
   if [ "$gtype" = "tool-only" ]; then
     local chk
     chk=$(json_get_install_check "$manifest")
-    [ -n "$chk" ] && eval "$chk" >/dev/null 2>&1
+    [ -n "$chk" ] && eval "$chk" </dev/null >/dev/null 2>&1
     return
   fi
 
