@@ -1864,7 +1864,7 @@ install_shared_skills() {
   done
 
   # Append shared claude-md snippets
-  for snippet in mcp-setup mcporter skill-repo-maintenance; do
+  for snippet in mcporter skill-repo-maintenance; do
     local snippet_file="$SHARED_DIR/claude-md/$snippet.md"
     [ -f "$snippet_file" ] || continue
     if [ ! -f "$CLAUDE_MD" ]; then
@@ -2613,7 +2613,7 @@ show_status() {
     name=$(basename "$item" .md)
     # Skip if it's managed
     local is_managed=false
-    for managed in $all_managed_skills mcp-setup; do
+    for managed in $all_managed_skills; do
       if [ "$name" = "$managed" ] || [ "$name" = "$(basename "$managed")" ]; then
         is_managed=true
         break

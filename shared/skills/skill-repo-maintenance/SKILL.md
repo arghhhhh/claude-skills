@@ -1,5 +1,5 @@
 ---
-version: 1.8.0
+version: 1.9.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -180,6 +180,24 @@ git commit -m "Add <name> skill group"
 git push origin main
 bash install.sh --skills <name>
 ```
+
+## Adding an MCP-backed Skill
+
+A skill driven by an MCP server (Blender, ComfyUI, Houdini, Mermaid, Notch…) is **a normal skill group** — it is *not* special-cased by location. Follow "Adding a New Skill Group" above, with these MCP-specific points:
+
+1. **Locate by domain, not mechanism.** The group and skill are named for the tool (`blender`, `comfy-pilot`), never for the transport. Do **not** create a `skills/mcp/` directory and do **not** append `-mcp` to the skill name — that was an early mistake (only legacy blender/houdini used it; comfy-pilot/td got it right). The skill lives at `skill-groups/<tool>/skills/<tool>/SKILL.md`.
+2. **Declare the server in the manifest**, not in the path — add an `mcp_servers` block (see the optional fields above). The installer wires `~/.mcporter/mcporter.json` + `~/.claude/.mcp.json`. This field is also what `--check-drift` keys off.
+3. **Discover the real tool surface before writing.** With the server running:
+   ```bash
+   npx mcporter list <server> --all-parameters   # authoritative tool + param list
+   npx mcporter call <server>.<simple_tool> …     # test 2-3 tools — MCPs have undocumented requirements
+   ```
+   Watch for: required params that aren't obvious (e.g. Blender's `user_prompt`), param names that differ from any docs, and auth errors.
+4. **Write the SKILL.md from the tested surface** — command tables, an "Always Start Here" connection check, workflows, and a Quirks/Gotchas section for what you hit during testing. Put dense scripting traps in `references/`.
+5. **Add the CLAUDE.md snippet** pointing at `~/.claude/skills/<tool>/SKILL.md` with trigger phrases.
+6. **Verify tool/doc parity** after install with `bash install.sh --check-drift --skills <tool>` (see "Keeping MCP-backed Skills in Sync"), then commit + push.
+
+This supersedes the old standalone `mcp-setup` skill, which predated this repo workflow and wrote directly into `~/.claude/` (bypassing the repo, versioning, and snippets).
 
 ## Maintaining Vendored Groups
 

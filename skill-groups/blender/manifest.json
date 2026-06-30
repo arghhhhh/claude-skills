@@ -1,7 +1,7 @@
 {
   "name": "blender",
   "description": "Blender 3D scene creation — modeling, materials, asset import, AI 3D generation, Python scripting.",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "prerequisites": [
     {
       "name": "npx",
@@ -58,7 +58,7 @@
     "description": "Blender must be running with BlenderMCP addon connected"
   },
   "skills": [
-    "mcp/blender-mcp"
+    "blender"
   ],
   "agents": [
     "blender"
