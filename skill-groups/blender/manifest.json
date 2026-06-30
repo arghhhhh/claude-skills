@@ -1,7 +1,7 @@
 {
   "name": "blender",
   "description": "Blender 3D scene creation — modeling, materials, asset import, AI 3D generation, Python scripting.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "prerequisites": [
     {
       "name": "npx",

@@ -1,5 +1,5 @@
 ---
-version: 1.1.0
+version: 1.2.0
 ---
 
 # Blender MCP Skill
@@ -43,14 +43,18 @@ npx mcporter call blender.execute_blender_code code:"import bpy; bpy.ops.mesh.pr
 
 ```bash
 npx mcporter call blender.get_polyhaven_status user_prompt:"check polyhaven"
+npx mcporter call blender.get_polyhaven_categories asset_type:"hdris" user_prompt:"list hdri categories"
 npx mcporter call blender.search_polyhaven_assets asset_type:"hdris" categories:"outdoor" user_prompt:"find outdoor hdris"
 npx mcporter call blender.download_polyhaven_asset asset_id:"rural_asphalt_road" asset_type:"textures" resolution:"2k" user_prompt:"download texture"
 npx mcporter call blender.set_texture object_name:"Plane" texture_id:"rural_asphalt_road" user_prompt:"apply texture"
 ```
 
+`download_polyhaven_asset` also takes an optional `file_format` param (e.g. `hdr`/`exr` for HDRIs).
+
 ### Sketchfab Models
 
 ```bash
+npx mcporter call blender.get_sketchfab_status user_prompt:"check sketchfab"
 npx mcporter call blender.search_sketchfab_models query:"medieval chair" downloadable:true count:10 user_prompt:"find chairs"
 npx mcporter call blender.get_sketchfab_model_preview uid:"abc123" user_prompt:"preview model"
 npx mcporter call blender.download_sketchfab_model uid:"abc123" target_size:1.0 user_prompt:"download chair"
@@ -63,9 +67,12 @@ npx mcporter call blender.download_sketchfab_model uid:"abc123" target_size:1.0 
 ```bash
 npx mcporter call blender.get_hyper3d_status user_prompt:"check hyper3d"
 npx mcporter call blender.generate_hyper3d_model_via_text text_prompt:"a wooden treasure chest" user_prompt:"generate chest"
+npx mcporter call blender.generate_hyper3d_model_via_images input_image_paths:'["/path/to/ref.png"]' user_prompt:"generate from image"
 npx mcporter call blender.poll_rodin_job_status subscription_key:"key_here"
 npx mcporter call blender.import_generated_asset name:"TreasureChest" task_uuid:"uuid_here"
 ```
+
+**Mode-dependent params:** Hyper3D runs in MAIN_SITE or FAL.AI mode. In MAIN_SITE mode `poll_rodin_job_status`/`import_generated_asset` use `subscription_key`/`task_uuid`; in FAL.AI mode they use `request_id`. Use whichever `generate_*` returned. `generate_hyper3d_model_via_images` accepts `input_image_paths` (local) or `input_image_urls`.
 
 ### Hunyuan3D (AI 3D Generation)
 
@@ -97,6 +104,11 @@ npx mcporter call blender.import_generated_asset_hunyuan name:"SportsCar" zip_fi
 - **`user_prompt` parameter**: Most tools require it. Include a brief description.
 - **Connection errors**: Ensure the Blender addon is running and connected.
 - **Only one client at a time**: Don't run both Cursor and Claude Code with blender MCP simultaneously.
+- **No background/headless mode**: As of blender-mcp 1.6.x the server fails fast under `blender -b` (commands would never execute). Run Blender with a GUI, or a virtual display (`xvfb-run -a blender`).
+- **Keep addon & server in sync**: The Blender addon (`addon.py`, `bl_info` version) and the MCP server (`uvx blender-mcp`, currently 1.6.x) are versioned separately. Note the addon's `bl_info` may not bump even when content changes — re-install `addon.py` from the repo if tools misbehave.
+- **Telemetry consent**: Recent versions add a telemetry consent flow (`get_telemetry_consent`); first run may prompt.
+- **API keys persist**: Sketchfab/Hyper3D/Hunyuan3D keys are saved in addon preferences and survive Blender restarts. The Hyper3D free-trial key is `vibecoding`.
+- **Verify the live tool list**: `npx mcporter list blender --all-parameters` prints the authoritative tool/param list from the running server — use it to reconcile this doc after a server update.
 - **Generated models have normalized size**: Always rescale after AI generation.
 - Use `execute_blender_code` as the escape hatch for anything specialized tools don't cover.
 - Always `get_viewport_screenshot` after making visual changes to verify results.

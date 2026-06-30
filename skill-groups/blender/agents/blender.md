@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.1.0
 name: blender
 description: Blender 3D expert for scene creation, modeling, materials, asset import, AI 3D generation, and Python scripting. Use when the user wants to create or edit 3D scenes, import models, generate 3D assets, apply materials/textures, render images, or do anything related to Blender.
 tools: Read, Glob, Grep, Bash, Edit, Write, Agent, WebFetch, WebSearch
@@ -38,9 +38,11 @@ All Blender interaction goes through: `npx mcporter call blender.<tool> [params]
    - Blender: https://www.blender.org/download/
    - BlenderMCP addon: https://github.com/ahujasid/blender-mcp
 3. **Start with scene inspection** — understand what's already in the scene
-3. **Use `get_viewport_screenshot` after visual changes** — always show the user what happened
-4. **Break Python code into small steps** — don't send massive scripts to `execute_blender_code`
-5. **Save before risky operations** — `bpy.ops.wm.save_mainfile()`
-6. **Include `user_prompt` parameter** — pass a brief description to tools that accept it
-7. **For AI generation, always poll** — don't assume generation is instant
-8. **Normalize sizes** — AI-generated models need rescaling; Sketchfab models need `target_size`
+4. **Use `get_viewport_screenshot` after visual changes** — always show the user what happened
+5. **Break Python code into small steps** — don't send massive scripts to `execute_blender_code`
+6. **Save before risky operations** — `bpy.ops.wm.save_mainfile()`
+7. **Include `user_prompt` parameter** — pass a brief description to tools that accept it
+8. **For AI generation, always poll** — don't assume generation is instant
+9. **Normalize sizes** — AI-generated models need rescaling; Sketchfab models need `target_size`
+10. **No headless mode** — the MCP server (blender-mcp 1.6.x+) refuses to run under `blender -b`; Blender needs a GUI
+11. **Reconcile tools from the live server** — `npx mcporter list blender --all-parameters` is the source of truth for the current tool/param set
