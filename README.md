@@ -189,9 +189,29 @@ bash install.sh --update
 bash install.sh --verify             # Check symlinks, files, CLAUDE.md, prerequisites
 bash install.sh --status             # Version table (local vs repo)
 bash install.sh --test-integration   # Test live connections (software must be running)
+bash install.sh --check-drift        # Diff live MCP tools vs what skill docs reference
 ```
 
 Prerequisites and integration test commands are defined per group in each `manifest.json` — run `--verify` to see what's missing.
+
+### MCP tool-doc drift
+
+For groups backed by an MCP server (`mcp_servers` in the manifest), `--check-drift`
+runs `npx mcporter list <server>` and diffs the live tool set against the tool
+names referenced in that group's skill + agent docs:
+
+```bash
+bash install.sh --check-drift                  # all mcp-backed groups
+bash install.sh --check-drift --skills blender # one group
+```
+
+It reports **UNDOCUMENTED** (tool on the server but missing from the docs) and
+**STALE** (docs call `<server>.X` but X is no longer a live tool). The MCP server's
+host app must be running for that server to be inspected — unreachable servers are
+**SKIPPED**, not failed. Advisory only; it never edits files. Exit code is non-zero
+when any reachable server shows drift, so it can gate CI for standalone servers.
+Run it after a server/package update, then reconcile the docs and bump the skill
+version.
 
 ## Adding a New Skill Group
 

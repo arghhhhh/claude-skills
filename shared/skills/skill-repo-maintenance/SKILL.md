@@ -1,5 +1,5 @@
 ---
-version: 1.7.0
+version: 1.8.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -117,6 +117,29 @@ git commit -m "Add <new-skill> to <group>"
 git push origin main
 bash install.sh --skills <group> --skip-software
 ```
+
+## Keeping MCP-backed Skills in Sync
+
+For groups whose manifest declares `mcp_servers` (blender, comfyui, houdini, notch, claude-mermaid), the documented tool list can silently drift from the server's actual tools after an upstream package update. Detect it mechanically instead of eyeballing:
+
+```bash
+bash install.sh --check-drift                  # all mcp-backed groups
+bash install.sh --check-drift --skills blender # one group
+# or call the script directly:
+bash scripts/check-mcp-drift.sh blender comfyui
+```
+
+It runs `npx mcporter list <server>` and diffs the live tool set against the tool names referenced in the group's skill + agent docs, reporting:
+
+- **UNDOCUMENTED** — tool exists on the server but is absent from the docs (add it).
+- **STALE** — docs reference `<server>.X` but X is no longer a live tool (renamed/removed).
+
+Notes:
+
+- The MCP server's host app must be **running** for that server to be inspected (Blender/Houdini/ComfyUI open; mermaid/notch are standalone). Unreachable servers are **SKIPPED**, not failed.
+- Advisory only — it never edits files. After reconciling, **bump the skill version** like any other edit.
+- `mcporter list <server> --all-parameters` prints full signatures — use it to copy exact params when adding a newly-surfaced tool.
+- Run it whenever you bump an MCP server/package (e.g. a new `blender-mcp` release), as part of the same change.
 
 ## Adding a New Skill Group
 
@@ -305,6 +328,7 @@ Some skills require MCP server registration. Check post-install hints in the ins
 4. **Push after every change** — unpushed changes won't sync to other machines
 5. **For vendored groups, never edit upstream files** — customize via overlays in `skill-groups/<group>/overlays/`; upstream clones are read-only
 6. **Run `--verify` after changes** — catches broken symlinks, missing files, version mismatches. For vendored groups it also confirms the pinned SHA is checked out and overlay paths still match real upstream files
+7. **For MCP-backed skills, run `--check-drift` after a server/package bump** — confirms the documented tool list still matches the live server (see "Keeping MCP-backed Skills in Sync")
 
 ## Skill Style Guide
 

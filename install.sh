@@ -2826,6 +2826,10 @@ main() {
         fi
         shift 2
         ;;
+      --check-drift)
+        MODE="check-drift"
+        shift
+        ;;
       --list)
         list_groups | tr ' ' '\n'
         exit 0
@@ -2842,6 +2846,7 @@ main() {
         echo "  --status               Show version table for all skills"
         echo "  --vendor-status        Show pinned vs upstream SHA for vendored groups"
         echo "  --bump-vendor GROUP    Bump pinned ref of a vendored group to upstream HEAD"
+        echo "  --check-drift          Diff live MCP server tools vs what skill docs reference"
         echo ""
         echo "Options:"
         echo "  --skills GROUP1,GROUP2 Target specific skill groups (default: interactive)"
@@ -2858,6 +2863,8 @@ main() {
         echo "  install.sh --update                           # Update all groups from repo"
         echo "  install.sh --update --sync                    # Bidirectional sync"
         echo "  install.sh --status                           # Version overview"
+        echo "  install.sh --check-drift                      # Drift-check all mcp-backed groups"
+        echo "  install.sh --check-drift --skills blender     # Drift-check just blender"
         echo "  install.sh --test-integration --skills comfyui"
         exit 0
         ;;
@@ -2878,6 +2885,22 @@ main() {
   info "Target:   $CLAUDE_DIR"
   info "Repo:     $SCRIPT_DIR"
   echo ""
+
+  # ── Drift-check mode (runs before the default-all expansion so the drift
+  #     script can do its own filtering to mcp-backed groups) ──
+  if [ "$MODE" = "check-drift" ]; then
+    drift_script="$SCRIPT_DIR/scripts/check-mcp-drift.sh"
+    if [ ! -f "$drift_script" ]; then
+      fail "Missing $drift_script"
+      exit 1
+    fi
+    if [ ${#SELECTED_GROUPS[@]} -gt 0 ]; then
+      bash "$drift_script" "${SELECTED_GROUPS[@]}"
+    else
+      bash "$drift_script"
+    fi
+    exit $?
+  fi
 
   # For non-install modes, default to all groups if none specified
   if [ "$MODE" != "install" ] && [ ${#SELECTED_GROUPS[@]} -eq 0 ]; then

@@ -1,5 +1,5 @@
 ---
-version: 1.1.0
+version: 1.2.0
 ---
 
 # ComfyUI Pilot Skill (via MCPorter)
@@ -59,6 +59,9 @@ npx mcporter call comfyui.get_node_types search:"KSampler" fields:'["inputs", "o
 ```bash
 # Get detailed info about a specific node in the current workflow
 npx mcporter call comfyui.get_node_info node_id:"5"
+
+# Center/scroll the canvas on a specific node (canvas control)
+npx mcporter call comfyui.center_on_node node_id:"5"
 ```
 
 ### Workflow Editing (edit_graph)
@@ -121,7 +124,21 @@ npx mcporter call comfyui.view_image node_id:"15"
 ```bash
 npx mcporter call comfyui.search_custom_nodes query:"controlnet"
 npx mcporter call comfyui.install_custom_node node_id:"ComfyUI-Advanced-ControlNet"
+npx mcporter call comfyui.update_custom_node node_id:"ComfyUI-Advanced-ControlNet"
+npx mcporter call comfyui.uninstall_custom_node node_id:"ComfyUI-Advanced-ControlNet"
 ```
+
+Install/uninstall/update all require a ComfyUI restart to take effect.
+
+### Downloading Models
+
+```bash
+# Download a model into the ComfyUI models folder (HF, CivitAI, or direct URL)
+npx mcporter call comfyui.download_model url:"https://huggingface.co/user/repo/resolve/main/model.safetensors" model_type:"checkpoint"
+npx mcporter call comfyui.download_model url:"https://civitai.com/..." model_type:"lora" filename:"my_lora.safetensors"
+```
+
+`model_type` is one of: checkpoint, lora, vae, controlnet, clip, clip_vision, unet, diffusion_models, text_encoders, upscale_models, embeddings, hypernetworks, ipadapter, instantid, insightface, pulid, animatediff. Optional `filename`, `subfolder`, and `hf_token` (for gated HF models) are accepted. For bulk/CLI downloads outside a running session, prefer the comfy-cli skill.
 
 ## Converting UI Workflows to API Format
 
