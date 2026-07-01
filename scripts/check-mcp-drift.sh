@@ -114,13 +114,15 @@ process_group() {
       fi
     done <<< "$live"
 
-    # STALE: docs call `<srv>.X` but X is not a live tool (renamed/removed).
-    # Strip URLs first so a domain like `blender.org` isn't read as a tool ref.
+    # STALE: docs invoke `<srv>.X` in an mcporter call but X is not a live tool
+    # (renamed/removed). Only match `call <srv>.<tool>` invocations — this avoids
+    # false positives from filenames (`houdini.env`) and domains (`blender.org`)
+    # that share the `<srv>.` prefix but aren't tool references.
     local stale=() refs r
     if [ ${#existing[@]} -gt 0 ]; then
-      refs="$(cat "${existing[@]}" 2>/dev/null | sed -E 's#https?://[^[:space:])"]*##g' \
-        | grep -oE -- "${srv}\.[A-Za-z_][A-Za-z0-9_]*" \
-        | sed -E "s/^${srv}\.//" | sort -u)"
+      refs="$(cat "${existing[@]}" 2>/dev/null \
+        | grep -oE -- "call ${srv}\.[A-Za-z_][A-Za-z0-9_]*" \
+        | sed -E "s/^call ${srv}\.//" | sort -u)"
       while IFS= read -r r; do
         [ -z "$r" ] && continue
         grep -qxF -- "$r" <<< "$live" || stale+=("$r")

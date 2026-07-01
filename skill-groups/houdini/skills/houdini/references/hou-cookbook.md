@@ -2,16 +2,17 @@
 
 Non-obvious truths about Houdini's Python (`hou`/HOM) and VEX that silently break `execute_houdini_code` scripts and wrangles. **Read before writing Python.**
 
-> ⚠ **Verification status:** these are well-established Houdini idioms, but they were **not** re-verified live in the authoring session — port 9876 was held by BlenderMCP, so `houdini.execute_houdini_code` routed to Blender (see the port-collision gotcha in SKILL.md). When Houdini owns 9876, re-run the checks and promote confirmed items to ✅.
+> ✅ **Verification status:** the core patterns here were verified live against **Houdini 21.0.700** (node create, `parm`/`parmTuple` set+eval, `geometry()` cook, VEX type-prefix attribute creation, the Attribute Wrangle `class` enum). Items marked ✅ were confirmed in that session; unmarked items are established idioms not individually re-run.
 
 ## `execute_houdini_code` runs in the Houdini session
 
-Put `import hou` at the top of every script — don't assume `hou` is pre-injected. The bridge blocks `hou.exit`, `os.remove`, `subprocess` etc. unless `allow_dangerous:true`.
+Put `import hou` at the top of every script — don't assume `hou` is pre-injected. ✅ The bridge blocks dangerous patterns (`hou.exit`, `os.remove`, `subprocess`, **and `__import__`/`exec`**) unless you pass `allow_dangerous:true`.
 
-`execute_houdini_code` returns captured stdout, so `print(...)` is your return channel. Multi-line scripts are awkward to quote through mcporter on the CLI — **spaces and `+`/`/`/`=` break `key:value` parsing**. Hex-encode and decode in one line:
+`execute_houdini_code` returns captured stdout (`--- Stdout ---` section), so `print(...)` is your return channel. Multi-line scripts are awkward to quote through mcporter on the CLI — **spaces and `+`/`/`/`=` break `key:value` parsing**. Hex-encode and decode in one line — but because this uses `__import__`/`exec` you **must** add `allow_dangerous:true` (✅ verified — without it the call is rejected `Dangerous pattern detected: '__import__'`):
 
 ```
-exec(__import__('binascii').unhexlify('<hex>').decode(), globals())
+npx mcporter call houdini.execute_houdini_code allow_dangerous:true \
+  code:"exec(__import__('binascii').unhexlify('<hex>').decode(), globals())"
 ```
 
 ## Contexts — OBJ vs SOP vs LOP
@@ -45,13 +46,13 @@ val = box.parm("sizex").eval()                # evaluated value (follows express
 node.parm("file").set("$HIP/geo/out.bgeo.sc") # string parm
 ```
 
-- **`parm` is one channel; `parmTuple` is the whole vector.** `node.parm("t")` is usually `None` — the components are `tx`/`ty`/`tz`, and the tuple is `node.parmTuple("t")`.
+- ✅ **`parm` is one channel; `parmTuple` is the whole vector.** `node.parm("t")` returns `None` — the components are `tx`/`ty`/`tz`, and the tuple is `node.parmTuple("t")`. (Verified: on a `box`, `parm("t")` is None while `parmTuple("size").eval()` → `(3.0, 1.0, 1.0)`.)
 - `.eval()` returns the cooked value; `.rawValue()` returns the unexpanded string/expression.
 - Expressions: `node.parm("tx").setExpression("$F/24.0")`; keyframes: `node.parm("tx").setKeyframe(hou.Keyframe(...))`.
 
 ## Geometry access cooks the node
 
-`node.geometry()` returns the cooked SOP geometry (triggers a cook). It's only valid on SOPs:
+✅ `node.geometry()` returns the cooked SOP geometry (triggers a cook). It's only valid on SOPs (verified: a `box` cooks to 8 points / 6 prims):
 
 ```python
 geo = box.geometry()
@@ -82,11 +83,11 @@ The Attribute Wrangle's `snippet` parm holds the code; the `class` parm sets wha
 ```python
 w = geo.createNode("attribwrangle", "wr")
 w.setInput(0, box)
-w.parm("class").set(2)   # Run Over: 0=Detail 1=Primitives 2=Points 3=Vertices 4=Numbers  (⚠ verify enum)
+w.parm("class").set(2)   # ✅ Run Over: 0=Detail 1=Primitives 2=Points 3=Vertices 4=Numbers (verified 21.0)
 w.parm("snippet").set('@P.y += 1.0;')
 ```
 
-VEX attribute **type prefixes** — the type is declared by the prefix, and getting it wrong silently creates the wrong attribute:
+✅ VEX attribute **type prefixes** — the type is declared by the prefix, and getting it wrong silently creates the wrong attribute (verified: `i@myint` and `v@myvec` in a points wrangle create `myint`/`myvec` point attributes):
 
 | Prefix | Type | Example |
 |---|---|---|

@@ -1,5 +1,5 @@
 ---
-version: 2.1.0
+version: 2.1.1
 name: houdini
 description: Drive a running (or headless) SideFX Houdini session via the houdini-mcp bridge (mcporter) — node networks, VEX wrangles, parameters, geometry, simulations (pyro/RBD/FLIP/Vellum), USD/Solaris, PDG, rendering, HDAs, and 30k+ indexed docs.
 ---
@@ -28,7 +28,7 @@ Bridge: `arghhhhh/houdini-mcp` (fork of `kleer001/houdini-mcp`, branch `patched`
 1. **Never rapid-fire commands.** Wait ≥1 s between consecutive tool calls — the plugin uses a single-threaded listener. Never fan out parallel calls to Houdini.
 2. **Separate scene work from rendering.** Do all scene setup first, then render as a distinct step.
 3. **Render commands are slow.** Don't time them out aggressively.
-4. **`execute_houdini_code` is the escape hatch** for anything not covered by a dedicated tool. It runs Python in the Houdini session — `import hou` at the top. Dangerous patterns (`hou.exit`, `os.remove`, `subprocess`) are blocked unless `allow_dangerous:true`. See `references/hou-cookbook.md` before writing scripts.
+4. **`execute_houdini_code` is the escape hatch** for anything not covered by a dedicated tool. It runs Python in the Houdini session — `import hou` at the top. Dangerous patterns (`hou.exit`, `os.remove`, `subprocess`, and `__import__`/`exec`) are blocked unless `allow_dangerous:true` — so the hex-decode trick for multi-line scripts needs that flag. See `references/hou-cookbook.md` before writing scripts.
 
 ## Always Start Here
 
@@ -122,7 +122,7 @@ npx mcporter call houdini.get_scene_info            # read path — confirms hou
 
 - **Port 9877 (not 9876)** — moved off the default via `HOUDINIMCP_PORT` so it coexists with BlenderMCP (which owns 9876). Set on both sides: mcporter `env` (bridge) and `houdini.env` (GUI plugin). If they disagree, the bridge can't reach the plugin.
 - **Single-threaded listener** — pace calls; never parallelize against Houdini.
-- **`execute_houdini_code` blocks dangerous patterns** (`hou.exit`, `os.remove`, `subprocess`, …) — pass `allow_dangerous:true` only when genuinely needed.
+- **`execute_houdini_code` blocks dangerous patterns** (`hou.exit`, `os.remove`, `subprocess`, `__import__`, `exec`, …) — pass `allow_dangerous:true` only when genuinely needed (e.g. the hex-decode trick for multi-line scripts).
 - **Headless mode** — viewport/screenshot/UI tools require an actual Houdini GUI; the auto-launched hython session is headless.
 - **Cold start** — headless hython takes ~30 s; mcporter's default 60 s call timeout is tight. Prelaunch the server for reliability (see agent diagnostics).
 - **Patched fork** — the local clone has Windows path/encoding + parm/vex crash fixes on the `patched` branch. Re-apply if you pull upstream.
