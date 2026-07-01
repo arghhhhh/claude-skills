@@ -1,7 +1,7 @@
 {
   "name": "houdini",
   "description": "SideFX Houdini automation — nodes, rendering, geometry, PDG/TOPs, USD/Solaris, HDAs, VEX, DOPs, viewport, COPs, CHOPs via 166 MCP tools.",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "prerequisites": [
     {
       "name": "git",
@@ -31,18 +31,18 @@
       {
         "name": "bootstrap-unix",
         "platforms": ["macos", "linux"],
-        "command": "git clone -b patched https://github.com/arghhhhh/houdini-mcp.git '{{HOUDINI_MCP_DIR}}' && cd '{{HOUDINI_MCP_DIR}}' && bash bootstrap.sh"
+        "command": "git clone -b fix/capture-screenshot-h21 https://github.com/arghhhhh/houdini-mcp.git '{{HOUDINI_MCP_DIR}}' && cd '{{HOUDINI_MCP_DIR}}' && bash bootstrap.sh"
       },
       {
         "name": "bootstrap-windows",
         "platforms": ["windows"],
-        "command": "git clone -b patched https://github.com/arghhhhh/houdini-mcp.git '{{HOUDINI_MCP_DIR}}' && cd '{{HOUDINI_MCP_DIR}}' && cmd.exe /c bootstrap.bat"
+        "command": "git clone -b fix/capture-screenshot-h21 https://github.com/arghhhhh/houdini-mcp.git '{{HOUDINI_MCP_DIR}}' && cd '{{HOUDINI_MCP_DIR}}' && cmd.exe /c bootstrap.bat"
       },
       {
         "name": "manual",
         "platforms": ["macos", "linux", "windows"],
-        "url": "https://github.com/arghhhhh/houdini-mcp/tree/patched",
-        "note": "Clone arghhhhh/houdini-mcp (branch: patched) to the path you set in HOUDINI_MCP_DIR, then run: uv sync && uv run python scripts/install.py. The 'patched' branch tracks kleer001/main with ysysimon PR #2 (Windows path/encoding fixes) and ysk424 PR #3 (parm.label/Color/vex crash fixes) merged."
+        "url": "https://github.com/arghhhhh/houdini-mcp/tree/fix/capture-screenshot-h21",
+        "note": "Tracks upstream kleer001/houdini-mcp. The earlier fork patches (Windows path/encoding, parm/vex crash fixes) are now merged into kleer001/main. The only remaining delta is branch fix/capture-screenshot-h21 = kleer001/main + one pending fix (PR #5: Houdini 21 capture_screenshot + opaque output). Clone that branch, then run: uv sync && uv run python scripts/install.py. Once PR #5 merges, switch to plain kleer001/houdini-mcp (main)."
       }
     ],
     "post_install": [
@@ -99,6 +99,6 @@
   "post_install_hints": [
     "Restart Houdini for the plugin to take effect (or rely on the auto-launched headless hython).",
     "PORT: the bridge is pinned to HOUDINIMCP_PORT=9877 (via mcp_servers.env) to avoid colliding with BlenderMCP, which also defaults to 9876. For the Houdini GUI plugin to bind 9877, add this line to your houdini.env (Windows: ~/Documents/houdini<ver>/houdini.env; macOS: ~/Library/Preferences/houdini/<ver>/houdini.env; Linux: ~/houdini<ver>/houdini.env), then restart Houdini:  HOUDINIMCP_PORT = 9877",
-    "Bridge sourced from arghhhhh/houdini-mcp branch 'patched' — kleer001/main + ysysimon PR #2 (Windows fixes) + ysk424 PR #3 (parm/vex crash fixes). To pull upstream updates: cd into the clone, git remote add upstream https://github.com/kleer001/houdini-mcp.git && git fetch upstream && git rebase upstream/main."
+    "Bridge tracks upstream kleer001/houdini-mcp. The clone is on branch fix/capture-screenshot-h21 = kleer001/main + one pending fix (PR #5: Houdini 21 capture_screenshot + opaque output). Older fork patches (Windows, parm/vex) are already merged upstream. Once PR #5 merges, repoint to plain kleer001/main: git checkout main && git pull origin main."
   ]
 }

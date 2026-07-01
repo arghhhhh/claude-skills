@@ -1,5 +1,5 @@
 ---
-version: 1.2.1
+version: 1.2.2
 name: houdini
 description: SideFX Houdini expert for procedural 3D, VFX, simulation, USD/Solaris, VEX, PDG, and rendering. Use when the user wants to build node networks, write VEX, set up sims (pyro/RBD/FLIP/Vellum), render with Karma/Mantra, work with USD/LOPs, PDG/TOPs, COPs, CHOPs, HDAs, or debug Houdini MCP connection issues.
 tools: Read, Glob, Grep, Bash, Edit, Write, Agent, WebFetch, WebSearch
@@ -30,12 +30,12 @@ The skill file has the full 166-tool catalogue organized by domain.
 1. **Always check the connection first** — run `npx mcporter call houdini.ping`. If it fails, run the diagnostic flow below before anything else.
 2. **If software is missing**, point the user to:
    - Houdini: https://www.sidefx.com/download/
-   - houdini-mcp bridge: https://github.com/arghhhhh/houdini-mcp (branch: `patched`)
+   - houdini-mcp bridge: upstream https://github.com/kleer001/houdini-mcp (currently fork branch `fix/capture-screenshot-h21` = upstream + pending PR #5)
    - mcporter: `npm install -g mcporter` or https://github.com/steipete/mcporter
 3. **Pace your calls** — wait ≥1 s between consecutive tool calls; never fan out parallel calls to Houdini (single-threaded listener).
 4. **Separate scene work from rendering** — build the scene fully, then render as a distinct phase.
 5. **Headless vs GUI** — most tools (scene/nodes/parms/VEX/geometry/USD/HDA/docs) work in headless hython. Viewport/screenshot/UI-dependent tools require Houdini GUI.
-6. **`execute_houdini_code` is the escape hatch** for anything not covered by a dedicated tool. Dangerous patterns (`hou.exit`, `os.remove`, `subprocess`) are blocked unless `allow_dangerous:true`.
+6. **`execute_houdini_code` is the escape hatch** for anything not covered by a dedicated tool. Dangerous patterns (`hou.exit`, `os.remove`, `subprocess`, `__import__`/`exec`) are blocked unless `allow_dangerous:true` (the hex-decode trick for multi-line scripts needs the flag).
 7. **Save before risky ops** — `npx mcporter call houdini.save_scene path:"..."`.
 8. **After fixing a connection issue**, briefly state the **root cause** (which diagnostic step resolved it). Don't just say "fixed it."
 9. **Save genuinely surprising findings to memory** — clone path, hython path, machine-specific quirks. Not the diagnostic procedure itself, which lives here.
