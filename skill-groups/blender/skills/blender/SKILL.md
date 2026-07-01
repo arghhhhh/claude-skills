@@ -1,5 +1,5 @@
 ---
-version: 2.0.3
+version: 2.0.4
 name: blender
 description: Drive a running Blender session via the BlenderMCP server (mcporter) — scene inspection, bpy Python execution, Poly Haven / Sketchfab asset import, Hyper3D & Hunyuan3D AI generation, and viewport screenshots.
 ---
@@ -106,7 +106,7 @@ Scripting/`bpy` traps live in `references/bpy-cookbook.md`. These are about the 
 - **Addon ≠ server version** — the addon (`addon.py`, `bl_info`) and server (`uvx blender-mcp`) version independently; `bl_info` may not bump even when `addon.py` changes. Re-install `addon.py` from the repo if tools misbehave after a server bump.
 - **Telemetry consent** — first run may prompt (`get_telemetry_consent`).
 - **API keys persist** — Sketchfab/Hyper3D/Hunyuan3D keys are saved in addon preferences across restarts.
-- **`execute_blender_code` captures stdout** — return data with `print(...)`. Multi-line scripts via mcporter on the CLI are awkward to quote; hex-encode and decode in one line when needed (`exec(__import__('binascii').unhexlify('<hex>').decode())`).
+- **Multi-line scripts via mcporter** are awkward to quote (spaces and `+`/`/`/`=` break `key:value`) — hex-encode and decode in one line: `exec(__import__('binascii').unhexlify('<hex>').decode())`.
 - **Reconcile this doc after a server update** — `npx mcporter list blender --all-parameters` is the authoritative tool/param list; `install.sh --check-drift --skills blender` flags doc drift.
 
 ## References — read these for deeper topics

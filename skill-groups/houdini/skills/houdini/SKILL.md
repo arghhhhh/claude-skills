@@ -1,5 +1,5 @@
 ---
-version: 2.1.2
+version: 2.1.3
 name: houdini
 description: Drive a running (or headless) SideFX Houdini session via the houdini-mcp bridge (mcporter) — node networks, VEX wrangles, parameters, geometry, simulations (pyro/RBD/FLIP/Vellum), USD/Solaris, PDG, rendering, HDAs, and 30k+ indexed docs.
 ---
@@ -37,7 +37,7 @@ npx mcporter call houdini.get_connection_status     # bridge-side state
 npx mcporter call houdini.get_scene_info            # read path — confirms hou is live
 ```
 
-**Port 9877** (moved off the default 9876 to coexist with BlenderMCP). Verify you're actually talking to Houdini: `get_scene_info` should show `/obj`-style node paths, not mesh `Component#…` objects. If you *do* see a Blender-looking scene, `No module named 'hou'`, or `ping` → `Unknown command type`, the port didn't take — check that `houdini.env` has `HOUDINIMCP_PORT = 9877` and Houdini was restarted after adding it (the plugin reads the port at startup). For deeper listener triage see the agent's Connection Diagnostics.
+**Confirm you're talking to Houdini, not Blender** (both share port lineage — see Setup): `get_scene_info` should show `/obj`-style node paths, not mesh `Component#…`. A Blender-looking scene, `No module named 'hou'`, or `ping` → `Unknown command type` means the port didn't take — see the agent's Connection Diagnostics.
 
 ## Tool Catalogue (166 tools across 19 domains)
 
@@ -120,7 +120,6 @@ npx mcporter call houdini.get_scene_info            # read path — confirms hou
 
 `hou` Python and VEX traps live in `references/hou-cookbook.md`. These are about the bridge/transport:
 
-- **Port 9877 (not 9876)** — moved off the default via `HOUDINIMCP_PORT` so it coexists with BlenderMCP (which owns 9876). Set on both sides: mcporter `env` (bridge) and `houdini.env` (GUI plugin). If they disagree, the bridge can't reach the plugin.
 - **Single-threaded listener** — pace calls; never parallelize against Houdini.
 - **`execute_houdini_code` blocks dangerous patterns** (`hou.exit`, `os.remove`, `subprocess`, `__import__`, `exec`, …) — pass `allow_dangerous:true` only when genuinely needed (e.g. the hex-decode trick for multi-line scripts).
 - **Headless mode** — viewport/screenshot/UI tools require an actual Houdini GUI; the auto-launched hython session is headless.

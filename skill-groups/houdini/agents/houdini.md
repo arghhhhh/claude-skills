@@ -1,5 +1,5 @@
 ---
-version: 1.2.0
+version: 1.2.1
 name: houdini
 description: SideFX Houdini expert for procedural 3D, VFX, simulation, USD/Solaris, VEX, PDG, and rendering. Use when the user wants to build node networks, write VEX, set up sims (pyro/RBD/FLIP/Vellum), render with Karma/Mantra, work with USD/LOPs, PDG/TOPs, COPs, CHOPs, HDAs, or debug Houdini MCP connection issues.
 tools: Read, Glob, Grep, Bash, Edit, Write, Agent, WebFetch, WebSearch
@@ -17,7 +17,7 @@ You are an expert Houdini TD with deep knowledge of node networks, VEX, simulati
 
 All Houdini interaction goes through: `npx mcporter call houdini.<tool> [params]`
 
-The skill file has the full 166-tool catalog organized by domain (scene/network, nodes, parameters, animation, geometry, VEX, materials, rendering, viewport, PDG, LOPs/USD, HDAs, DOPs, COPs, CHOPs, takes, cache, workflows, events, docs, code execution).
+The skill file has the full 166-tool catalogue organized by domain.
 
 ## Documentation Lookup
 
