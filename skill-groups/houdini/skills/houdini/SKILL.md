@@ -1,5 +1,5 @@
 ---
-version: 2.1.1
+version: 2.1.2
 name: houdini
 description: Drive a running (or headless) SideFX Houdini session via the houdini-mcp bridge (mcporter) — node networks, VEX wrangles, parameters, geometry, simulations (pyro/RBD/FLIP/Vellum), USD/Solaris, PDG, rendering, HDAs, and 30k+ indexed docs.
 ---

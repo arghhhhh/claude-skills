@@ -1,5 +1,5 @@
 ---
-version: 2.0.2
+version: 2.0.3
 name: blender
 description: Drive a running Blender session via the BlenderMCP server (mcporter) — scene inspection, bpy Python execution, Poly Haven / Sketchfab asset import, Hyper3D & Hunyuan3D AI generation, and viewport screenshots.
 ---
@@ -111,5 +111,5 @@ Scripting/`bpy` traps live in `references/bpy-cookbook.md`. These are about the 
 
 ## References — read these for deeper topics
 
-- **`references/bpy-cookbook.md`** — read **before writing any `execute_blender_code` Python**. Data-API vs `bpy.ops`, collection linking, material `node_tree` setup (with verified Blender 5.x input names), render-engine ids per version, transform-apply, naming collisions, world/HDRI setup.
+- **`references/bpy-cookbook.md`** — read **before writing any `execute_blender_code` Python**. Data-API vs `bpy.ops`, collection linking, material `node_tree` setup (Blender 5.x input names), render-engine ids per version, transform-apply, naming collisions, world/HDRI setup.
 - **`references/scene-checklist.md`** — an end-to-end checklist for building a scene from scratch, each item mapping to a trap in the cookbook.
