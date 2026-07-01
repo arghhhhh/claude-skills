@@ -1,5 +1,5 @@
 ---
-version: 2.0.0
+version: 2.1.0
 name: houdini
 description: Drive a running (or headless) SideFX Houdini session via the houdini-mcp bridge (mcporter) — node networks, VEX wrangles, parameters, geometry, simulations (pyro/RBD/FLIP/Vellum), USD/Solaris, PDG, rendering, HDAs, and 30k+ indexed docs.
 ---
@@ -12,7 +12,8 @@ Bridge: `arghhhhh/houdini-mcp` (fork of `kleer001/houdini-mcp`, branch `patched`
 
 ## Setup
 
-- **Transport**: `npx mcporter call houdini.<tool> [params]` (MCPorter → houdini-mcp bridge → Houdini/hython over TCP `localhost:9876`)
+- **Transport**: `npx mcporter call houdini.<tool> [params]` (MCPorter → houdini-mcp bridge → Houdini/hython over TCP `localhost:9877`)
+- **Port**: pinned to **9877** via `HOUDINIMCP_PORT` to avoid colliding with BlenderMCP (which owns 9876). The bridge gets it from the mcporter `env`; the Houdini GUI plugin gets it from `houdini.env` (`HOUDINIMCP_PORT = 9877`). Both must agree — if you change one, change the other, and restart Houdini.
 - **Houdini-side plugin** must be installed once: `cd $HOUDINI_MCP_DIR && uv run python scripts/install.py`. After that it auto-loads when Houdini starts.
 - **Houdini does NOT need to be open** for most tools — the bridge auto-launches a headless `hython` session if no GUI is detected. Viewport/render/UI tools need a GUI.
 
@@ -36,7 +37,7 @@ npx mcporter call houdini.get_connection_status     # bridge-side state
 npx mcporter call houdini.get_scene_info            # read path — confirms hou is live
 ```
 
-⚠ **Port 9876 collides with BlenderMCP.** Both the Houdini bridge and the BlenderMCP server default to TCP `localhost:9876`. If Blender is running with its MCP addon connected, `houdini.*` calls are silently answered by **Blender** — `get_scene_info` returns a Blender scene, `execute_houdini_code` fails with `No module named 'hou'`, and calls like `ping` return `Unknown command type`. **Symptom → fix:** close BlenderMCP (or disconnect its addon) before using Houdini, or reconfigure one server's port. Verify you're actually talking to Houdini: `get_scene_info` should show `/obj`-style node paths, not mesh `Component#…` objects. For deeper listener triage see the agent's Connection Diagnostics.
+**Port 9877** (moved off the default 9876 to coexist with BlenderMCP). Verify you're actually talking to Houdini: `get_scene_info` should show `/obj`-style node paths, not mesh `Component#…` objects. If you *do* see a Blender-looking scene, `No module named 'hou'`, or `ping` → `Unknown command type`, the port didn't take — check that `houdini.env` has `HOUDINIMCP_PORT = 9877` and Houdini was restarted after adding it (the plugin reads the port at startup). For deeper listener triage see the agent's Connection Diagnostics.
 
 ## Tool Catalogue (166 tools across 19 domains)
 
@@ -119,7 +120,7 @@ npx mcporter call houdini.get_scene_info            # read path — confirms hou
 
 `hou` Python and VEX traps live in `references/hou-cookbook.md`. These are about the bridge/transport:
 
-- **Port 9876 collides with BlenderMCP** — see "Always Start Here". Don't run both MCP servers at once.
+- **Port 9877 (not 9876)** — moved off the default via `HOUDINIMCP_PORT` so it coexists with BlenderMCP (which owns 9876). Set on both sides: mcporter `env` (bridge) and `houdini.env` (GUI plugin). If they disagree, the bridge can't reach the plugin.
 - **Single-threaded listener** — pace calls; never parallelize against Houdini.
 - **`execute_houdini_code` blocks dangerous patterns** (`hou.exit`, `os.remove`, `subprocess`, …) — pass `allow_dangerous:true` only when genuinely needed.
 - **Headless mode** — viewport/screenshot/UI tools require an actual Houdini GUI; the auto-launched hython session is headless.

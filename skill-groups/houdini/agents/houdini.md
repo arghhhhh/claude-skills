@@ -1,5 +1,5 @@
 ---
-version: 1.1.0
+version: 1.2.0
 name: houdini
 description: SideFX Houdini expert for procedural 3D, VFX, simulation, USD/Solaris, VEX, PDG, and rendering. Use when the user wants to build node networks, write VEX, set up sims (pyro/RBD/FLIP/Vellum), render with Karma/Mantra, work with USD/LOPs, PDG/TOPs, COPs, CHOPs, HDAs, or debug Houdini MCP connection issues.
 tools: Read, Glob, Grep, Bash, Edit, Write, Agent, WebFetch, WebSearch
@@ -42,32 +42,35 @@ The skill file has the full 166-tool catalog organized by domain (scene/network,
 
 # Connection Diagnostics
 
-The MCP bridge talks to Houdini over TCP **localhost:9876**. If `houdini.ping` times out or returns errors, walk this checklist in order. Don't skip steps — past incidents have all resolved at one of these.
+The MCP bridge talks to Houdini over TCP **localhost:9877** (moved off 9876 to coexist with BlenderMCP). If `houdini.ping` times out or returns errors, walk this checklist in order. Don't skip steps — past incidents have all resolved at one of these.
 
 ## Step 0 — Rule out the BlenderMCP port collision (fastest check)
 
-**BlenderMCP also defaults to `localhost:9876`.** If Blender is running with its MCP addon connected, it may own the port and silently answer `houdini.*` calls. Tell-tale signs: `houdini.ping` → `Unknown command type: ping`; `houdini.get_scene_info` returns mesh `Component#…` objects instead of `/obj/...` node paths; `houdini.execute_houdini_code` → `No module named 'hou'`. If you see any of these, **the Houdini bridge isn't the one answering** — close BlenderMCP (or disconnect its addon), or move one server to a different port. This is a *wrong-server* failure, not a *no-server* one, so Steps 1–7 below (which assume no/stale Houdini listener) won't find it.
+Houdini is pinned to **9877** via `HOUDINIMCP_PORT`; BlenderMCP owns the default **9876**. If the port config didn't take (missing `houdini.env` entry, or Houdini not restarted after adding it), the plugin falls back to 9876 and **Blender silently answers `houdini.*` calls**. Tell-tale signs: `houdini.ping` → `Unknown command type: ping`; `houdini.get_scene_info` returns mesh `Component#…` objects instead of `/obj/...` node paths; `houdini.execute_houdini_code` → `No module named 'hou'`. If you see any of these:
+1. Confirm `~/Documents/houdini<ver>/houdini.env` (Win) contains `HOUDINIMCP_PORT = 9877` and **restart Houdini** — the plugin reads the port at startup.
+2. Confirm the mcporter/`.mcp.json` houdini entry has `env.HOUDINIMCP_PORT = "9877"` so the bridge connects to the same port.
+This is a *wrong-server* failure, not a *no-server* one, so Steps 1–7 below (which assume no/stale Houdini listener) won't find it.
 
-## Step 1 — Inventory port 9876 listeners and Houdini/hython processes
+## Step 1 — Inventory port 9877 listeners and Houdini/hython processes
 
-The most common failure is **multiple stale listeners on 9876** (Windows allows socket reuse across processes; one binds first and serves, others block silently and may "win" the route on later connections).
+The most common failure is **multiple stale listeners on 9877** (Windows allows socket reuse across processes; one binds first and serves, others block silently and may "win" the route on later connections).
 
 - **Windows (PowerShell)**:
   ```powershell
-  netstat -ano | findstr :9876
+  netstat -ano | findstr :9877
   Get-Process houdini,hython -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,StartTime | Format-Table -AutoSize
   ```
 - **macOS / Linux**:
   ```bash
-  lsof -nP -iTCP:9876 -sTCP:LISTEN
+  lsof -nP -iTCP:9877 -sTCP:LISTEN
   pgrep -fla 'houdini|hython'
   ```
 
-Healthy state: **exactly one** listener on 9876, owned by either a Houdini GUI process or a hython process you launched.
+Healthy state: **exactly one** listener on 9877, owned by either a Houdini GUI process or a hython process you launched.
 
 ## Step 2 — Kill stale listeners (with caution)
 
-If multiple processes hold 9876, or a listener belongs to a Houdini that's been running for days/across reboots, it's almost certainly stale.
+If multiple processes hold 9877, or a listener belongs to a Houdini that's been running for days/across reboots, it's almost certainly stale.
 
 **Always confirm with the user before killing a Houdini GUI** — they may have unsaved work.
 
@@ -99,11 +102,11 @@ The bridge auto-launches headless hython if no listener is detected, but mcporte
   /opt/hfs<ver>/bin/hython "$HOUDINI_MCP_DIR/scripts/headless_server.py"
   ```
 
-Wait for the log line `Headless HoudiniMCP server ready on port 9876` (~30 s) before pinging.
+Wait for the log line `Headless HoudiniMCP server ready on port 9877` (~30 s) before pinging.
 
 **B. Houdini GUI (required for viewport/screenshot/render tools)**
 
-Just launch Houdini normally. The plugin auto-loads via `pythonrc.py` (installed by `scripts/install.py`) and binds 9876. **Race condition warning**: if a hython is also starting, whichever calls `bind()` first wins. The slower one fails silently. So: don't launch GUI and headless together.
+Just launch Houdini normally. The plugin auto-loads via `pythonrc.py` (installed by `scripts/install.py`) and binds 9877. **Race condition warning**: if a hython is also starting, whichever calls `bind()` first wins. The slower one fails silently. So: don't launch GUI and headless together.
 
 ## Step 4 — Verify end-to-end
 
@@ -130,7 +133,7 @@ Write any newly-discovered paths to memory so future sessions don't re-derive th
 
 ## Step 6 — Confirm the Houdini-side plugin is installed
 
-If both the bridge and Houdini are running but no port 9876 listener exists, the plugin was never installed on this machine. Run:
+If both the bridge and Houdini are running but no port 9877 listener exists, the plugin was never installed on this machine. Run:
 
 ```bash
 cd "$HOUDINI_MCP_DIR" && uv sync && uv run python scripts/install.py

@@ -1,5 +1,5 @@
 ---
-version: 2.0.1
+version: 2.0.2
 name: blender
 description: Drive a running Blender session via the BlenderMCP server (mcporter) — scene inspection, bpy Python execution, Poly Haven / Sketchfab asset import, Hyper3D & Hunyuan3D AI generation, and viewport screenshots.
 ---
@@ -101,7 +101,7 @@ Scripting/`bpy` traps live in `references/bpy-cookbook.md`. These are about the 
 
 - **`user_prompt` is required** on most tools — include a short description.
 - **One client at a time** — don't run Cursor and Claude Code against the BlenderMCP server simultaneously; the second connection fails.
-- **Port 9876 collides with Houdini-MCP** — the Houdini bridge defaults to the same `localhost:9876`. Whichever binds first wins; if both are up, `houdini.*` and `blender.*` calls can cross-answer (a `houdini.*` call may return this Blender scene). Don't run both MCP servers at once, or move one to a different port.
+- **Port 9876 — keep Houdini-MCP off it.** Houdini-MCP also defaults to `localhost:9876`; if both bind it, `houdini.*`/`blender.*` calls cross-answer (a `houdini.*` call may return this Blender scene). Resolved in this setup by pinning Houdini to **9877** (`HOUDINIMCP_PORT`); Blender keeps 9876. If you spin up another 9876 MCP, expect the same collision.
 - **No background/headless mode** — as of blender-mcp 1.6.x the server fails fast under `blender -b`. Run with a GUI, or a virtual display (`xvfb-run -a blender`).
 - **Addon ≠ server version** — the addon (`addon.py`, `bl_info`) and server (`uvx blender-mcp`) version independently; `bl_info` may not bump even when `addon.py` changes. Re-install `addon.py` from the repo if tools misbehave after a server bump.
 - **Telemetry consent** — first run may prompt (`get_telemetry_consent`).

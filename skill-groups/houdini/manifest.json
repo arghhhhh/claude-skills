@@ -1,7 +1,7 @@
 {
   "name": "houdini",
   "description": "SideFX Houdini automation — nodes, rendering, geometry, PDG/TOPs, USD/Solaris, HDAs, VEX, DOPs, viewport, COPs, CHOPs via 166 MCP tools.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "prerequisites": [
     {
       "name": "git",
@@ -90,11 +90,15 @@
         "run",
         "python",
         "houdini_mcp_server.py"
-      ]
+      ],
+      "env": {
+        "HOUDINIMCP_PORT": "9877"
+      }
     }
   },
   "post_install_hints": [
     "Restart Houdini for the plugin to take effect (or rely on the auto-launched headless hython).",
+    "PORT: the bridge is pinned to HOUDINIMCP_PORT=9877 (via mcp_servers.env) to avoid colliding with BlenderMCP, which also defaults to 9876. For the Houdini GUI plugin to bind 9877, add this line to your houdini.env (Windows: ~/Documents/houdini<ver>/houdini.env; macOS: ~/Library/Preferences/houdini/<ver>/houdini.env; Linux: ~/houdini<ver>/houdini.env), then restart Houdini:  HOUDINIMCP_PORT = 9877",
     "Bridge sourced from arghhhhh/houdini-mcp branch 'patched' — kleer001/main + ysysimon PR #2 (Windows fixes) + ysk424 PR #3 (parm/vex crash fixes). To pull upstream updates: cd into the clone, git remote add upstream https://github.com/kleer001/houdini-mcp.git && git fetch upstream && git rebase upstream/main."
   ]
 }
