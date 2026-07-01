@@ -1,5 +1,5 @@
 ---
-version: 2.1.4
+version: 2.1.5
 name: houdini
 description: Drive a running (or headless) SideFX Houdini session via the houdini-mcp bridge (mcporter) — node networks, VEX wrangles, parameters, geometry, simulations (pyro/RBD/FLIP/Vellum), USD/Solaris, PDG, rendering, HDAs, and 30k+ indexed docs.
 ---
@@ -8,7 +8,7 @@ description: Drive a running (or headless) SideFX Houdini session via the houdin
 
 Use this skill to inspect and modify a Houdini session through the houdini-mcp bridge, called over `npx mcporter call houdini.<tool>`. Covers scene/network editing, VEX, simulation, USD/Solaris, PDG/TOPs, COPs, CHOPs, HDAs, rendering, and doc search.
 
-Bridge: upstream `kleer001/houdini-mcp`, currently on branch `fix/capture-screenshot-h21` (= `kleer001/main` + pending PR #5: H21 `capture_screenshot` + opaque output). Older fork patches are already merged upstream; switch to plain `kleer001/main` once #5 lands. 166 tools total.
+Bridge: upstream `kleer001/houdini-mcp`, currently on the `integration` branch (= `kleer001/main` + two pending fixes: PR #5 H21 `capture_screenshot`+opaque, PR #6 `install.py` pref-dir resolution). Older fork patches are already merged upstream; switch to plain `kleer001/main` once #5 and #6 land. 166 tools total.
 
 ## Setup
 
@@ -20,7 +20,7 @@ Bridge: upstream `kleer001/houdini-mcp`, currently on branch `fix/capture-screen
 ## Not Installed?
 
 - **Houdini**: https://www.sidefx.com/download/
-- **houdini-mcp bridge**: upstream https://github.com/kleer001/houdini-mcp (currently branch `fix/capture-screenshot-h21` on the arghhhhh fork = upstream + pending PR #5)
+- **houdini-mcp bridge**: upstream https://github.com/kleer001/houdini-mcp (currently the `integration` branch on the arghhhhh fork = upstream + pending PRs #5 and #6)
 - **MCPorter**: runs via `npx mcporter` (auto-fetched)
 
 ## Critical Rules

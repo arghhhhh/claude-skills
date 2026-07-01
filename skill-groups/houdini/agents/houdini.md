@@ -1,5 +1,5 @@
 ---
-version: 1.2.4
+version: 1.2.5
 name: houdini
 description: SideFX Houdini expert for procedural 3D, VFX, simulation, USD/Solaris, VEX, PDG, and rendering. Use when the user wants to build node networks, write VEX, set up sims (pyro/RBD/FLIP/Vellum), render with Karma/Mantra, work with USD/LOPs, PDG/TOPs, COPs, CHOPs, HDAs, or debug Houdini MCP connection issues.
 tools: Read, Glob, Grep, Bash, Edit, Write, Agent, WebFetch, WebSearch
@@ -30,7 +30,7 @@ The skill file has the full 166-tool catalogue organized by domain.
 1. **Always check the connection first** — run `npx mcporter call houdini.ping`. If it fails, run the diagnostic flow below before anything else.
 2. **If software is missing**, point the user to:
    - Houdini: https://www.sidefx.com/download/
-   - houdini-mcp bridge: upstream https://github.com/kleer001/houdini-mcp (currently fork branch `fix/capture-screenshot-h21` = upstream + pending PR #5)
+   - houdini-mcp bridge: upstream https://github.com/kleer001/houdini-mcp (currently fork `integration` branch = upstream + pending PRs #5 and #6)
    - mcporter: `npm install -g mcporter` or https://github.com/steipete/mcporter
 3. **Pace your calls** — wait ≥1 s between consecutive tool calls; never fan out parallel calls to Houdini (single-threaded listener).
 4. **Separate scene work from rendering** — build the scene fully, then render as a distinct phase.
@@ -109,7 +109,7 @@ Wait for the log line `Headless HoudiniMCP server ready on port 9877` (~30 s) be
 Just launch Houdini normally. The plugin auto-loads via `pythonrc.py` (installed by `scripts/install.py`) and binds 9877. **Race condition warning**: if a hython is also starting, whichever calls `bind()` first wins. The slower one fails silently. So: don't launch GUI and headless together.
 
 ⚠ **Two pref dirs can diverge (HOME vs Documents).** Houdini's user-pref dir depends on `HOME`: if a launch has `HOME` set (shells/agents — Git Bash exports `HOME=C:\Users\<u>`), the pref dir is `$HOME/houdini<ver>`; otherwise `Documents/houdini<ver>`. Each has its **own** plugin copy and `houdini.env`. The plugin runs from whichever the *launch* resolves to — verify with `houdinimcp.__file__`.
-  - **`scripts/install.py` always installs to the `Documents` pref dir** (it ignores `HOME`/`HOUDINI_USER_PREF_DIR`). If the user's Houdini launches with `HOME` set, its real pref dir is `$HOME/houdini<ver>`, so `install.py` updates the *wrong* dir — after any plugin change, sync the files to the actual runtime pref dir manually and clear its `__pycache__`.
+  - **`scripts/install.py` target depends on the build.** The `integration` branch / PR #6 makes it honor `HOUDINI_USER_PREF_DIR` then `$HOME/houdini<ver>` (matching the running Houdini). **Un-patched upstream `install.py` always installs to `Documents`** (ignores `HOME`) — on such a build, if the user's Houdini runs from `$HOME/houdini<ver>`, sync plugin changes to that dir manually and clear its `__pycache__`.
   - Set `HOUDINIMCP_PORT` in the `houdini.env` of the pref dir the user *actually* launches with (a `setx` env var doesn't reliably reach GUI launches). Confirm the port with `houdini.get_connection_status`.
 
 ## Step 4 — Verify end-to-end
