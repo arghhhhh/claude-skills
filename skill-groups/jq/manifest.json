@@ -1,0 +1,43 @@
+{
+  "name": "jq",
+  "type": "tool-only",
+  "description": "jq — command-line JSON processor. General-purpose utility for slicing/filtering/transforming JSON output from other CLIs (linear, officecli, gh, etc.).",
+  "version": "1.0.0",
+  "prerequisites": [],
+  "install": {
+    "check": "jq --version",
+    "methods": [
+      {
+        "name": "winget",
+        "platforms": ["windows"],
+        "check": "winget --version",
+        "command": "winget install --id jqlang.jq --accept-source-agreements --accept-package-agreements --silent"
+      },
+      {
+        "name": "brew",
+        "platforms": ["macos", "linux"],
+        "check": "brew --version",
+        "command": "brew install jq"
+      },
+      {
+        "name": "apt",
+        "platforms": ["linux"],
+        "check": "apt-get --version",
+        "command": "sudo apt-get update && sudo apt-get install -y jq"
+      },
+      {
+        "name": "manual",
+        "platforms": ["macos", "linux", "windows"],
+        "url": "https://jqlang.github.io/jq/download/"
+      }
+    ]
+  },
+  "test": {
+    "command": "jq --version",
+    "expect_success": true
+  },
+  "post_install_hints": [
+    "If 'jq' is not found after a winget install, open a new shell — winget adds it to PATH but existing shells won't see it until restarted.",
+    "On Windows the binary lands in %LOCALAPPDATA%\\Microsoft\\WinGet\\Packages\\jqlang.jq_* and the WinGet\\Links shim dir; both are added to the user PATH."
+  ]
+}
