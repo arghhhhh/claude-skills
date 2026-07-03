@@ -1,0 +1,55 @@
+{
+  "name": "linear-cli",
+  "description": "Linear CLI (schpet/linear-cli) — manage Linear.app issues, projects, milestones, cycles, initiatives, labels, documents, and teams from the terminal, with git/jj integration and JSON output for agents.",
+  "version": "1.0.0",
+  "prerequisites": [
+    {
+      "name": "deno",
+      "check": "deno --version",
+      "install_hint": "Install Deno from https://deno.land (winget install DenoLand.Deno) — used to install the linear CLI from JSR.",
+      "required": false,
+      "note": "Only needed for the deno/JSR install method. Homebrew, npm, and prebuilt binaries are alternatives."
+    }
+  ],
+  "install": {
+    "check": "linear --version",
+    "methods": [
+      {
+        "name": "deno",
+        "platforms": ["macos", "linux", "windows"],
+        "check": "deno --version",
+        "command": "deno install -A --reload -f -g -n linear jsr:@schpet/linear-cli"
+      },
+      {
+        "name": "brew",
+        "platforms": ["macos", "linux"],
+        "check": "brew --version",
+        "command": "brew install schpet/tap/linear"
+      },
+      {
+        "name": "manual",
+        "platforms": ["macos", "linux", "windows"],
+        "url": "https://github.com/schpet/linear-cli/releases/latest"
+      }
+    ],
+    "notes": "The deno method installs to ~/.deno/bin (Windows: C:\\Users\\<you>\\.deno\\bin) — ensure that directory is on PATH. After install, authenticate with 'linear auth login'."
+  },
+  "test": {
+    "command": "linear --version",
+    "expect_success": true
+  },
+  "integration_test": {
+    "command": "linear auth whoami",
+    "expect_success": true,
+    "description": "linear must be authenticated — run 'linear auth login' with an API key from https://linear.app/settings/account/security if not"
+  },
+  "post_install_hints": [
+    "Authenticate: run 'linear auth login' and paste an API key from https://linear.app/settings/account/security (stored in the system keyring).",
+    "Set project defaults: run 'linear config' in a repo to write .linear.toml (team_id, workspace, vcs).",
+    "If 'linear' is not found after install, add the Deno bin dir to PATH (Windows: C:/Users/<you>/.deno/bin; macOS/Linux: ~/.deno/bin)."
+  ],
+  "skills": [
+    "linear-cli"
+  ],
+  "agents": []
+}
