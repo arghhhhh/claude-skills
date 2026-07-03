@@ -2,11 +2,11 @@
   "name": "officecli",
   "type": "vendored",
   "description": "Create, read, analyze, and modify Office documents (.docx, .xlsx, .pptx) via CLI.",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "source": {
     "repo": "iOfficeAI/OfficeCLI",
-    "ref": "0530e0ec14c1137853a931547ea9597582aee73a",
-    "ref_name": "main@2026-05-28",
+    "ref": "01d78a6bb4d2aa17da50aeb9827d962ff4d27208",
+    "ref_name": "main@2026-07-02",
     "paths": {
       "skills": "skills",
       "agents": null
