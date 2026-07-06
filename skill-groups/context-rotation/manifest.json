@@ -1,0 +1,34 @@
+{
+  "name": "context-rotation",
+  "type": "tool-only",
+  "description": "Automatic context rotation for Claude Code. At ~65% context usage a PreToolUse hook interrupts and has the agent write ROTATION-HANDOVER.md; SessionStart re-injects it after /clear. /long-horizon arms full auto-rotation (tmux-driven /clear) across a chain of sessions.",
+  "version": "1.0.0",
+  "prerequisites": [
+    {
+      "name": "python3",
+      "check": "python3 --version",
+      "install_hint": "Install Python 3 (macOS: xcode-select --install or brew install python; Linux: apt-get install python3)",
+      "required": true
+    }
+  ],
+  "install": {
+    "check": "test -f $HOME/.claude/hooks/context-rotation/detect-context.sh && grep -q context-rotation $HOME/.claude/settings.json",
+    "methods": [
+      {
+        "name": "wire",
+        "platforms": ["macos", "linux"],
+        "command": "bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/context-rotation/install/wire.sh\""
+      }
+    ]
+  },
+  "test": {
+    "command": "test -x $HOME/.claude/hooks/context-rotation/detect-context.sh && grep -q context-rotation $HOME/.claude/settings.json",
+    "expect_success": true
+  },
+  "post_install_hints": [
+    "Restart Claude Code so the PreToolUse / PostToolUse / SessionStart hooks load.",
+    "Default (always on): at ~65% context you'll be interrupted to write ROTATION-HANDOVER.md, then run /clear — the next session auto-loads it.",
+    "Run /long-horizon to arm hands-off auto-rotation (requires tmux for the automatic /clear); /long-horizon-off to disarm.",
+    "Tune ~/.claude/hooks/context-rotation/config (CR_WINDOW, CR_THRESHOLD) or override per-shell with CONTEXT_ROTATION_WINDOW / CONTEXT_ROTATION_THRESHOLD."
+  ]
+}
