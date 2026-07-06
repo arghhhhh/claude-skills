@@ -31,7 +31,13 @@ notified="$CR_STATE/${sid}.notified"
 mkdir -p "$CR_STATE"
 : > "$notified"
 
-reason="⚠ Context rotation — about ${pct}% of the context window is used (threshold ${threshold}%). Pause the current work and write a file named ROTATION-HANDOVER.md in the current working directory with exactly these sections: '## Completed Work', '## Remaining Tasks', '## Next Steps for Incoming Context' (be concrete — include file paths, IDs, ports, and the exact next command). After writing it, tell the user to run /clear. The handover is auto-loaded into the next session."
+reason="⚠ Context rotation — about ${pct}% of the context window is used (threshold ${threshold}%). Pause the current work and write a file named ROTATION-HANDOVER.md in the current working directory. Write it as MEMORY for a successor with none of your context, not as a status log — capture what a file or the repo could NOT reconstruct. Use exactly these sections:
+'## Completed Work' — what is done, with concrete anchors (file paths, IDs, ports, URLs, tab/session ids).
+'## Remaining Tasks' — what is left, in order.
+'## Open Questions / Pending User Decisions' — every unresolved choice awaiting the user, quoted the way you framed it to them, plus any boundaries you were told to respect (e.g. 'do not submit').
+'## Working Context (not in any file)' — the WHY behind key decisions, options you considered and rejected, assumptions/constraints the user stated, and current UI/session state needed to resume.
+'## Next Steps for Incoming Context' — the exact next action(s) and command(s).
+If the project has few docs, err toward verbosity: this handover is the only memory that survives the rotation. After writing it, tell the user to run /clear. The handover is auto-loaded into the next session."
 if cr_long_horizon_active; then
   reason="$reason  Long-horizon mode is ON: once you write ROTATION-HANDOVER.md the session will rotate to a fresh context automatically."
 fi

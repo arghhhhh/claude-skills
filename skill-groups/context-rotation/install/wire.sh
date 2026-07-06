@@ -47,8 +47,9 @@ PY
     [ "${biggest:-0}" -gt 200000 ] 2>/dev/null && window=1000000
   fi
   cat > "$HOOK_DIR/config" <<EOF
-# context-rotation config — edit freely. Env vars override these:
-#   CONTEXT_ROTATION_WINDOW, CONTEXT_ROTATION_THRESHOLD
+# context-rotation config — edit freely. Env vars override these per-session:
+#   CONTEXT_ROTATION_WINDOW, CONTEXT_ROTATION_THRESHOLD,
+#   CONTEXT_ROTATION_LONG_HORIZON=1 (arm auto-rotate for one session only)
 CR_WINDOW=$window        # context window size in tokens
 CR_THRESHOLD=65          # rotate when used% >= this
 CR_HANDOFF_MAX_AGE=3600  # max age (s) of a handover SessionStart will inject

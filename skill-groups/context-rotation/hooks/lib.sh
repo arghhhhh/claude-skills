@@ -26,8 +26,13 @@ cr_window() { echo "${CONTEXT_ROTATION_WINDOW:-${CR_WINDOW:-200000}}"; }
 # Rotation threshold as an integer percent. Env wins, then config, then 65.
 cr_threshold() { echo "${CONTEXT_ROTATION_THRESHOLD:-${CR_THRESHOLD:-65}}"; }
 
-# True when long-horizon auto-rotate is armed.
-cr_long_horizon_active() { [ -f "$CR_STATE/long-horizon.on" ]; }
+# True when long-horizon auto-rotate is armed — globally via the marker file,
+# or for a single session via CONTEXT_ROTATION_LONG_HORIZON=1 in that session's
+# environment (lets a test session opt in without touching other sessions).
+cr_long_horizon_active() {
+  [ "${CONTEXT_ROTATION_LONG_HORIZON:-0}" = "1" ] && return 0
+  [ -f "$CR_STATE/long-horizon.on" ]
+}
 
 # Current context occupancy in tokens = input + cache_creation + cache_read on
 # the most recent MAIN-CHAIN assistant message (sidechain/subagent lines skipped).
