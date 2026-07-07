@@ -44,6 +44,21 @@ Decisions**, **Working Context (not in any file)**, Next Steps. It's told to err
 toward verbosity in doc-sparse projects, since the handover is the only memory
 that survives the rotation.
 
+### Changing settings / getting help — `/rotation`
+
+Run `/rotation` any time to see current settings + the long-horizon/tmux
+quickstart, or to change values without remembering commands:
+
+- `/rotation` → show settings + quickstart
+- `/rotation set threshold to 75` → global threshold change (applies to the next
+  tool call; hooks read the config live)
+- `/rotation 75` → same
+
+Under the hood it calls `~/.claude/hooks/context-rotation/rotation-ctl.sh`
+(`show` | `set-threshold N` | `set-window N` | `help`), which you can also run
+directly. Global changes affect all sessions; for one session only, use the env
+overrides below.
+
 ### Scoping a test
 
 `CR_THRESHOLD` is global (all sessions). To test without disturbing other
