@@ -69,6 +69,15 @@ sys.stdout.write(str(used))
 PY
 }
 
+# Append a diagnostic line to state/decisions.log — only when debugging is on
+# (env CONTEXT_ROTATION_DEBUG=1 OR a state/debug marker file exists, so it works
+# even if env vars don't reach the hook).
+cr_log() {
+  [ "${CONTEXT_ROTATION_DEBUG:-0}" = "1" ] || [ -f "$CR_STATE/debug" ] || return 0
+  mkdir -p "$CR_STATE"
+  printf '%s | %s\n' "$(date '+%H:%M:%S')" "$1" >> "$CR_STATE/decisions.log"
+}
+
 # Age of a file in whole seconds (portable across macOS/Linux stat).
 cr_file_age() {
   # $1 = path

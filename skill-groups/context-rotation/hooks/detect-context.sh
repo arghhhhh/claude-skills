@@ -11,23 +11,37 @@ tool="$(cr_json_get "$input" tool_name)"
 sid="$(cr_json_get "$input" session_id)"
 tp="$(cr_json_get "$input" transcript_path)"
 
-# Never block the tools needed to write the handover or inspect state.
+# Only exempt the tools needed to WRITE the handover — everything else (incl.
+# Read) can trip the interrupt, so a read-heavy session still rotates. Blocking
+# a read just makes the agent write the handover (writes stay allowed) instead.
 case "$tool" in
-  Write|Edit|MultiEdit|NotebookEdit|Read|Glob|Grep|TodoWrite) exit 0 ;;
+  Write|Edit|MultiEdit|NotebookEdit) exit 0 ;;
 esac
 
-[ -n "$tp" ] && [ -f "$tp" ] || exit 0
+# Diagnostic (only when state/debug or CONTEXT_ROTATION_DEBUG=1): record what the
+# hook actually sees — including whether env overrides reached it — on EVERY
+# non-exempt call, before any early-exit guard.
+cr_log "sid=${sid:0:8} tool=$tool envTHR=${CONTEXT_ROTATION_THRESHOLD:-unset} envLH=${CONTEXT_ROTATION_LONG_HORIZON:-unset} cfgTHR=${CR_THRESHOLD:-unset}"
+
+[ -n "$tp" ] && [ -f "$tp" ] || { cr_log "  → exit: no transcript ($tp)"; exit 0; }
 used="$(cr_used_tokens "$tp")"
-[ -n "$used" ] && [ "$used" -gt 0 ] 2>/dev/null || exit 0
+[ -n "$used" ] && [ "$used" -gt 0 ] 2>/dev/null || { cr_log "  → exit: used=$used (no usage yet, e.g. first tool call)"; exit 0; }
 
 window="$(cr_window)"
 threshold="$(cr_threshold)"
 pct=$(( used * 100 / window ))
-[ "$pct" -ge "$threshold" ] || exit 0
 
-# One interruption per session (a fresh post-/clear session gets a new id).
 notified="$CR_STATE/${sid}.notified"
-[ -f "$notified" ] && exit 0
+if [ "$pct" -lt "$threshold" ]; then
+  cr_log "sid=${sid:0:8} tool=$tool used=$used win=$window thr=$threshold pct=$pct → allow(under)"
+  exit 0
+fi
+# One interruption per session (a fresh post-/clear session gets a new id).
+if [ -f "$notified" ]; then
+  cr_log "sid=${sid:0:8} tool=$tool used=$used win=$window thr=$threshold pct=$pct → allow(already-notified)"
+  exit 0
+fi
+cr_log "sid=${sid:0:8} tool=$tool used=$used win=$window thr=$threshold pct=$pct → DENY(rotate)"
 mkdir -p "$CR_STATE"
 : > "$notified"
 

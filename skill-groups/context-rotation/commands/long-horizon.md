@@ -12,8 +12,9 @@ Do this now:
 mkdir -p "$HOME/.claude/hooks/context-rotation/state" && : > "$HOME/.claude/hooks/context-rotation/state/long-horizon.on" && echo "long-horizon: ARMED"
 ```
 
-2. Confirm to the user that long-horizon auto-rotation is armed, and note the two requirements for the automatic `/clear` to work:
+2. Confirm to the user that long-horizon auto-rotation is armed, and note the requirements for a truly hands-off `/clear`:
    - the session must be running **inside tmux** (otherwise it degrades to the default flow: handover is written and the user runs `/clear` manually);
+   - the session should run with **`--dangerously-skip-permissions` (`--dsp`)** or have `Write`/`Edit` pre-allowed — otherwise the handover write and the post-rotation continuation stall on permission prompts, defeating unattended operation. (The rotation deny hook still fires under `--dsp` — it is not bypassed.)
    - rotation fires when context passes the threshold (default 65%).
 
 3. Tell the user they can disarm anytime with `/long-horizon-off`.

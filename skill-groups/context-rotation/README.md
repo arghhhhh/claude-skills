@@ -11,9 +11,30 @@ skills/agents; it wires Claude Code hooks + two slash commands via `install/wire
 | **Session recovery** | ✅ default | `SessionStart` re-injects a recent `ROTATION-HANDOVER.md` from the cwd into the fresh session. |
 | **Auto-rotate** | opt-in via `/long-horizon` or `CONTEXT_ROTATION_LONG_HORIZON=1` | `PostToolUse` spots the handover write and a detached `rotator.sh` drives `/clear` via tmux, then re-injects a continuation prompt. `/long-horizon-off` disarms the global marker. |
 
-File-write/read tools are never blocked, so the handover can always be written
-and there's no block loop. One interruption per session (a post-`/clear` session
-has a new id, so it re-arms).
+Only the handover-writing tools (`Write`/`Edit`/`MultiEdit`/`NotebookEdit`) are
+exempt — every other tool, **including `Read`**, can trip the interrupt, so a
+read-heavy session still rotates. Blocking a read just makes the agent write the
+handover (writes stay allowed) instead. One interruption per session (a
+post-`/clear` session has a new id, so it re-arms).
+
+### Unattended operation needs no permission prompts
+
+For hands-off long-horizon rotation, run the session with
+`--dangerously-skip-permissions` (or pre-allow `Write`/`Edit`). Otherwise the
+handover write and the auto-injected continuation each stall on a permission
+prompt. The `PreToolUse` deny hook still fires under `--dsp` (it is *not*
+bypassed), so rotation still triggers — you just also skip the prompts that
+would block the automation. In plain interactive mode the permission prompt on
+the handover write is harmless: you're at the keyboard and `/clear` yourself.
+
+### Debugging
+
+`touch ~/.claude/hooks/context-rotation/state/debug` (or set
+`CONTEXT_ROTATION_DEBUG=1`) to append every hook decision to
+`state/decisions.log` — session id, tool, env vs config threshold, used tokens,
+pct, and the allow/deny outcome. Note: the context % can't be computed on a
+session's *first* tool call (the assistant usage isn't in the transcript yet),
+so that call logs `used=0` and allows. Remove the marker to stop logging.
 
 ### Handover contents
 
