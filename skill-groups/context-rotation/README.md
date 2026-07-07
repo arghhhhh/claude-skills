@@ -59,6 +59,24 @@ Under the hood it calls `~/.claude/hooks/context-rotation/rotation-ctl.sh`
 directly. Global changes affect all sessions; for one session only, use the env
 overrides below.
 
+### `lh` launcher (avoids env leaks)
+
+The installer adds an `lh` shell function (restart your shell to pick it up):
+
+```bash
+lh        # new tmux window running `claude --dsp`, long-horizon armed
+lh 75     # ...also set this session's threshold to 75%
+```
+
+It sets `CONTEXT_ROTATION_LONG_HORIZON` (and optional threshold) **only for that
+launch's subshell**, so the vars never persist in your interactive shell.
+
+⚠ **Env-leak footgun (why `lh` exists):** if you `export CONTEXT_ROTATION_LONG_HORIZON=1`
+in a shell and then launch `claude` from it, that (and any later) session inherits
+the arming — including your normal interactive session, where a handover write
+would then auto-`/clear` your conversation. Prefer `lh`, or use inline env
+(`CONTEXT_ROTATION_LONG_HORIZON=1 claude --dsp`), not a bare `export`.
+
 ### Scoping a test
 
 `CR_THRESHOLD` is global (all sessions). To test without disturbing other
@@ -67,7 +85,8 @@ config/marker:
 
 ```bash
 export CONTEXT_ROTATION_THRESHOLD=8 CONTEXT_ROTATION_LONG_HORIZON=1
-claude   # only this session rotates early / auto-rotates
+claude   # only this session rotates early / auto-rotates (NOTE: the export
+         # persists — unset it or use `lh` to avoid leaking into later launches)
 ```
 
 ## Detection

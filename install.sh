@@ -1009,6 +1009,66 @@ EOF
   fi
 }
 
+# context-rotation: install an `lh` shell function that opens a new tmux window
+# (or session) running `claude --dsp` with long-horizon auto-rotation armed via
+# env set ONLY for that launch — so it never leaks into your interactive shell
+# (the leak that can otherwise arm rotation on unrelated sessions). Optional arg
+# overrides the threshold for that session. Idempotent — replaces the managed
+# block between BEGIN/END markers.
+install_context_rotation_aliases() {
+  local marker_begin="# >>> context-rotation lh() wrapper >>>"
+  local marker_end="# <<< context-rotation lh() wrapper <<<"
+
+  local block
+  block=$(cat <<'EOF'
+# >>> context-rotation lh() wrapper >>>
+# Managed by claude-skills installer — do not edit between markers.
+# lh [threshold]  → new tmux window/session running `claude --dsp` with
+# long-horizon auto-rotation armed. The env is set only for this launch, so it
+# does NOT leak into your interactive shell. Requires tmux + context-rotation.
+lh() {
+  local e="export CONTEXT_ROTATION_LONG_HORIZON=1;"
+  [ -n "${1:-}" ] && e="$e export CONTEXT_ROTATION_THRESHOLD=$1;"
+  if [ -n "${TMUX:-}" ]; then
+    tmux new-window "zsh -ic '$e claude --dsp'"
+  else
+    tmux new-session "zsh -ic '$e claude --dsp'"
+  fi
+}
+# <<< context-rotation lh() wrapper <<<
+EOF
+)
+
+  local targets=("$HOME/.bashrc")
+  if [ "$PLATFORM" = "macos" ] || [ -f "$HOME/.zshrc" ]; then
+    targets+=("$HOME/.zshrc")
+  fi
+
+  for rc in "${targets[@]}"; do
+    [ -f "$rc" ] || touch "$rc"
+    local existed_already=false
+    if grep -qF "$marker_begin" "$rc"; then
+      existed_already=true
+      local tmp
+      tmp=$(mktemp)
+      awk -v begin="$marker_begin" -v end="$marker_end" '
+        $0 == begin { skipping=1; next }
+        skipping && $0 == end { skipping=0; next }
+        !skipping { print }
+      ' "$rc" > "$tmp" && mv "$tmp" "$rc"
+    fi
+    if [ -s "$rc" ] && [ "$(tail -c1 "$rc" 2>/dev/null | od -An -c | tr -d ' ')" != "\n" ]; then
+      printf '\n' >> "$rc"
+    fi
+    printf '%s\n' "$block" >> "$rc"
+    if [ "$existed_already" = "true" ]; then
+      ok "Refreshed lh() wrapper in $rc"
+    else
+      ok "Installed lh() wrapper in $rc (restart shell to pick up)"
+    fi
+  done
+}
+
 # gitbash-clipboard-cd: install the cdh clipboard-history helper plus the cdc/cdh
 # bash functions that cd into folder paths copied from Windows Explorer (cdc =
 # current clipboard, cdh = most recent directory in clipboard history). Windows
@@ -1098,6 +1158,7 @@ install_group_shell_aliases() {
   case "$1" in
     claude-code-sessions) install_sessions_aliases ;;
     gitbash-clipboard-cd) install_gitbash_clipboard_cd_aliases ;;
+    context-rotation)     install_context_rotation_aliases ;;
   esac
 }
 

@@ -2,7 +2,7 @@
   "name": "context-rotation",
   "type": "tool-only",
   "description": "Automatic context rotation for Claude Code. At ~65% context usage a PreToolUse hook interrupts and has the agent write a detailed ROTATION-HANDOVER.md (decisions + working context, not just a task log); SessionStart re-injects it after /clear. /long-horizon (or CONTEXT_ROTATION_LONG_HORIZON=1 for one session) arms full auto-rotation (tmux-driven /clear) across a chain of sessions.",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "prerequisites": [
     {
       "name": "python3",
@@ -30,6 +30,7 @@
     "Restart Claude Code so the PreToolUse / PostToolUse / SessionStart hooks load.",
     "Default (always on): at ~65% context you'll be interrupted to write ROTATION-HANDOVER.md, then run /clear — the next session auto-loads it.",
     "Run /long-horizon to arm hands-off auto-rotation (requires tmux for the automatic /clear); /long-horizon-off to disarm.",
+    "Shortcut: `lh` opens a new tmux window running `claude --dsp` with long-horizon armed for that launch only (no shell env leak). `lh 75` also sets the threshold. Restart your shell after install to pick it up.",
     "Tune ~/.claude/hooks/context-rotation/config (CR_WINDOW, CR_THRESHOLD) or override per-shell with CONTEXT_ROTATION_WINDOW / CONTEXT_ROTATION_THRESHOLD."
   ]
 }
