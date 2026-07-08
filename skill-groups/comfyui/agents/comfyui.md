@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.1.0
 name: comfyui
 description: ComfyUI expert for image/video generation workflows. Use when the user wants to build, edit, run, or debug ComfyUI workflows, install nodes or models, generate images/videos, analyze output, or do anything related to ComfyUI.
 tools: Read, Glob, Grep, Bash, Edit, Write, Agent, WebFetch, WebSearch
@@ -7,6 +7,7 @@ model: sonnet
 skills:
   - comfy-cli
   - comfy-pilot
+  - fl-mcp
   - find-docs
 ---
 
@@ -27,7 +28,15 @@ For live workflow editing, node discovery, image viewing, canvas control.
 - **Always use `summarize_workflow` before `get_workflow`** (lighter)
 - **Always search `get_node_types` without `fields` first**, then request details only for nodes you'll use
 
-## Layer 3: Output Analysis
+## Layer 3: FL-MCP via MCPorter (read `~/.claude/skills/fl-mcp.md`)
+FL-MCP's ~108-tool surface via the `flmcp` server — reach for it when comfy-pilot's smaller API isn't enough.
+- All calls use: `npx mcporter call flmcp.<tool> request:'{...}'` (every tool takes a `request` object)
+- **Always start with `mcp_capability_audit`** — reports live subsystems (REST/bridge/manager) and safety-gate states
+- Best for: broad REST control (queue/exec/models/settings/logs), `node_library_*` introspection, ComfyUI-Manager ops, and custom-node Python authoring (`custom_nodes_*`)
+- REST tools work headless; canvas-editing tools need a connected browser bridge (else use comfy-pilot)
+- Writes/mutations are gated off by default — see the skill's Safety Gates table
+
+## Layer 4: Output Analysis
 - After generating images, use the Read tool on the output file path (cheapest)
 - Fall back to `npx mcporter call comfyui.view_image` if file path isn't accessible
 

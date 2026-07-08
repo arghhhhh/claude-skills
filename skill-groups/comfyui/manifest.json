@@ -1,7 +1,7 @@
 {
   "name": "comfyui",
   "description": "ComfyUI image/video generation — server management, workflow editing, node/model management.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "prerequisites": [
     {
       "name": "pip",
@@ -54,7 +54,8 @@
   },
   "skills": [
     "comfy-cli",
-    "comfy-pilot"
+    "comfy-pilot",
+    "fl-mcp"
   ],
   "agents": [
     "comfyui"
@@ -77,6 +78,13 @@
     "comfyui": {
       "command": "{{COMFYUI_PYTHON}}",
       "args": ["{{COMFYUI_WORKSPACE}}/custom_nodes/comfy-pilot/mcp_server.py"]
+    },
+    "flmcp": {
+      "command": "{{COMFYUI_PYTHON}}",
+      "args": ["{{COMFYUI_WORKSPACE}}/custom_nodes/ComfyUI_FL-MCP/backend/mcp_server.py"],
+      "env": {
+        "COMFYUI_SERVER_URL": "http://127.0.0.1:8188"
+      }
     }
   }
 }
