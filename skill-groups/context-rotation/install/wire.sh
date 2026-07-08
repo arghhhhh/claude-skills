@@ -6,6 +6,11 @@
 #   4. merge the three hook registrations into ~/.claude/settings.json
 set -euo pipefail
 
+# Windows Git Bash defaults Python's stdout to cp1252, which raises
+# UnicodeEncodeError on the ✓ status lines below and (under set -e) aborts the
+# wire mid-run. Force UTF-8 so the same script runs clean on macOS/Linux/Windows.
+export PYTHONIOENCODING=utf-8
+
 GROUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CLAUDE_DIR="$HOME/.claude"
 HOOK_DIR="$CLAUDE_DIR/hooks/context-rotation"
@@ -97,5 +102,57 @@ json.dump(cfg,open(settings_path,"w"),indent=2)
 open(settings_path,"a").write("\n")
 print("✓ settings.json hooks merged (PreToolUse, PostToolUse, SessionStart)")
 PY
+
+# 5. lh launcher — a shell function that opens a tmux session running
+#    `claude --dsp` with long-horizon armed for THAT launch only (inline env, no
+#    leak into the interactive shell). Installed into ~/.bashrc and ~/.zshrc
+#    (whichever exist) between markers so re-runs update in place. Same function
+#    on every platform, so `lh` behaves identically on macOS/Linux/WSL.
+LH_BEGIN="# >>> context-rotation lh >>>"
+LH_END="# <<< context-rotation lh <<<"
+lh_block() {
+cat <<'LHEOF'
+# >>> context-rotation lh >>>
+# lh [N] : launch Claude Code in tmux with hands-off long-horizon auto-rotation
+# armed for THIS launch only (no shell env leak). N = optional threshold percent.
+# Needs tmux + --dsp so the handover write / post-/clear continuation never stall
+# on a permission prompt. Disarms when you exit the session. See /rotation.
+lh() {
+  command -v tmux >/dev/null 2>&1 || { echo "lh: tmux required for hands-off auto-/clear" >&2; return 1; }
+  local sess="lh" pre="CONTEXT_ROTATION_LONG_HORIZON=1 "
+  if [ -n "${1:-}" ]; then
+    case "$1" in ''|*[!0-9]*) echo "lh: threshold must be an integer 1-99" >&2; return 1;; esac
+    pre="CONTEXT_ROTATION_THRESHOLD=$1 $pre"
+  fi
+  if tmux has-session -t "$sess" 2>/dev/null; then tmux attach -t "$sess"; return; fi
+  tmux new-session -d -s "$sess"
+  tmux send-keys -t "$sess" "${pre}claude --dangerously-skip-permissions" Enter
+  tmux attach -t "$sess"
+}
+# <<< context-rotation lh <<<
+LHEOF
+}
+rcs=()
+[ -f "$HOME/.bashrc" ] && rcs+=("$HOME/.bashrc")
+[ -f "$HOME/.zshrc" ]  && rcs+=("$HOME/.zshrc")
+[ ${#rcs[@]} -eq 0 ] && { : > "$HOME/.bashrc"; rcs+=("$HOME/.bashrc"); }
+for rc in "${rcs[@]}"; do
+  if grep -qF "$LH_BEGIN" "$rc" 2>/dev/null; then
+    python3 - "$rc" "$LH_BEGIN" "$LH_END" <<'PY'
+import sys
+p,b,e=sys.argv[1],sys.argv[2],sys.argv[3]
+lines=open(p,encoding="utf-8").read().splitlines()
+out=[]; skip=False
+for l in lines:
+    s=l.strip()
+    if s==b: skip=True; continue
+    if s==e: skip=False; continue
+    if not skip: out.append(l)
+open(p,"w",encoding="utf-8").write("\n".join(out).rstrip("\n")+"\n")
+PY
+  fi
+  printf '\n%s\n' "$(lh_block)" >> "$rc"
+  echo "✓ lh → $rc (restart your shell to pick it up)"
+done
 
 echo "✓ context-rotation wired. Restart Claude Code to load the hooks."

@@ -73,7 +73,9 @@ case "${1:-help}" in
     is_int "$v" && [ "$v" -ge 1 ] && [ "$v" -le 99 ] || { echo "usage: set-threshold <1-99>"; exit 1; }
     set_kv CR_THRESHOLD "$v"
     echo "✓ global threshold → ${v}%  (applies to your NEXT tool call — hooks read the config live)"
-    [ "$v" -lt 10 ] && echo "⚠ below ~10% risks rotating on every fresh session (baseline is a few %)."
+    if [ "$v" -lt 10 ]; then
+      echo "⚠ below ~10% risks rotating on every fresh session (baseline is a few %)."
+    fi
     ;;
   set-window)
     v="${2:-}"

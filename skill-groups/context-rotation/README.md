@@ -117,6 +117,15 @@ from recent transcripts; if you switch plans, edit `CR_WINDOW` by hand.
 - Auto-rotate layer only: **tmux** + Bash 4+. Without tmux, `/long-horizon`
   degrades gracefully to the default write-handover-then-manual-`/clear` flow.
 
+## Windows / WSL
+
+Core rotation (detect + handover + re-inject) and `/rotation` work in **Windows
+Git Bash**. But hands-off auto-`/clear` needs tmux, which Git for Windows omits —
+so run **unattended long-horizon sessions in WSL2**, where tmux is native. It's a
+one-time setup (native node+claude in the distro, auth copy, and symlinking the
+`projects/` + rotation `config` into the Windows store so sessions stay locatable
+and `/rotation` changes hit both). Full recipe: [`references/wsl-setup.md`](references/wsl-setup.md).
+
 ## Re-wiring
 
 `bash install.sh --skills context-rotation` — idempotent (dedupes its own
