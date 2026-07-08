@@ -14,8 +14,11 @@ trap cleanup EXIT
 command -v tmux >/dev/null 2>&1 || exit 0
 [ -n "$pane" ] || exit 0
 
-# Let the agent finish flushing the handover to disk.
-sleep 3
+# Let the agent finish flushing the handover to disk AND run its required
+# self-review pass (re-Read + revise ROTATION-HANDOVER.md) before we /clear.
+# Overshooting is harmless — the fresh session just starts a few seconds later —
+# so this is set generously rather than tuned tight.
+sleep 8
 
 # Clear the context.
 tmux send-keys -t "$pane" '/clear' Enter 2>/dev/null || exit 0

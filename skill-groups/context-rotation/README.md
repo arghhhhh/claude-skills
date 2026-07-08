@@ -42,7 +42,17 @@ The interrupt prompts the agent for a *memory*, not a status log — five
 sections: Completed Work, Remaining Tasks, **Open Questions / Pending User
 Decisions**, **Working Context (not in any file)**, Next Steps. It's told to err
 toward verbosity in doc-sparse projects, since the handover is the only memory
-that survives the rotation.
+that survives the rotation. It then runs a **required self-review pass** — re-Read
+the file as the context-less successor and fix gaps — before finishing, because
+handover quality is the whole point of the rotation.
+
+**Load ≠ auto-continue.** `SessionStart` recovery (always on) injects the handover
+as the fresh session's opening *context*; it does **not** make the agent resume on
+its own. In the default flow you `/clear`, then send any message (e.g. `continue`)
+to kick it off. Only long-horizon mode (tmux) also sends `/clear` and the
+continuation prompt for you — that's the sole path where rotation is fully
+hands-off. The interrupt prompt now says exactly this, per mode, so the agent
+doesn't over-promise auto-continuation on the manual flow.
 
 ### Changing settings / getting help — `/rotation`
 
