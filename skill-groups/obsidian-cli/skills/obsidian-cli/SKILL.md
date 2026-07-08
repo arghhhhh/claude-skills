@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.1.0
 name: obsidian-cli
 description: Control a running Obsidian instance from the command line — search, read, create, and append notes, open daily notes, list tags/tasks/unresolved links, and run editor commands or JavaScript. Use whenever the user wants an agent to read from or drive their Obsidian vault(s) programmatically.
 ---
@@ -14,8 +14,8 @@ Drive a **running** Obsidian desktop app from the shell. "Anything you can do in
 2. **The CLI must be registered once** (GUI step the agent cannot do): Settings → General → enable **Obsidian CLI**, then click **Register** and follow the OS dialog.
    - macOS: symlink at `/usr/local/bin/obsidian` (asks for admin).
    - Linux: binary copied to `~/.local/bin/obsidian` (ensure it's on PATH).
-   - Windows: a terminal redirector is installed next to `Obsidian.exe`; restart the shell afterwards.
-3. Verify it's wired up with `obsidian --version`.
+   - Windows: a console redirector (`Obsidian.com`, next to `Obsidian.exe`) is installed and takes PATHEXT priority over the GUI `.exe`; restart the shell afterwards. **Requires the installer `.exe` shell to be ≥ 1.11.7** — the app package (`.asar`) auto-updates but the installer shell does NOT, so an old shell has no redirector and every `obsidian <cmd>` just focuses/opens the GUI window (see Troubleshooting). Fix by rerunning the current installer from https://obsidian.md, then re-Register.
+3. Verify it's wired up with `obsidian version`.
 
 ## Global Conventions
 
@@ -66,7 +66,7 @@ obsidian devtools vault="Planning"                                     # open De
 
 ## Operational Rules for Agents
 
-1. **Confirm connectivity first** with `obsidian --version` (and a cheap read like `obsidian tags counts ... format=json`). If it fails, tell the user to launch Obsidian / register the CLI rather than retrying blindly.
+1. **Confirm connectivity first** with `obsidian version` (and a cheap read like `obsidian tags counts ... format=json`). If it fails, tell the user to launch Obsidian / register the CLI rather than retrying blindly.
 2. **Always pass `vault=`** explicitly. Never assume the active vault is the one the user means.
 3. **Prefer `format=json`** whenever you'll parse the output.
 4. **Treat writes as real edits to the user's notes.** Creating/appending notes or `eval` that mutates the vault changes durable user data — confirm intent before destructive or bulk mutations, and prefer append over overwrite.
@@ -76,4 +76,5 @@ obsidian devtools vault="Planning"                                     # open De
 
 - **No response / connection error** → Obsidian isn't running, or the CLI was never registered (Settings → General → Register).
 - **`obsidian: command not found`** → registration didn't add it to PATH; on Windows restart the terminal; on Linux ensure `~/.local/bin` is on PATH.
+- **The GUI window pops open on every `obsidian <cmd>` (Windows)** → the installer `.exe` shell is older than 1.11.7, so no redirector exists and commands hit the GUI exe, whose single-instance handler just focuses/opens the window. Check with `(Get-Item 'C:\Program Files\Obsidian\Obsidian.exe').VersionInfo.ProductVersion` (or wherever installed). Fix: rerun the current installer from https://obsidian.md (UAC if under Program Files), then Settings → General → Obsidian CLI → Register, then restart the shell. Afterward `obsidian` resolves to `Obsidian.com` and commands round-trip over the named pipe without opening a window.
 - **Wrong vault affected** → you omitted `vault=`; the CLI fell back to the active vault.

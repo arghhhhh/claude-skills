@@ -1,23 +1,23 @@
 {
   "name": "obsidian-cli",
   "description": "Obsidian CLI control — search/read/create notes, daily notes, tags, tasks, run commands & JavaScript, reload plugins, all against a running Obsidian instance.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "prerequisites": [
     {
       "name": "obsidian-app",
-      "check": "obsidian --version",
-      "install_hint": "Install Obsidian 1.9+ from https://obsidian.md, then enable the CLI in Settings -> General and register it (one-time GUI step). On Windows this adds a terminal redirector next to Obsidian.exe.",
+      "check": "obsidian version",
+      "install_hint": "Install Obsidian 1.9+ from https://obsidian.md, then enable the CLI in Settings -> General and register it (one-time GUI step). On Windows this adds a console redirector (Obsidian.com) next to Obsidian.exe. IMPORTANT: the installer .exe shell must be >= 1.11.7 for the redirector to exist -- the app package auto-updates but the shell does NOT, so an old shell makes every 'obsidian' command open the GUI window instead. If that happens, rerun the current installer, then re-Register.",
       "required": false,
       "note": "The CLI is built into the Obsidian desktop app; there is no separate package. Obsidian must be RUNNING for any command to work."
     }
   ],
   "install": {
-    "check": "obsidian --version",
+    "check": "obsidian version",
     "methods": [],
-    "notes": "Nothing to download. The CLI ships inside the Obsidian desktop app. Enable it once via Settings -> General -> 'Obsidian CLI' and follow the on-screen Register instructions (macOS: symlink in /usr/local/bin; Linux: ~/.local/bin/obsidian; Windows: terminal redirector beside Obsidian.exe). After registering, restart your shell so PATH/redirector resolves."
+    "notes": "Nothing to download. The CLI ships inside the Obsidian desktop app. Enable it once via Settings -> General -> 'Obsidian CLI' and follow the on-screen Register instructions (macOS: symlink in /usr/local/bin; Linux: ~/.local/bin/obsidian; Windows: console redirector Obsidian.com beside Obsidian.exe, requires installer .exe >= 1.11.7). After registering, restart your shell so PATH/redirector resolves."
   },
   "test": {
-    "command": "obsidian --version",
+    "command": "obsidian version",
     "expect_success": true
   },
   "integration_test": {
