@@ -1,0 +1,26 @@
+{
+  "name": "wsl-interop",
+  "description": "Teaches a WSL2 Claude agent to reuse the Windows host toolchain via interop instead of reinstalling everything on Linux. Agent-facing skill (the human-only cd helper lives in wsl-clipboard-cd).",
+  "version": "1.0.0",
+  "prerequisites": [],
+  "install": {
+    "check": "grep -qi microsoft /proc/version 2>/dev/null",
+    "methods": [
+      {
+        "name": "wsl-only",
+        "platforms": ["linux"],
+        "check": "grep -qi microsoft /proc/version 2>/dev/null",
+        "command": "grep -qi microsoft /proc/version 2>/dev/null && echo wsl-interop: no software to install, guidance skill only || echo wsl-interop: not WSL, this group is a no-op here"
+      }
+    ],
+    "notes": "No external software. Pure guidance skill. Install INSIDE WSL only (grep microsoft /proc/version). On Windows and native Linux the advice does not apply, so decline it there — the installer never auto-installs a new group on --update/--sync, it only prompts once and records the choice in the known-groups ledger."
+  },
+  "test": {
+    "command": "grep -qi microsoft /proc/version 2>/dev/null",
+    "expect_success": true
+  },
+  "skills": [
+    "wsl-interop"
+  ],
+  "agents": []
+}
