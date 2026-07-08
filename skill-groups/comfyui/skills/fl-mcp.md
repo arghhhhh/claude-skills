@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.1.0
 ---
 
 # ComfyUI FL-MCP Skill (via MCPorter)
@@ -49,6 +49,8 @@ Bridge tools fail with `requires_browser_bridge` when no frontend is connected:
 
 If you only need canvas edits and no browser is bridged, prefer **comfy-pilot** instead.
 
+> **⚠ Image generation requires the browser bridge.** There is **no REST tool that submits an API-format prompt.** `queue_workflow` queues **the current canvas** (its docstring tells you to call `workflow_overview` first — a bridge tool). So to actually generate an image with FL-MCP you must have ComfyUI open in a bridged browser tab, build/load the graph on that canvas, then `queue_workflow`. For headless prompt submission, use comfy-cli (`comfy run <workflow.json>`) or ComfyUI's own `/prompt` REST endpoint instead. FL-MCP is a **frontend-bridge automation tool first, REST second.**
+
 ## Safety Gates
 
 Five write/mutation classes are **disabled by default** (all `false`). Gated tools no-op with a safety error until enabled. Set in the node's `.env` and restart ComfyUI:
@@ -65,8 +67,9 @@ Check current states with the `safety` block of `mcp_capability_audit`.
 
 ## Tool Groups
 
-### Utility (headless, no ComfyUI needed)
-`calculate_expressions` (batch math AST — bounding boxes/layout), `generate_int`, `generate_float`, `generate_seed`, `random_choice`, `wait`.
+### Utility
+**Truly headless** (no ComfyUI, no bridge): `calculate_expressions` (batch math AST — bounding boxes/layout), `wait` (`asyncio.sleep`).
+**Browser bridge** (route through the frontend to set live widget values — return `requires_browser_bridge` when headless): `generate_int`, `generate_float`, `generate_seed`, `random_choice`.
 
 ### Diagnostics
 `mcp_capability_audit`, `get_system_info`, `comfy_get_logs`, `clear_error_buffer`.
@@ -112,3 +115,12 @@ REST userdata (write ops gated): `workflow_list_files`, `workflow_read_file`, `w
 - **`requires_browser_bridge`** is expected headless — it's not a failure of setup, just that no frontend tab is connected. Use REST tools or comfy-pilot.
 - **Gated writes no-op** with a safety error, not an exception — if a write "does nothing," check the gate in `mcp_capability_audit`.
 - **`assets` may be `degraded`** ("ComfyUI assets feature is disabled") — the `comfy_asset*` tools need ComfyUI's assets feature on.
+- **Param names are non-obvious — grep the signatures.** `npx mcporter list flmcp --all-parameters` dumps every tool; request-object field names are surprising (`random_choice` → `items` not `choices`; `comfy_list_folders` → `folder_type`). When the signature only shows `request: Record<string, unknown>`, read the pydantic `*Request` models in `backend/mcp_server.py` for the real fields.
+- **`manager_queue_action` is a two-step confirm gate** — first call returns `confirmation_required`; re-call with `{endpoint, confirmed:true, payload:{…}}` to execute (also needs `FL_MCP_ENABLE_MANAGER_MUTATIONS`).
+- **`custom_nodes_create_pack` prepends `ComfyUI_`** to the folder name (`name:"foo"` → pack `ComfyUI_foo`); use that prefixed name in follow-up `path` args.
+
+### Driving FL-MCP from WSL (Windows ComfyUI)
+When ComfyUI runs on Windows but you drive mcporter from WSL:
+- **mcporter config**: point `command` at the embedded python via its `/mnt/c/...` path (WSL interop runs the `.exe`), but keep the `mcp_server.py` **arg** as a Windows `C:/...` path (it's consumed by the Windows python). `COMFYUI_SERVER_URL=http://127.0.0.1:8188` works because that python talks to Windows loopback. Config lives under the profile mcporter searches (`$HOME/.mcporter/mcporter.json`).
+- **JSON args with spaces break `request:'{…}'`** (mcporter splits the positional value on whitespace). Use `--args '{"request":{…}}'` for the full payload, or `field=@/path/to/file` to read a value from a file.
+- **Subprocess-based coding tools hang** — `custom_nodes_validate_pack`, `custom_nodes_git_status/_diff/_commit/_push` time out (~60–120 s, the tool's own subprocess timeout) because the mcporter-spawned `mcp_server.py` (a Windows asyncio/Proactor process launched via WSL interop) deadlocks its child `git`/`compileall` process. The **same commands run fine** invoked directly, and the **gates still pass** (a disabled gate returns an instant `disabled_by_config`, not a timeout). HTTP/REST and pure-file tools (`create_pack`, `write_file`, `list_folders`, audit) are unaffected. Run these coding tools from a **native Windows** mcporter to avoid the hang.
