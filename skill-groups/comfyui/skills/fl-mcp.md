@@ -1,5 +1,5 @@
 ---
-version: 1.1.0
+version: 1.2.0
 ---
 
 # ComfyUI FL-MCP Skill (via MCPorter)
@@ -121,6 +121,41 @@ REST userdata (write ops gated): `workflow_list_files`, `workflow_read_file`, `w
 
 ### Driving FL-MCP from WSL (Windows ComfyUI)
 When ComfyUI runs on Windows but you drive mcporter from WSL:
-- **mcporter config**: point `command` at the embedded python via its `/mnt/c/...` path (WSL interop runs the `.exe`), but keep the `mcp_server.py` **arg** as a Windows `C:/...` path (it's consumed by the Windows python). `COMFYUI_SERVER_URL=http://127.0.0.1:8188` works because that python talks to Windows loopback. Config lives under the profile mcporter searches (`$HOME/.mcporter/mcporter.json`).
+- **mcporter config**: point `command` at the embedded python via its `/mnt/c/...` path (WSL interop runs the `.exe`), but keep the `mcp_server.py` **arg** as a Windows `C:/...` path (it's consumed by the Windows python). Config lives under the profile mcporter searches (`$HOME/.mcporter/mcporter.json`).
+- **⚠ Env vars do NOT reach the Windows python unless listed in `WSLENV`.** WSL only forwards environment variables to a Windows `.exe` if their names are in the `WSLENV` variable. So an mcporter `env` block like `{"FL_MCP_MODE":"subprocess"}` is **silently dropped** — the Windows python sees `None`. (`COMFYUI_SERVER_URL` *appeared* to work only because its code default is already `http://127.0.0.1:8188`.) Fix: add a `WSLENV` entry to the mcporter `env` block listing every var you need forwarded, colon-separated:
+  ```json
+  "env": {
+    "WSLENV": "FL_MCP_MODE:FL_MCP_SESSION_ID:FL_MCP_WS_URL:COMFYUI_SERVER_URL",
+    "COMFYUI_SERVER_URL": "http://127.0.0.1:8188",
+    "FL_MCP_MODE": "subprocess",
+    "FL_MCP_SESSION_ID": "<uuid matching the browser>",
+    "FL_MCP_WS_URL": "ws://127.0.0.1:8000/ws"
+  }
+  ```
+  Verify propagation by launching `mcp_server.py` directly under WSL with the vars exported (+`export WSLENV=…`) and watching its log line `FL_MCP_MODE: subprocess` vs `None`.
 - **JSON args with spaces break `request:'{…}'`** (mcporter splits the positional value on whitespace). Use `--args '{"request":{…}}'` for the full payload, or `field=@/path/to/file` to read a value from a file.
 - **Subprocess-based coding tools hang** — `custom_nodes_validate_pack`, `custom_nodes_git_status/_diff/_commit/_push` time out (~60–120 s, the tool's own subprocess timeout) because the mcporter-spawned `mcp_server.py` (a Windows asyncio/Proactor process launched via WSL interop) deadlocks its child `git`/`compileall` process. The **same commands run fine** invoked directly, and the **gates still pass** (a disabled gate returns an instant `disabled_by_config`, not a timeout). HTTP/REST and pure-file tools (`create_pack`, `write_file`, `list_folders`, audit) are unaffected. Run these coding tools from a **native Windows** mcporter to avoid the hang.
+
+### Driving the BRIDGE (canvas + generation) from WSL — full recipe
+The bridge (live canvas + image generation) works from WSL if you supply BOTH ends of a shared session:
+1. **MCP side** — mcporter `env` (with `WSLENV`, above): `FL_MCP_MODE=subprocess`, `FL_MCP_SESSION_ID=<uuid>`, `FL_MCP_WS_URL=ws://127.0.0.1:8000/ws`. Without `FL_MCP_MODE=subprocess` the server runs **standalone** (`client=None`) and every bridge tool returns `requires_browser_bridge`. The backend correlates the `mcp` connection and the `frontend` connection **by identical session_id** (handshake `client_version` containing "mcp" → mcp role, else frontend); it routes each tool_request to the frontend of the same session.
+2. **Browser side — run Playwright on WINDOWS, not WSL.** A Windows browser reaches ComfyUI's `127.0.0.1:8188/:8000` natively, so you need **no** `--listen`, no NAT host-IP, and no wsUrl rewrite. Invoke the Windows playwright-cli through the Windows node (the WSL `playwright-cli` shim runs Linux chromium, which needs `sudo … install-deps` and is a dead end without passwordless sudo):
+   ```bash
+   NODE="/mnt/c/Users/<u>/AppData/Local/nvm/<ver>/node.exe"
+   PWCLI="C:/Users/<u>/AppData/Local/nvm/<ver>/node_modules/@playwright/cli/playwright-cli.js"
+   cd /mnt/c/Users/<u>/AppData/Local/Temp/somewin   # cwd MUST be on a /mnt/c drive (scratch folder must be Windows-visible)
+   "$NODE" "$PWCLI" open                             # default browser = Chrome (present on Windows)
+   "$NODE" "$PWCLI" --raw run-code --filename=setup.js
+   ```
+   `setup.js` must **pin the frontend session id BEFORE page scripts** so it matches `FL_MCP_SESSION_ID`, then navigate:
+   ```js
+   async page => {
+     await page.addInitScript(sid => localStorage.setItem('fl_mcp_session_id', sid),
+                              'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+     await page.goto('http://127.0.0.1:8188', { waitUntil: 'load' });
+     await page.waitForTimeout(6000);   // let the WS handshake
+   }
+   ```
+   The frontend generates a random `fl_mcp_session_id` in localStorage on first load; the `addInitScript` overrides it so both ends share one session. Confirm: `mcp_capability_audit` → `bridge.available:true`, and `curl http://127.0.0.1:8000/api/sessions` shows `has_frontend:true` for that id.
+   (Only if you must run the browser on the WSL/**Linux** side: the `:8188` `/fl_mcp/launcher/status` endpoint hardcodes `ws://127.0.0.1:8000/ws` in `__init__.py`, unreachable from a WSL browser — you'd `--listen 0.0.0.0`, set `WS_HOST=0.0.0.0`/`PUBLIC_URL=http://<winhostip>:8000`, and Playwright-`route`-rewrite that wsUrl. The Windows-browser path above avoids all of it.)
+- **`queue_workflow` can report a false failure.** It sometimes returns `success:false, "Workflow failed to queue"` with a cache suggestion when ComfyUI actually **did** accept and run the graph (it misreads an immediate "execution cached / 0 nodes" signal). Don't trust the failure verbatim — check `get_queue_status_details`, `get_execution_history`, and the `output/` folder. To sidestep it, POST `app.graphToPrompt().output` to `/prompt` yourself via a Playwright `run-code` `page.evaluate` and read `node_errors` (empty `{}` = valid).
