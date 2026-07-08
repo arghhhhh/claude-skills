@@ -1,0 +1,44 @@
+{
+  "name": "capcut-cli",
+  "description": "Programmatically edit CapCut / JianYing video drafts via the capcut-cli (renezander030/capcut-cli) — inspect, build, subtitle, caption, translate, and cut projects by reading/writing the local draft store directly. JSON in, JSON out; no server.",
+  "version": "1.0.0",
+  "prerequisites": [
+    "Node.js >= 18 (built-ins only, no native modules)",
+    "Optional: FFmpeg + ffprobe (render, media metadata)",
+    "Optional: Whisper on PATH (caption)",
+    "Optional: ANTHROPIC_API_KEY (translate)"
+  ],
+  "install": {
+    "check": "capcut --version",
+    "methods": [
+      {
+        "name": "npm-global",
+        "platforms": ["windows", "macos", "linux"],
+        "check": "npm --version",
+        "command": "npm install -g capcut-cli"
+      }
+    ],
+    "notes": "Pure-Node CLI published to npm. Exposes the `capcut` binary. Update with `npm install -g capcut-cli@latest`. Optional tools unlock specific commands: FFmpeg/ffprobe for render + media metadata, Whisper for caption, ANTHROPIC_API_KEY for translate."
+  },
+  "test": {
+    "command": "capcut --version",
+    "expect_success": true
+  },
+  "integration_test": {
+    "command": "capcut doctor",
+    "expect_success": true,
+    "description": "Environment preflight — checks Node, ffmpeg/ffprobe, whisper, API key, and CapCut/JianYing draft directories."
+  },
+  "skills": [
+    "capcut-cli"
+  ],
+  "agents": [
+    "capcut"
+  ],
+  "post_install_hints": [
+    "Run `capcut doctor` to confirm the environment and that CapCut/JianYing draft folders are detected.",
+    "Optional: install FFmpeg + ffprobe for `render` and automatic media metadata (Windows: `winget install Gyan.FFmpeg`; macOS: `brew install ffmpeg`; Linux: `sudo apt install ffmpeg`).",
+    "Optional: install Whisper for `caption` (`pip install openai-whisper`), and set ANTHROPIC_API_KEY for `translate`.",
+    "capcut-cli never uploads projects and never renders CapCut's final output — open the draft in CapCut to review and export. Automated upload to short-video platforms is prohibited; the publish click stays human."
+  ]
+}
