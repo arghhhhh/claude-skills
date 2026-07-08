@@ -1009,65 +1009,12 @@ EOF
   fi
 }
 
-# context-rotation: install an `lh` shell function that opens a new tmux window
-# (or session) running `claude --dsp` with long-horizon auto-rotation armed via
-# env set ONLY for that launch — so it never leaks into your interactive shell
-# (the leak that can otherwise arm rotation on unrelated sessions). Optional arg
-# overrides the threshold for that session. Idempotent — replaces the managed
-# block between BEGIN/END markers.
-install_context_rotation_aliases() {
-  local marker_begin="# >>> context-rotation lh() wrapper >>>"
-  local marker_end="# <<< context-rotation lh() wrapper <<<"
-
-  local block
-  block=$(cat <<'EOF'
-# >>> context-rotation lh() wrapper >>>
-# Managed by claude-skills installer — do not edit between markers.
-# lh [threshold]  → new tmux window/session running `claude --dsp` with
-# long-horizon auto-rotation armed. The env is set only for this launch, so it
-# does NOT leak into your interactive shell. Requires tmux + context-rotation.
-lh() {
-  local e="export CONTEXT_ROTATION_LONG_HORIZON=1;"
-  [ -n "${1:-}" ] && e="$e export CONTEXT_ROTATION_THRESHOLD=$1;"
-  if [ -n "${TMUX:-}" ]; then
-    tmux new-window "zsh -ic '$e claude --dsp'"
-  else
-    tmux new-session "zsh -ic '$e claude --dsp'"
-  fi
-}
-# <<< context-rotation lh() wrapper <<<
-EOF
-)
-
-  local targets=("$HOME/.bashrc")
-  if [ "$PLATFORM" = "macos" ] || [ -f "$HOME/.zshrc" ]; then
-    targets+=("$HOME/.zshrc")
-  fi
-
-  for rc in "${targets[@]}"; do
-    [ -f "$rc" ] || touch "$rc"
-    local existed_already=false
-    if grep -qF "$marker_begin" "$rc"; then
-      existed_already=true
-      local tmp
-      tmp=$(mktemp)
-      awk -v begin="$marker_begin" -v end="$marker_end" '
-        $0 == begin { skipping=1; next }
-        skipping && $0 == end { skipping=0; next }
-        !skipping { print }
-      ' "$rc" > "$tmp" && mv "$tmp" "$rc"
-    fi
-    if [ -s "$rc" ] && [ "$(tail -c1 "$rc" 2>/dev/null | od -An -c | tr -d ' ')" != "\n" ]; then
-      printf '\n' >> "$rc"
-    fi
-    printf '%s\n' "$block" >> "$rc"
-    if [ "$existed_already" = "true" ]; then
-      ok "Refreshed lh() wrapper in $rc"
-    else
-      ok "Installed lh() wrapper in $rc (restart shell to pick up)"
-    fi
-  done
-}
+# NOTE: the `lh` long-horizon launcher is NOT installed here. The
+# context-rotation group owns it exclusively via its install/wire.sh (step 5),
+# which is the group's real installer (the manifest install method runs wire.sh
+# on every install). Keeping a second `lh` writer here caused duplicate,
+# divergent lh() blocks in ~/.bashrc — so this hook was removed. See
+# skill-groups/context-rotation/install/wire.sh for the canonical lh.
 
 # gitbash-clipboard-cd: install the cdh clipboard-history helper plus the cdc/cdh
 # bash functions that cd into folder paths copied from Windows Explorer (cdc =
@@ -1153,12 +1100,88 @@ EOF
   fi
 }
 
+# wsl-clipboard-cd: install the cdw bash function that cd's into a Windows folder
+# path copied from Explorer, auto-converting it to WSL form (C:\a\b -> /mnt/c/a/b).
+# WSL only — runs inside the Linux side and reads the Windows clipboard via
+# powershell.exe interop. Idempotent — replaces the managed .bashrc/.zshrc block
+# between BEGIN/END markers. No-op on native Linux (nothing to convert) and on
+# macOS/Windows Git Bash.
+install_wsl_clipboard_cd_aliases() {
+  [ "$PLATFORM" = "linux" ] || return 0
+  grep -qi microsoft /proc/version 2>/dev/null || return 0   # WSL only
+
+  local marker_begin="# >>> wsl-clipboard-cd (cdw) >>>"
+  local marker_end="# <<< wsl-clipboard-cd (cdw) <<<"
+  local block
+  block=$(cat <<'EOF'
+# >>> wsl-clipboard-cd (cdw) >>>
+# Managed by claude-skills installer — do not edit between markers.
+# cdw: cd into the Windows folder path on the clipboard, converted to WSL form
+# (C:\Users\me -> /mnt/c/Users/me). Strips "Copy as path" quotes and CRs.
+cdw() {
+  local p
+  p="$(powershell.exe -NoProfile -Command Get-Clipboard 2>/dev/null)"
+  [ -n "$p" ] || p="$(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -Command Get-Clipboard 2>/dev/null)"
+  p="${p//$'\r'/}"; p="${p//$'\n'/}"
+  p="${p%\"}"; p="${p#\"}"
+  # Backslashes -> forward slashes via tr (octal 134 = \). Avoids the ambiguous
+  # ${p//\\//} form, which mis-parses in bash. Same idiom cdc/cdh use.
+  p="$(printf '%s' "$p" | tr '\134' '/')"
+  case "$p" in
+    [A-Za-z]:/*)
+      local drive="${p%%:*}" rest="${p#*:}"
+      p="/mnt/${drive,,}${rest}"
+      ;;
+  esac
+  if [ -z "$p" ]; then
+    echo "cdw: clipboard is empty" >&2
+    return 1
+  fi
+  if [ -d "$p" ]; then
+    cd "$p"
+  else
+    echo "cdw: not a directory: $p" >&2
+    return 1
+  fi
+}
+# <<< wsl-clipboard-cd (cdw) <<<
+EOF
+)
+
+  local targets=("$HOME/.bashrc")
+  [ -f "$HOME/.zshrc" ] && targets+=("$HOME/.zshrc")
+
+  for rc in "${targets[@]}"; do
+    [ -f "$rc" ] || touch "$rc"
+    local existed_already=false
+    if grep -qF "$marker_begin" "$rc"; then
+      existed_already=true
+      local tmp
+      tmp=$(mktemp)
+      awk -v begin="$marker_begin" -v end="$marker_end" '
+        $0 == begin { skipping=1; next }
+        skipping && $0 == end { skipping=0; next }
+        !skipping { print }
+      ' "$rc" > "$tmp" && mv "$tmp" "$rc"
+    fi
+    if [ -s "$rc" ] && [ "$(tail -c1 "$rc" 2>/dev/null | od -An -c | tr -d ' ')" != "\n" ]; then
+      printf '\n' >> "$rc"
+    fi
+    printf '%s\n' "$block" >> "$rc"
+    if [ "$existed_already" = "true" ]; then
+      ok "Refreshed cdw function in $rc"
+    else
+      ok "Installed cdw function in $rc (restart shell to pick up)"
+    fi
+  done
+}
+
 # Dispatcher: per-group shell-alias hooks. Called from the per-group install loop.
 install_group_shell_aliases() {
   case "$1" in
     claude-code-sessions) install_sessions_aliases ;;
     gitbash-clipboard-cd) install_gitbash_clipboard_cd_aliases ;;
-    context-rotation)     install_context_rotation_aliases ;;
+    wsl-clipboard-cd)     install_wsl_clipboard_cd_aliases ;;
   esac
 }
 

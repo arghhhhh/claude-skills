@@ -95,3 +95,54 @@ cr_file_age() {
   esac
   echo $(( now - mt ))
 }
+
+# Long-horizon session titling. When a session was launched via `lh <name>`, the
+# lh launcher sets two inline env vars that survive /clear (same claude process):
+#   CONTEXT_ROTATION_LH_TITLE = the base label (e.g. fl-mcp-testing)
+#   CONTEXT_ROTATION_LH_KEY   = a per-launch nonce (keys the counter, so each
+#                               fresh `lh` run restarts numbering at -1 and two
+#                               concurrent named runs never collide)
+# On every fresh session in the chain (the first launch AND each post-/clear
+# rotation), this appends a native `custom-title` entry to the session's own
+# transcript — the exact shape Claude Code writes for /rename. Result: Claude's
+# own /resume picker and the `cs` browser both show name-1, name-2, name-3 …, so
+# the rotated chain reads as one task. No-op unless both env vars are set (plain
+# `claude` and un-named `lh` are unaffected). Idempotent per session_id.
+cr_apply_lh_title() {
+  # $1 = session_id, $2 = transcript_path
+  local sid="$1" tp="$2"
+  local base="${CONTEXT_ROTATION_LH_TITLE:-}" key="${CONTEXT_ROTATION_LH_KEY:-}"
+  [ -n "$base" ] && [ -n "$key" ] || return 0
+  [ -n "$sid" ] && [ -n "$tp" ] || return 0
+
+  local seqdir="$CR_STATE/lh-seq"
+  mkdir -p "$seqdir" 2>/dev/null || return 0
+  # lh already restricts the nonce to a safe charset; sanitize again defensively
+  # so it can never escape the seq dir.
+  local safe="${key//[^A-Za-z0-9._-]/_}"
+  local seqfile="$seqdir/$safe" lastfile="$seqdir/$safe.last"
+
+  # Dedup: title a given session_id at most once. SessionStart can fire more than
+  # once for the same session (compact/resume reuse the id) and we must not
+  # double-count those as new rotations.
+  local last=""
+  [ -f "$lastfile" ] && last="$(cat "$lastfile" 2>/dev/null)"
+  [ "$last" = "$sid" ] && return 0
+
+  local n=0
+  [ -f "$seqfile" ] && n="$(cat "$seqfile" 2>/dev/null)"
+  case "$n" in ''|*[!0-9]*) n=0 ;; esac
+  n=$((n + 1))
+
+  # base and key are sanitized by lh (no quotes/backslashes), so this is valid
+  # JSON without escaping. JSONL is append-only — position among other lines is
+  # irrelevant to every reader (Claude's picker and cs both scan the whole file).
+  printf '{"type":"custom-title","customTitle":"%s","sessionId":"%s"}\n' \
+    "$base-$n" "$sid" >> "$tp" 2>/dev/null || return 0
+
+  printf '%s\n' "$n"   > "$seqfile"  2>/dev/null || true
+  printf '%s\n' "$sid" > "$lastfile" 2>/dev/null || true
+  # Tidy: drop counter files from launches more than a week old.
+  find "$seqdir" -type f -mtime +7 -delete 2>/dev/null || true
+  cr_log "lh-title: set '$base-$n' for session $sid"
+}

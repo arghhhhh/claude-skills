@@ -113,16 +113,36 @@ LH_END="# <<< context-rotation lh <<<"
 lh_block() {
 cat <<'LHEOF'
 # >>> context-rotation lh >>>
-# lh [N] : launch Claude Code in tmux with hands-off long-horizon auto-rotation
-# armed for THIS launch only (no shell env leak). N = optional threshold percent.
+# lh [name] [N] : launch Claude Code in tmux with hands-off long-horizon
+# auto-rotation armed for THIS launch only (no shell env leak).
+#   name = optional task label. The session and every auto-/clear rotation after
+#          it are titled name-1, name-2, name-3 … in Claude's /resume picker and
+#          the `cs` browser, so the whole rotated chain reads as one task.
+#   N    = optional threshold percent (integer). Args may be given in any order.
 # Needs tmux + --dsp so the handover write / post-/clear continuation never stall
 # on a permission prompt. Disarms when you exit the session. See /rotation.
 lh() {
   command -v tmux >/dev/null 2>&1 || { echo "lh: tmux required for hands-off auto-/clear" >&2; return 1; }
-  local sess="lh" pre="CONTEXT_ROTATION_LONG_HORIZON=1 "
-  if [ -n "${1:-}" ]; then
-    case "$1" in ''|*[!0-9]*) echo "lh: threshold must be an integer 1-99" >&2; return 1;; esac
-    pre="CONTEXT_ROTATION_THRESHOLD=$1 $pre"
+  local pre="CONTEXT_ROTATION_LONG_HORIZON=1 " title="" thr="" a
+  for a in "$@"; do
+    case "$a" in
+      '' ) : ;;
+      *[!0-9]* ) title="$a" ;;   # non-integer → task name
+      * ) thr="$a" ;;            # all-digits  → threshold
+    esac
+  done
+  [ -n "$thr" ] && pre="CONTEXT_ROTATION_THRESHOLD=$thr $pre"
+  local sess="lh"
+  if [ -n "$title" ]; then
+    # Keep a safe label, then strip a trailing -N the user may have typed
+    # (so `lh fl-mcp-testing-1` and `lh fl-mcp-testing` both number from -1).
+    title=$(printf '%s' "$title" | tr -c 'A-Za-z0-9._-' '-'); title=${title%-}
+    title=$(printf '%s' "$title" | sed -E 's/-[0-9]+$//')
+    if [ -n "$title" ]; then
+      local key; key="$(date +%s)-$$"
+      pre="CONTEXT_ROTATION_LH_TITLE=$title CONTEXT_ROTATION_LH_KEY=$key $pre"
+      sess=${title//[.:]/_}   # tmux session names can't contain . or :
+    fi
   fi
   if tmux has-session -t "$sess" 2>/dev/null; then tmux attach -t "$sess"; return; fi
   tmux new-session -d -s "$sess"

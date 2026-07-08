@@ -6,6 +6,11 @@ SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SELF_DIR/lib.sh"
 
 input="$(cat)"
+
+# Auto-number long-horizon sessions launched via `lh <name>` (no-op otherwise).
+# Runs before the handover check so the very first session is numbered too.
+cr_apply_lh_title "$(cr_json_get "$input" session_id)" "$(cr_json_get "$input" transcript_path)"
+
 cwd="$(cr_json_get "$input" cwd)"
 [ -n "$cwd" ] || cwd="$PWD"
 hand="$cwd/ROTATION-HANDOVER.md"

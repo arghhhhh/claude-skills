@@ -1,0 +1,27 @@
+{
+  "name": "wsl-clipboard-cd",
+  "type": "tool-only",
+  "description": "WSL convenience function (cdw) to cd into a Windows folder path copied from Explorer, auto-converting it to WSL form (C:\\Users\\me to /mnt/c/Users/me). Human shell helper, no agent-facing skill.",
+  "version": "1.0.0",
+  "prerequisites": [],
+  "install": {
+    "check": "grep -qi microsoft /proc/version 2>/dev/null && grep -qF wsl-clipboard-cd $HOME/.bashrc",
+    "methods": [
+      {
+        "name": "shell-hook",
+        "platforms": ["linux"],
+        "command": "echo wsl-clipboard-cd: the cdw function is written by the per-group shell-alias hook in install.sh (WSL only)"
+      }
+    ],
+    "notes": "WSL-only (Linux side of WSL), no external software and no repo payload. Like gitbash-clipboard-cd's cdc/cdh and claude-code-sessions' cs(), this is a human shell convenience with no SKILL.md. The cdw bash function is written by the per-group shell-alias hook (install_wsl_clipboard_cd_aliases in install.sh, Step 8), which self-gates on WSL (grep microsoft /proc/version) and is a no-op on native Linux, macOS, and Windows Git Bash. Reads the Windows clipboard from WSL via powershell.exe interop. Run install.sh INSIDE WSL to get cdw. Avoid double quotes in check/command — the installer's field extractor truncates at the first quote."
+  },
+  "test": {
+    "command": "grep -qi microsoft /proc/version 2>/dev/null && grep -qF wsl-clipboard-cd $HOME/.bashrc",
+    "expect_success": true
+  },
+  "post_install_hints": [
+    "Open a new WSL shell (or run: source ~/.bashrc) to load cdw.",
+    "Usage: in Windows Explorer right-click a folder -> Copy as path (or copy a folder), then in WSL type cdw to cd into its /mnt/c/... equivalent.",
+    "Requires powershell.exe interop (default in WSL2) to read the Windows clipboard."
+  ]
+}

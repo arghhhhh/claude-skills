@@ -74,12 +74,25 @@ overrides below.
 The installer adds an `lh` shell function (restart your shell to pick it up):
 
 ```bash
-lh        # new tmux window running `claude --dsp`, long-horizon armed
-lh 75     # ...also set this session's threshold to 75%
+lh                    # new tmux session running `claude --dsp`, long-horizon armed
+lh 75                 # ...also set this session's threshold to 75%
+lh fl-mcp-testing     # ...and label the whole rotated chain (see below)
+lh fl-mcp-testing 75  # name + threshold — args may be given in either order
 ```
 
 It sets `CONTEXT_ROTATION_LONG_HORIZON` (and optional threshold) **only for that
 launch's subshell**, so the vars never persist in your interactive shell.
+
+**Auto-numbered sessions (`lh <name>`).** Give a launch a task name and every
+session in the rotated chain is titled `name-1`, `name-2`, `name-3` … — the first
+launch, then one increment per auto-`/clear`. The number is written as a native
+`custom-title` entry, so it shows up both in Claude Code's own `/resume` picker
+and in the [`cs`](../claude-code-sessions) session browser, making it obvious the
+whole chain is one long task. The tmux session is also named after the task (so
+two named runs don't collide on the default `lh` name). A trailing `-N` you type
+is ignored (`lh fl-mcp-testing-1` and `lh fl-mcp-testing` both number from `-1`),
+and each fresh `lh <name>` launch restarts numbering at `-1`. Un-named `lh` and
+plain `claude` are unaffected — no titles are written.
 
 ⚠ **Env-leak footgun (why `lh` exists):** if you `export CONTEXT_ROTATION_LONG_HORIZON=1`
 in a shell and then launch `claude` from it, that (and any later) session inherits
