@@ -78,12 +78,20 @@ cr_log() {
   printf '%s | %s\n' "$(date '+%H:%M:%S')" "$1" >> "$CR_STATE/decisions.log"
 }
 
-# Age of a file in whole seconds (portable across macOS/Linux stat).
+# Age of a file in whole seconds (portable across GNU and BSD stat).
+# GNU `stat -c %Y` is tried FIRST because it covers Linux + Windows Git Bash
+# (both GNU coreutils). BSD `stat -f %m` is the macOS fallback. Order matters:
+# on GNU stat, `-f` means --file-system and prints a multi-line filesystem block
+# to stdout (while erroring on the bogus %m operand), which — combined via `||` —
+# would corrupt mt with non-numeric junk and crash the arithmetic under `set -u`.
+# The numeric guard is the final backstop: anything not a plain integer → "old".
 cr_file_age() {
   # $1 = path
   local now mt
   now=$(date +%s)
-  mt=$(stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null)
-  [ -n "$mt" ] || { echo 999999; return; }
+  mt=$(stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null)
+  case "$mt" in
+    ''|*[!0-9]*) echo 999999; return ;;
+  esac
   echo $(( now - mt ))
 }
