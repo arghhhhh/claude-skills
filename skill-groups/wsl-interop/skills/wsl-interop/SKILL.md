@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.1.0
 name: wsl-interop
 description: Reuse the Windows host toolchain from a WSL2 Claude session via interop instead of reinstalling on Linux. Use when running inside WSL and about to install a package, run a claude-skills CLI, open a GUI app, or pass file paths between Linux and Windows tools. Covers the .exe-suffix rule, wslpath translation, CRLF/CWD gotchas, and the interop-vs-native decision.
 ---
@@ -57,6 +57,7 @@ wslpath -u 'C:\Users\Joss\file.png'     # → /mnt/c/Users/Joss/file.png (Window
 ## Other gotchas
 
 - **CRLF on stdout.** Windows tools emit `\r\n`. When capturing/parsing their output, strip it: `powershell.exe -c "…" | tr -d '\r'`. Unstripped `\r` breaks `[ "$x" = "y" ]`, path building, and JSON parsing.
+- **Git line-endings across the boundary — match `git` to the checkout.** A repo cloned on Windows (esp. under `/mnt/c`) with `core.autocrlf=true` has CRLF in its working tree. Running **WSL's native `git`** against it can flag dozens of files as "modified" that differ only by CRLF↔LF — pure noise, and a commit through it may capture line-ending churn. Symptom: `git status`/`git diff` in WSL shows a huge "modified" set you didn't touch. Fix: use **`git.exe`** for that repo so line-ending handling matches how it was checked out — it correctly sees only the real change. Rule of thumb: **Windows-checked-out repo (under `/mnt/c`) → `git.exe`; Linux-native repo (under `~`) → WSL `git`.** (A Linux-native clone — like this skill's own `~/.claude/.skill-repos/claude-skills` — is LF-clean; use WSL `git` there, it's also faster off `/mnt/c`.)
 - **PowerShell.** `powershell.exe` (Windows PowerShell 5.1) is present; `pwsh.exe` (7+) usually isn't. Use `-NoProfile -Command`. Quoting through bash→powershell is fiddly — prefer single-quoted bash wrapping a double-quoted PS command, or write a `.ps1` under `/mnt/c` and run it.
 - **Opening files/URLs.** `wslview` (wslu) is often absent; use `explorer.exe .`, `explorer.exe "$(wslpath -w file)"`, or `powershell.exe -c "Start-Process …"`.
 - **Clipboard.** Read: `powershell.exe -NoProfile -c Get-Clipboard | tr -d '\r'`. Write: `… | clip.exe`. (The `cdw` helper from the `wsl-clipboard-cd` group uses this.)
