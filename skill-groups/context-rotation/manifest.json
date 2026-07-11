@@ -2,7 +2,7 @@
   "name": "context-rotation",
   "type": "tool-only",
   "description": "Automatic context rotation for Claude Code. At ~65% context usage a PreToolUse hook interrupts and has the agent write a detailed ROTATION-HANDOVER.md (decisions + working context, not just a task log); SessionStart re-injects it after /clear. /long-horizon (or CONTEXT_ROTATION_LONG_HORIZON=1 for one session) arms full auto-rotation (tmux-driven /clear) across a chain of sessions.",
-  "version": "1.7.0",
+  "version": "1.8.1",
   "prerequisites": [
     {
       "name": "python3",
@@ -32,6 +32,6 @@
     "Run /long-horizon to arm hands-off auto-rotation (requires tmux for the automatic /clear); /long-horizon-off to disarm.",
     "Shortcut: `lh` opens a new tmux session running `claude --dsp` with long-horizon armed for that launch only (no shell env leak). `lh 75` sets the threshold; `lh <name>` labels the whole rotated chain name-1, name-2, name-3 … in Claude's /resume picker and the `cs` browser (args may be given in either order). Restart your shell after install to pick it up. NOTE: `lh` is owned solely by install/wire.sh — the old install.sh alias hook was removed in v1.7.0 to stop duplicate lh() blocks.",
     "Windows: core rotation (detect + handover + re-inject) works in Git Bash, but hands-off auto-/clear needs tmux, which Git Bash lacks — run unattended long-horizon sessions in WSL. See references/wsl-setup.md for the one-time WSL setup (native node+claude, auth, sessions/config sharing with the Windows store).",
-    "Tune ~/.claude/hooks/context-rotation/config (CR_WINDOW, CR_THRESHOLD) or override per-shell with CONTEXT_ROTATION_WINDOW / CONTEXT_ROTATION_THRESHOLD."
+    "Tune ~/.claude/hooks/context-rotation/config (CR_WINDOW, CR_THRESHOLD) or override per-shell with CONTEXT_ROTATION_WINDOW / CONTEXT_ROTATION_THRESHOLD. CR_WINDOW defaults to 'auto' — the hook reads the [1m]/[Nk] marker off your selected model (settings.json) so a 1M-context session isn't measured against a 200k window and rotated at ~15% of real usage. Pin a number only to override."
   ]
 }

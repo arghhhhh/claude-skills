@@ -23,45 +23,35 @@ cp "$GROUP_DIR"/hooks/*.sh "$HOOK_DIR/"
 chmod +x "$HOOK_DIR"/*.sh
 echo "✓ hooks → $HOOK_DIR"
 
-# 2. default config — only written if absent (never clobbers user tuning).
+# 2. default config — written if absent, and self-healed if it's stuck on the old
+#    hardcoded 200k default (which rotated 1M-context sessions at ~15% of real use).
+#    The window now defaults to "auto": the hook reads the [1m]/[Nk] marker off the
+#    selected model at runtime, so it's always right regardless of which model the
+#    machine runs. A user who pinned a real number is never touched.
 if [ ! -f "$HOOK_DIR/config" ]; then
-  window=200000
-  # If any recent transcript shows >200k tokens in context, this machine runs a
-  # 1M-context model; default the window accordingly so rotation isn't premature.
-  proj_root="$CLAUDE_DIR/projects"
-  if [ -d "$proj_root" ]; then
-    biggest=$(python3 - "$proj_root" <<'PY' 2>/dev/null || echo 0
-import json,os,sys,glob
-root=sys.argv[1]; mx=0
-files=sorted(glob.glob(os.path.join(root,"**","*.jsonl"),recursive=True),
-             key=lambda p: os.path.getmtime(p), reverse=True)[:20]
-for fp in files:
-    try:
-        for line in open(fp,encoding="utf-8"):
-            line=line.strip()
-            if '"usage"' not in line: continue
-            try: o=json.loads(line)
-            except Exception: continue
-            u=(o.get("message") or {}).get("usage") or {}
-            t=(u.get("input_tokens",0) or 0)+(u.get("cache_creation_input_tokens",0) or 0)+(u.get("cache_read_input_tokens",0) or 0)
-            if t>mx: mx=t
-    except Exception: pass
-print(mx)
-PY
-)
-    [ "${biggest:-0}" -gt 200000 ] 2>/dev/null && window=1000000
-  fi
-  cat > "$HOOK_DIR/config" <<EOF
+  cat > "$HOOK_DIR/config" <<'EOF'
 # context-rotation config — edit freely. Env vars override these per-session:
 #   CONTEXT_ROTATION_WINDOW, CONTEXT_ROTATION_THRESHOLD,
 #   CONTEXT_ROTATION_LONG_HORIZON=1 (arm auto-rotate for one session only)
-CR_WINDOW=$window        # context window size in tokens
+CR_WINDOW=auto           # context window in tokens, or "auto" to detect from the model
 CR_THRESHOLD=65          # rotate when used% >= this
 CR_HANDOFF_MAX_AGE=3600  # max age (s) of a handover SessionStart will inject
 EOF
-  echo "✓ config → $HOOK_DIR/config (window=$window)"
+  echo "✓ config → $HOOK_DIR/config (window=auto)"
+elif grep -qE '^CR_WINDOW=200000([[:space:]]|#|$)' "$HOOK_DIR/config"; then
+  # Migrate the old baked-in default to auto-detection. Only the exact literal
+  # 200000 is rewritten — any other value is treated as a deliberate pin.
+  python3 - "$HOOK_DIR/config" <<'PY'
+import re,sys
+p=sys.argv[1]; s=open(p,encoding="utf-8").read()
+s=re.sub(r'^CR_WINDOW=200000\b[^\n]*',
+         'CR_WINDOW=auto           # context window in tokens, or "auto" to detect from the model',
+         s, count=1, flags=re.M)
+open(p,"w",encoding="utf-8").write(s)
+PY
+  echo "✓ config migrated: CR_WINDOW 200000 → auto (was rotating 1M sessions early)"
 else
-  echo "▸ config exists — left untouched"
+  echo "▸ config exists with a custom CR_WINDOW — left untouched"
 fi
 
 # 3. slash commands

@@ -125,14 +125,24 @@ message, divides by the window, and compares to the threshold.
 
 | Key | Env override | Default |
 |---|---|---|
-| `CR_WINDOW` | `CONTEXT_ROTATION_WINDOW` | `200000`, auto-bumped to `1000000` if a recent transcript exceeded 200k |
+| `CR_WINDOW` | `CONTEXT_ROTATION_WINDOW` | `auto` — detected per-call from the model marker (below); set a number to pin |
 | `CR_THRESHOLD` | `CONTEXT_ROTATION_THRESHOLD` | `65` |
 | `CR_HANDOFF_MAX_AGE` | — | `3600` (s) |
 
-⚠ **Window caveat:** the transcript logs the base model id (`claude-opus-4-8`)
-with no `[1m]` marker, so a 1M-context session is indistinguishable from a 200k
-one until it actually exceeds 200k tokens. `wire.sh` auto-detects the 1M tier
-from recent transcripts; if you switch plans, edit `CR_WINDOW` by hand.
+**Window auto-detection:** the transcript logs the base model id
+(`claude-opus-4-8`) with no `[1m]` marker, so the window can't be read there. But
+Claude Code names its long-context variants with a bracket suffix —
+`claude-opus-4-8[1m]`, `claude-sonnet-5[1m]` — in `settings.json`. With
+`CR_WINDOW=auto` (the default), `cr_window` reads that model id (env
+`ANTHROPIC_MODEL`/`CLAUDE_MODEL` first, then `$CLAUDE_PROJECT_DIR/.claude` and
+`~/.claude` `settings.local.json`/`settings.json`) and maps `[<n>m]`/`[<n>k]` →
+tokens (`[1m]` → 1,000,000). When there's no marker, the base id is checked
+against a list of always-1M models — Fable 5 and Mythos, whose default (and only)
+context is 1M and which therefore never carry a marker — otherwise it's 200,000.
+(Opus/Sonnet without a marker stay 200k: in Claude Code the `[1m]` marker is what
+opts them into 1M mode.) This fixes the old bug where a 1M session measured against
+a hardcoded 200k window rotated at ~15% of real usage. Pin a number in the config
+to override detection.
 
 ## Requirements
 

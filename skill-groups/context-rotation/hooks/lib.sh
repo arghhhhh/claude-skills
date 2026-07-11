@@ -20,8 +20,66 @@ except Exception:
     pass' "$2" 2>/dev/null
 }
 
-# Effective context window (tokens). Env wins, then config, then 200k default.
-cr_window() { echo "${CONTEXT_ROTATION_WINDOW:-${CR_WINDOW:-200000}}"; }
+# Effective context window (tokens).
+# Precedence: env CONTEXT_ROTATION_WINDOW > numeric CR_WINDOW config >
+# auto-detect from the selected model's context marker > 200000.
+# A non-numeric CR_WINDOW (e.g. "auto", or unset) forces detection — this is the
+# shipped default so a 1M-context session isn't measured against a 200k window
+# (which would rotate at ~15-20% of real usage). Set a plain number to pin it.
+cr_window() {
+  local w="${CONTEXT_ROTATION_WINDOW:-${CR_WINDOW:-auto}}"
+  case "$w" in
+    ''|*[!0-9]*) cr_detect_window ;;   # auto / blank / junk → detect
+    *) echo "$w" ;;                    # explicit integer → use as-is
+  esac
+}
+
+# Map the currently-selected model to a token window. Two signals, in order:
+#   1. A [<n>m]/[<n>k] bracket suffix — Claude Code names its opt-in long-context
+#      variants this way (claude-opus-4-8[1m], claude-sonnet-5[1m]), and the marker
+#      is authoritative when present. The transcript's message.model field drops the
+#      suffix, so it can't be read there — hence reading the model config instead.
+#   2. No marker → look the base id up in ALWAYS_1M: models whose default (and only)
+#      context is 1M and therefore never carry a marker (Fable 5, Mythos). Opus/Sonnet
+#      without a marker stay 200k — in Claude Code the marker is what opts them into 1M.
+# Model source, first hit wins: env ANTHROPIC_MODEL/CLAUDE_MODEL, then
+# settings.local.json / settings.json in $CLAUDE_PROJECT_DIR, then in ~/.claude.
+# Anything unrecognised → 200000.
+cr_detect_window() {
+  python3 - <<'PY' 2>/dev/null || echo 200000
+import json,os,re
+def find_model():
+    for ev in ("ANTHROPIC_MODEL","CLAUDE_MODEL"):
+        v=os.environ.get(ev)
+        if v: return v
+    bases=[]
+    pd=os.environ.get("CLAUDE_PROJECT_DIR")
+    if pd:
+        bases.append(pd if os.path.basename(pd)==".claude" else os.path.join(pd,".claude"))
+    bases.append(os.path.expanduser("~/.claude"))
+    for base in bases:
+        for name in ("settings.local.json","settings.json"):
+            try:
+                m=json.load(open(os.path.join(base,name),encoding="utf-8")).get("model")
+                if m: return m
+            except Exception:
+                pass
+    return ""
+# Models whose default (and only) context window is 1M, so Claude Code emits no
+# [1m] marker for them. Matched as a prefix on the marker-stripped id.
+ALWAYS_1M=("claude-fable-5","claude-mythos-5","claude-mythos-preview")
+m=find_model() or ""
+win=200000
+mm=re.search(r'\[(\d+)\s*([mMkK])\]', m)
+if mm:
+    n=int(mm.group(1)); win=n*1000000 if mm.group(2) in "mM" else n*1000
+else:
+    base=m.split("[",1)[0].strip().lower()
+    if any(base.startswith(x) for x in ALWAYS_1M):
+        win=1000000
+print(win)
+PY
+}
 
 # Rotation threshold as an integer percent. Env wins, then config, then 65.
 cr_threshold() { echo "${CONTEXT_ROTATION_THRESHOLD:-${CR_THRESHOLD:-65}}"; }

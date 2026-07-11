@@ -33,7 +33,8 @@ is_int() { case "${1:-}" in ''|*[!0-9]*) return 1;; *) return 0;; esac; }
 show() {
   echo "context-rotation settings  ($cfg)"
   echo "  threshold : ${CR_THRESHOLD:-65}%   (rotate when context usage >= this)"
-  echo "  window    : ${CR_WINDOW:-200000} tokens"
+  local wsrc="pinned"; case "${CR_WINDOW:-auto}" in ''|*[!0-9]*) wsrc="auto-detected from model";; esac
+  echo "  window    : $(cr_window) tokens   (CR_WINDOW=${CR_WINDOW:-auto}, ${wsrc})"
   echo "  handoff max age : ${CR_HANDOFF_MAX_AGE:-3600}s"
   echo "  long-horizon (global marker) : $(cr_long_horizon_active && echo ARMED || echo off)"
   [ -n "${CONTEXT_ROTATION_THRESHOLD:-}" ] && echo "  NOTE: this shell overrides threshold via env = ${CONTEXT_ROTATION_THRESHOLD}%"
@@ -79,7 +80,12 @@ case "${1:-help}" in
     ;;
   set-window)
     v="${2:-}"
-    is_int "$v" && [ "$v" -ge 50000 ] || { echo "usage: set-window <tokens, e.g. 200000 or 1000000>"; exit 1; }
+    if [ "$v" = "auto" ]; then
+      set_kv CR_WINDOW auto
+      echo "✓ window → auto (detected from the model's [1m]/[Nk] marker; currently $(cr_window) tokens)"
+      exit 0
+    fi
+    is_int "$v" && [ "$v" -ge 50000 ] || { echo "usage: set-window <tokens, e.g. 200000 or 1000000, or 'auto'>"; exit 1; }
     set_kv CR_WINDOW "$v"
     echo "✓ window → ${v} tokens"
     ;;
