@@ -62,11 +62,22 @@ chmod 600 ~/.claude/.credentials.json
 #    re-clone".)
 bash /mnt/c/Users/<user>/.claude/.skill-repos/claude-skills/skill-groups/context-rotation/install/wire.sh
 
-#    Window sizing: cr_window auto-detects from the `model` in ~/.claude/settings.json.
-#    A fresh WSL ~/.claude usually has NO model set, so a 1M-context model gets
-#    measured against the 200k default and rotates early (e.g. real 3% shows as
-#    ~14%). Set "model" in the WSL settings.json to your actual model, or pin
-#    CR_WINDOW (e.g. 1000000) in ~/.claude/hooks/context-rotation/config.
+# 4b. Set the context window. cr_window auto-detects from the `model` in
+#     ~/.claude/settings.json. A fresh WSL ~/.claude has NO model set, so a
+#     1M-context model is measured against the 200k default and rotates early
+#     (e.g. real 3% shows as ~14%). Set "model" to the SAME id + marker Claude
+#     Code uses — the [1m]/[Nk] suffix is what opts a model into its long window
+#     and is required for cr_window to pick 1M (a bare id stays 200k):
+python3 - <<'PY'
+import json, os
+p = os.path.expanduser("~/.claude/settings.json")
+s = json.load(open(p))
+s["model"] = "claude-opus-4-8[1m]"   # ← your actual model id, with its context marker
+json.dump(s, open(p, "w"), indent=2)
+print("model set to", s["model"])
+PY
+#     Verify:  . ~/.claude/hooks/context-rotation/lib.sh; cr_window   # → 1000000
+#     (Alternative: pin CR_WINDOW=1000000 in ~/.claude/hooks/context-rotation/config.)
 
 # 5. Hands-off needs no permission prompts — set in WSL ~/.claude/settings.json:
 #      "skipDangerousModePermissionPrompt": true
