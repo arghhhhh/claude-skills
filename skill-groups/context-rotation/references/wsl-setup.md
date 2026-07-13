@@ -53,8 +53,20 @@ chmod 600 ~/.claude/.credentials.json
 #   real launch still needs a one-time "trust this folder" Enter.
 
 # 4. Wire context-rotation into the Linux ~/.claude (hook paths resolve to
-#    /home/<user>/... form; installs the `lh` launcher into ~/.bashrc):
+#    /home/<user>/... form; installs the `lh` launcher into ~/.bashrc).
+#    Run wire.sh straight from the Windows repo via /mnt/c — do NOT re-clone
+#    claude-skills into WSL. wire.sh COPIES the hooks into ~/.claude/hooks, so
+#    afterwards WSL needs /mnt/c only for future re-wires. (If you also want the
+#    skills symlinked in WSL, symlink the whole repo rather than cloning it —
+#    see the wsl-interop skill, "The claude-skills repo: reuse Windows, don't
+#    re-clone".)
 bash /mnt/c/Users/<user>/.claude/.skill-repos/claude-skills/skill-groups/context-rotation/install/wire.sh
+
+#    Window sizing: cr_window auto-detects from the `model` in ~/.claude/settings.json.
+#    A fresh WSL ~/.claude usually has NO model set, so a 1M-context model gets
+#    measured against the 200k default and rotates early (e.g. real 3% shows as
+#    ~14%). Set "model" in the WSL settings.json to your actual model, or pin
+#    CR_WINDOW (e.g. 1000000) in ~/.claude/hooks/context-rotation/config.
 
 # 5. Hands-off needs no permission prompts — set in WSL ~/.claude/settings.json:
 #      "skipDangerousModePermissionPrompt": true

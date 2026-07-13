@@ -1,7 +1,7 @@
 {
   "name": "wsl-interop",
   "description": "Teaches a WSL2 Claude agent to reuse the Windows host toolchain via interop instead of reinstalling everything on Linux. Agent-facing skill (the human-only cd helper lives in wsl-clipboard-cd).",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "prerequisites": [],
   "install": {
     "check": "grep -qi microsoft /proc/version 2>/dev/null",

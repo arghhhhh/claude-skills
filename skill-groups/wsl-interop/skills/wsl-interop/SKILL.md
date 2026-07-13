@@ -1,7 +1,7 @@
 ---
-version: 1.1.0
+version: 1.2.0
 name: wsl-interop
-description: Reuse the Windows host toolchain from a WSL2 Claude session via interop instead of reinstalling on Linux. Use when running inside WSL and about to install a package, run a claude-skills CLI, open a GUI app, or pass file paths between Linux and Windows tools. Covers the .exe-suffix rule, wslpath translation, CRLF/CWD gotchas, and the interop-vs-native decision.
+description: Reuse the Windows host toolchain from a WSL2 Claude session via interop instead of reinstalling on Linux. Use when running inside WSL and about to install a package, run a claude-skills CLI, open a GUI app, pass file paths between Linux and Windows tools, or set up the claude-skills repo / hands-off long-horizon in WSL. Covers the .exe-suffix rule, wslpath translation, CRLF/CWD gotchas, the interop-vs-native decision, and reusing the Windows claude-skills repo.
 ---
 
 # WSL ⇄ Windows Interop
@@ -57,7 +57,7 @@ wslpath -u 'C:\Users\Joss\file.png'     # → /mnt/c/Users/Joss/file.png (Window
 ## Other gotchas
 
 - **CRLF on stdout.** Windows tools emit `\r\n`. When capturing/parsing their output, strip it: `powershell.exe -c "…" | tr -d '\r'`. Unstripped `\r` breaks `[ "$x" = "y" ]`, path building, and JSON parsing.
-- **Git line-endings across the boundary — match `git` to the checkout.** A repo cloned on Windows (esp. under `/mnt/c`) with `core.autocrlf=true` has CRLF in its working tree. Running **WSL's native `git`** against it can flag dozens of files as "modified" that differ only by CRLF↔LF — pure noise, and a commit through it may capture line-ending churn. Symptom: `git status`/`git diff` in WSL shows a huge "modified" set you didn't touch. Fix: use **`git.exe`** for that repo so line-ending handling matches how it was checked out — it correctly sees only the real change. Rule of thumb: **Windows-checked-out repo (under `/mnt/c`) → `git.exe`; Linux-native repo (under `~`) → WSL `git`.** (A Linux-native clone — like this skill's own `~/.claude/.skill-repos/claude-skills` — is LF-clean; use WSL `git` there, it's also faster off `/mnt/c`.)
+- **Git line-endings across the boundary — match `git` to the checkout.** A repo cloned on Windows (esp. under `/mnt/c`) with `core.autocrlf=true` has CRLF in its working tree. Running **WSL's native `git`** against it can flag dozens of files as "modified" that differ only by CRLF↔LF — pure noise, and a commit through it may capture line-ending churn. Symptom: `git status`/`git diff` in WSL shows a huge "modified" set you didn't touch. Fix: use **`git.exe`** for that repo so line-ending handling matches how it was checked out — it correctly sees only the real change. Rule of thumb: **Windows-checked-out repo (under `/mnt/c`) → `git.exe`; Linux-native repo (under `~`) → WSL `git`.** (A Linux-native clone of `claude-skills` under `~` is LF-clean — use WSL `git` there. But if `~/.claude/.skill-repos/claude-skills` is a **symlink into the Windows repo** under `/mnt/c` — the recommended single-source setup, see below — treat it as a Windows-checked-out repo and use `git.exe` for git ops on it.)
 - **PowerShell.** `powershell.exe` (Windows PowerShell 5.1) is present; `pwsh.exe` (7+) usually isn't. Use `-NoProfile -Command`. Quoting through bash→powershell is fiddly — prefer single-quoted bash wrapping a double-quoted PS command, or write a `.ps1` under `/mnt/c` and run it.
 - **Opening files/URLs.** `wslview` (wslu) is often absent; use `explorer.exe .`, `explorer.exe "$(wslpath -w file)"`, or `powershell.exe -c "Start-Process …"`.
 - **Clipboard.** Read: `powershell.exe -NoProfile -c Get-Clipboard | tr -d '\r'`. Write: `… | clip.exe`. (The `cdw` helper from the `wsl-clipboard-cd` group uses this.)
@@ -74,8 +74,25 @@ wslpath -u 'C:\Users\Joss\file.png'     # → /mnt/c/Users/Joss/file.png (Window
 
 When unsure: reuse Windows to avoid a second install and version skew; drop to Linux-native only for a concrete perf or availability reason — and say which.
 
+## The claude-skills repo: reuse Windows, don't re-clone
+
+If the **Windows** host already has `claude-skills` installed, do NOT `git clone` a second copy into the WSL home — that leaves two drifting repos. The installer hardcodes the canonical repo path as `~/.claude/.skill-repos/claude-skills` (it symlinks skills there regardless of where `install.sh` lives), so the clean single-source setup is to make that path a **symlink into the Windows copy**:
+
+```bash
+WINREPO=/mnt/c/Users/<you>/.claude/.skill-repos/claude-skills
+rm -rf ~/.claude/.skill-repos/claude-skills           # only if it's a redundant fresh clone
+ln -sfn "$WINREPO" ~/.claude/.skill-repos/claude-skills
+```
+
+Every WSL skill symlink (`~/.claude/skills/<name>`) then resolves through to the one Windows repo — pull once on Windows, both sides updated. WSL still keeps its **own** `~/.claude/skills`, `settings.json`, and `hooks` (those are per-environment); only the *repo source* is shared.
+
+- Installer's global gate: `install.sh` requires `node`. The `.exe` interop node can't run it (it passes Linux paths Windows node won't resolve), so install a Linux-native node (`nvm`) once. Pure-guidance/shell groups (`wsl-interop`, `wsl-clipboard-cd`) still trip this gate even though they need no node at runtime.
+- Trade-off vs. a native clone: symlinking reads over `/mnt/c` (fine for symlink resolution + occasional installer runs; the installer's JSON edits land in the native WSL `~/.claude`). Only prefer a separate Linux-native clone if you'll do **heavy git iteration** on the repo from WSL — then you own two copies and must sync them.
+
+**Hands-off long-horizon (auto-`/clear`) runs in WSL** (Git Bash has no tmux). Full one-time setup — native node+claude, auth copy, `wire.sh` from the `/mnt/c` repo, session/config sharing — is in `context-rotation/references/wsl-setup.md`. Set `model` in the WSL `settings.json` (or pin `CR_WINDOW`) so a 1M-context model isn't measured against the 200k default and rotated early.
+
 ## Layout reference
 
 - Windows drives: `/mnt/c`, `/mnt/d`. Windows profile: `/mnt/c/Users/<you>`.
 - Windows Claude config + `skills-config.sh` + tool bins: under `/mnt/c/Users/<you>/.claude` and `~/.local/bin`, `~/.cargo/bin`, `~/go/bin` (all on the appended PATH).
-- This WSL session has its **own** Linux `~/.claude` (separate settings/hooks); only the sessions store is typically symlinked back to Windows. So Windows `~/.claude` settings/MCP/hooks are **not** in effect here unless separately wired.
+- This WSL session has its **own** Linux `~/.claude` (separate settings/hooks); only the sessions store (and, for long-horizon, the rotation `config`) is typically symlinked back to Windows. So Windows `~/.claude` settings/MCP/hooks are **not** in effect here unless separately wired. The `.skill-repos/claude-skills` **repo** can still be shared as a symlink into `/mnt/c` (see "The claude-skills repo" above) — that's the source tree, not the active config.
