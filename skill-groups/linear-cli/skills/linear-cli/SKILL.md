@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.1.0
 name: linear-cli
 description: Manage Linear.app from the terminal via the `linear` CLI (schpet/linear-cli) — issues, projects, milestones, cycles, initiatives, labels, documents, teams, and raw GraphQL. Use when the user mentions Linear, a Linear issue (e.g. ENG-123), starting/creating/updating issues, or Linear projects/cycles/documents.
 ---
@@ -10,7 +10,9 @@ Drive [Linear.app](https://linear.app) from the terminal with `linear` ([schpet/
 
 ## Setup
 
-- **Binary**: `linear` — on this machine installed via Deno at `C:\Users\joss\.deno\bin\linear`. Ensure `C:\Users\joss\.deno\bin` is on PATH (Git Bash: `export PATH="$PATH:/c/Users/joss/.deno/bin"`).
+- **Binary**: `linear` — installed via Deno at `<HOME>/.deno/bin/linear`. Deno drops binaries in `~/.deno/bin` but does **not** add it to PATH, so `linear` won't be found by name until you persist it. If `linear` isn't on PATH, do it once (don't rely on a per-session `export`, which agents in fresh shells won't inherit):
+  - **Windows** (persist to User PATH registry): `powershell -NoProfile -Command "$p=[Environment]::GetEnvironmentVariable('Path','User'); if($p -notlike '*\.deno\bin*'){[Environment]::SetEnvironmentVariable('Path',$p.TrimEnd(';')+';'+$env:USERPROFILE+'\.deno\bin','User')}"` — takes effect in newly launched shells/agents; for the current shell also `$env:PATH += ';'+$env:USERPROFILE+'\.deno\bin'`.
+  - **macOS/Linux**: append `export PATH="$HOME/.deno/bin:$PATH"` to `~/.zshrc` / `~/.bashrc`.
 - **Auth**: `linear auth login` — prompts for an API key (create one at https://linear.app/settings/account/security). Stored in the system keyring by default; add `--plaintext` to use the credentials file, or pass `-k <key>`.
 - **Check auth**: `linear auth whoami`
 - **Configure project defaults**: `linear config` (interactive) writes `.linear.toml` with `team_id`, `workspace`, `vcs`, etc.
@@ -23,6 +25,8 @@ Drive [Linear.app](https://linear.app) from the terminal with `linear` ([schpet/
 ```bash
 deno install -A --reload -f -g -n linear jsr:@schpet/linear-cli
 ```
+After (re)installing, persist `~/.deno/bin` to PATH per the **Setup** section — `deno install` places the binary but never edits PATH, so a fresh agent still won't find `linear` otherwise.
+
 Other methods: `brew install schpet/tap/linear` (macOS/Linux), prebuilt binaries at https://github.com/schpet/linear-cli/releases/latest, or `npm install -D @schpet/linear-cli`.
 
 ## Agent-friendly conventions

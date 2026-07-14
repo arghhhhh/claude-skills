@@ -1,7 +1,7 @@
 {
   "name": "linear-cli",
   "description": "Linear CLI (schpet/linear-cli) — manage Linear.app issues, projects, milestones, cycles, initiatives, labels, documents, and teams from the terminal, with git/jj integration and JSON output for agents.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "prerequisites": [
     {
       "name": "deno",
@@ -46,7 +46,7 @@
   "post_install_hints": [
     "Authenticate: run 'linear auth login' and paste an API key from https://linear.app/settings/account/security (stored in the system keyring).",
     "Set project defaults: run 'linear config' in a repo to write .linear.toml (team_id, workspace, vcs).",
-    "If 'linear' is not found after install, add the Deno bin dir to PATH (Windows: C:/Users/<you>/.deno/bin; macOS/Linux: ~/.deno/bin)."
+    "If 'linear' is not found after install, persist the Deno bin dir to PATH — deno install never edits PATH. Windows (User PATH registry): powershell -NoProfile -Command \"$p=[Environment]::GetEnvironmentVariable('Path','User'); if($p -notlike '*\\.deno\\bin*'){[Environment]::SetEnvironmentVariable('Path',$p.TrimEnd(';')+';'+$env:USERPROFILE+'\\.deno\\bin','User')}\". macOS/Linux: add 'export PATH=\"$HOME/.deno/bin:$PATH\"' to ~/.zshrc or ~/.bashrc."
   ],
   "skills": [
     "linear-cli"
