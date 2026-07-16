@@ -1,0 +1,53 @@
+{
+  "name": "wireviz",
+  "description": "Wiring / cable harness diagrams from plain-text YAML via the WireViz CLI — connector pinouts, cable colors, point-to-point wiring, rendered to SVG/PNG/HTML with a BOM.",
+  "version": "1.0.0",
+  "prerequisites": [
+    {
+      "name": "pip",
+      "check": "pip --version",
+      "install_hint": "Install Python 3 (includes pip): https://www.python.org/downloads/",
+      "required": true
+    },
+    {
+      "name": "graphviz-dot",
+      "check": "dot -V",
+      "install_hint": "Windows: winget install Graphviz.Graphviz (then add C:/Program Files/Graphviz/bin to PATH). macOS: brew install graphviz. Linux: sudo apt install graphviz",
+      "required": true,
+      "note": "WireViz shells out to the Graphviz 'dot' binary to lay out diagrams — rendering fails without it on PATH"
+    }
+  ],
+  "install": {
+    "check": "wireviz --version",
+    "methods": [
+      {
+        "name": "pip",
+        "platforms": ["windows", "macos", "linux"],
+        "check": "pip --version",
+        "command": "pip install wireviz"
+      },
+      {
+        "name": "manual",
+        "platforms": ["windows", "macos", "linux"],
+        "url": "https://github.com/wireviz/WireViz"
+      }
+    ],
+    "notes": "WireViz is a Python package; Graphviz 'dot' must also be on PATH (see prerequisites). Windows Graphviz installers often do NOT add dot to PATH."
+  },
+  "test": {
+    "command": "wireviz --version",
+    "expect_success": true
+  },
+  "integration_test": {
+    "command": "printf 'connectors:\\n  X1:\\n    pinlabels: [GND, SIG]\\n  X2:\\n    pinlabels: [GND, SIG]\\ncables:\\n  W1:\\n    colors: [BK, RD]\\nconnections:\\n  -\\n    - X1: [1-2]\\n    - W1: [1-2]\\n    - X2: [1-2]\\n' > /tmp/wireviz-test.yml && wireviz /tmp/wireviz-test.yml -f s && test -f /tmp/wireviz-test.svg",
+    "expect_success": true,
+    "description": "Renders a minimal 2-wire harness to SVG — verifies both wireviz and the Graphviz dot dependency work end-to-end"
+  },
+  "post_install_hints": [
+    "If rendering fails with 'dot not found' / 'ExecutableNotFound', Graphviz is missing from PATH. On Windows add C:/Program Files/Graphviz/bin to PATH and open a fresh shell."
+  ],
+  "skills": [
+    "wireviz"
+  ],
+  "agents": []
+}
