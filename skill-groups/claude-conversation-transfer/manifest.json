@@ -1,7 +1,8 @@
 {
   "name": "claude-conversation-transfer",
   "description": "Go CLI that exports a Claude Code project's conversation history to a portable zip and imports it on another machine, correctly retargeting paths across OSes. Installs the binary AND the /export-proper and /import-proper slash commands that drive it.",
-  "version": "0.2.0",
+  "version": "0.3.0",
+  "update_policy": "latest",
   "prerequisites": [
     {
       "name": "go",

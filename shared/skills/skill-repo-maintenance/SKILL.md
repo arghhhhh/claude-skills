@@ -1,5 +1,5 @@
 ---
-version: 1.9.0
+version: 1.10.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -248,6 +248,21 @@ Add new entries to `manifest.json`'s `skills:` array. Same for `agents:`.
 Tool-only groups (`type: "tool-only"`) ship no skills or agents — they exist only to run `install` and `test` for a piece of external software (e.g., `claude-notifications` installs a Claude Code plugin). Manifest shape is minimal: `type`, `version`, `install`, `test`, `post_install_hints`.
 
 To update, edit `install` / `test` / `post_install_hints`, bump `version`, commit, push. No symlinks are created, so there's nothing to re-sync on other machines beyond rerunning the installer.
+
+## Update Policy — Tracking My Own Tool Repos at HEAD
+
+Any group (tool-only or otherwise) whose install command builds software from a git clone can declare how `--update` treats that software:
+
+```json
+"update_policy": "latest"
+```
+
+| Policy | Meaning | Use for |
+|---|---|---|
+| **`pinned`** (default, field omitted) | `--update` never touches installed software; it only refreshes skills/agents/commands. Software updates happen only when the install `check` fails or a human bumps something deliberately. | Third-party tools where an unreviewed upstream change is a risk (`claude-notifications`, winget/brew packages) |
+| **`latest`** | Every `--update` re-runs the group's install command even though the binary already exists — the command must be idempotent (pull-or-clone + rebuild, like `git pull --ff-only … && go build`), and `run_test` verifies afterwards. `--skip-software` suppresses this. | My own repos (`arghhhhh/*`) where HEAD is always wanted: `claude-code-sessions`, `claude-conversation-transfer` |
+
+**Rule: any group that clones one of my own repos must set `update_policy: "latest"`** — otherwise fixes pushed from one machine silently never reach the installed binaries on others (the install `check` sees an existing binary and short-circuits). Third-party sources stay pinned/default unless there's a specific reason to track them.
 
 ## Syncing Another Machine
 

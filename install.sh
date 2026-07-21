@@ -496,6 +496,24 @@ group_type() {
   echo "$t"
 }
 
+# Reads a group's "update_policy" manifest field. "latest" means the group's
+# install command tracks a moving target (e.g. one of my own tool repos cloned
+# at HEAD) and --update should re-run it every time. Default is "pinned":
+# update mode leaves installed software alone.
+group_update_policy() {
+  local group="$1"
+  local manifest_file="$SKILL_GROUPS_DIR/$group/manifest.json"
+  [ -f "$manifest_file" ] || { echo "pinned"; return; }
+  local p
+  p=$(node -e "
+    try {
+      const m = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+      process.stdout.write(m.update_policy || 'pinned');
+    } catch(e) { process.stdout.write('pinned'); }
+  " "$manifest_file" 2>/dev/null) || p="pinned"
+  echo "$p"
+}
+
 # Read a value from a vendored manifest's "source" block via node.
 # Args: <group> <path-into-source> e.g. "repo", "ref", "ref_name", "paths.skills", "paths.agents"
 vendored_source_get() {
@@ -1208,14 +1226,17 @@ install_git_hooks() {
 # ─── Install software dependency ────────────────────────────────────────────
 
 install_software() {
-  local group="$1"
+  local group="$1" force="${2:-}"
   local manifest
   manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
 
   local check_cmd
   check_cmd=$(json_get_install_check "$manifest")
 
-  if [ -n "$check_cmd" ] && [ "$check_cmd" != "true" ] && eval "$check_cmd" </dev/null >/dev/null 2>&1; then
+  # "force" re-runs the install method even when the check passes — used by
+  # update mode for groups with update_policy "latest", whose install commands
+  # are idempotent pull-or-clone + rebuild.
+  if [ "$force" != "force" ] && [ -n "$check_cmd" ] && [ "$check_cmd" != "true" ] && eval "$check_cmd" </dev/null >/dev/null 2>&1; then
     ok "$group software already installed"
     return 0
   fi
@@ -2302,12 +2323,16 @@ group_is_installed() {
     return
   fi
 
-  local skill agent
+  local skill agent cmd
   for skill in $(json_array "$manifest" "skills"); do
     [ -n "$(resolve_skill_path "$SKILLS_DIR/$skill")" ] && return 0
   done
   for agent in $(json_array "$manifest" "agents"); do
     [ -e "$AGENTS_DIR/$agent.md" ] && return 0
+  done
+  # Some groups ship only slash commands (e.g. claude-conversation-transfer)
+  for cmd in $(json_array "$manifest" "commands"); do
+    [ -e "$COMMANDS_DIR/$cmd.md" ] && return 0
   done
   return 1
 }
@@ -2321,9 +2346,22 @@ update_group() {
 
   header "Updating: $group"
 
+  # Groups with update_policy "latest" track a moving target (my own tool
+  # repos cloned at HEAD) — re-run their idempotent install command so the
+  # binary is rebuilt from the latest upstream on every --update.
+  if [ "$(group_update_policy "$group")" = "latest" ]; then
+    if [ "$SKIP_SOFTWARE" = "false" ]; then
+      info "$group: update_policy latest — refreshing software"
+      install_software "$group" force
+      run_test "$group"
+    else
+      info "$group: update_policy latest, but --skip-software given — not refreshing"
+    fi
+  fi
+
   # Tool-only groups have nothing to symlink/update at the skill level
   if [ "$gtype" = "tool-only" ]; then
-    info "$group: tool-only — nothing to update"
+    [ "$(group_update_policy "$group")" = "latest" ] || info "$group: tool-only — nothing to update"
     return 0
   fi
 
