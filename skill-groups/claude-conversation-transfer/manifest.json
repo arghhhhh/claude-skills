@@ -1,7 +1,7 @@
 {
   "name": "claude-conversation-transfer",
-  "description": "Go CLI that exports a Claude Code project's conversation history to a portable zip and imports it on another machine, correctly retargeting paths across OSes. Installs the binary AND the /export-proper and /import-proper slash commands that drive it.",
-  "version": "0.3.0",
+  "description": "Go CLI that exports a Claude Code project's conversation history to a portable zip and imports it on another machine, correctly retargeting paths across OSes. Also renames a project in place (migrate + verify + delete old). Installs the binary AND the /export-proper, /import-proper, and /rename-proper slash commands that drive it.",
+  "version": "0.4.0",
   "update_policy": "latest",
   "prerequisites": [
     {
@@ -34,9 +34,9 @@
   },
   "skills": [],
   "agents": [],
-  "commands": ["export-proper", "import-proper"],
+  "commands": ["export-proper", "import-proper", "rename-proper"],
   "post_install_hints": [
     "Binary installed at ~/.local/share/claude-conversation-transfer/ (claude-conversation-transfer on macOS/Linux, claude-conversation-transfer.exe on Windows).",
-    "Slash commands /export-proper and /import-proper are installed alongside the binary and call it directly. They are NOT available unless this group is installed."
+    "Slash commands /export-proper, /import-proper, and /rename-proper are installed alongside the binary and call it directly. They are NOT available unless this group is installed."
   ]
 }
