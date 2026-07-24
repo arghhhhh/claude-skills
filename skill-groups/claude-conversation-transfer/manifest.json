@@ -1,7 +1,7 @@
 {
   "name": "claude-conversation-transfer",
   "description": "Go CLI that exports a Claude Code project's conversation history to a portable zip and imports it on another machine, correctly retargeting paths across OSes. Also renames a project in place (migrate + verify + delete old). Installs the binary AND the /export-proper, /import-proper, and /rename-proper slash commands that drive it.",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "update_policy": "latest",
   "prerequisites": [
     {
@@ -24,7 +24,7 @@
         "name": "git+go",
         "platforms": ["macos", "linux", "windows"],
         "check": "go version && git --version",
-        "command": "mkdir -p $HOME/.local/share && { [ -d $HOME/.local/share/claude-conversation-transfer/.git ] && git -C $HOME/.local/share/claude-conversation-transfer pull --ff-only || git clone https://github.com/arghhhhh/claude-conversation-transfer.git $HOME/.local/share/claude-conversation-transfer; } && cd $HOME/.local/share/claude-conversation-transfer && go build ."
+        "command": "mkdir -p $HOME/.local/share && { [ -d $HOME/.local/share/claude-conversation-transfer/.git ] && git -C $HOME/.local/share/claude-conversation-transfer fetch origin --quiet && git -C $HOME/.local/share/claude-conversation-transfer checkout -B main origin/main --quiet || git clone https://github.com/arghhhhh/claude-conversation-transfer.git $HOME/.local/share/claude-conversation-transfer; } && cd $HOME/.local/share/claude-conversation-transfer && go build ."
       }
     ]
   },
