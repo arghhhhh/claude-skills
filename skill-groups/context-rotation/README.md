@@ -181,6 +181,32 @@ one-time setup (native node+claude in the distro, auth copy, and symlinking the
 `projects/` + rotation `config` into the Windows store so sessions stay locatable
 and `/rotation` changes hit both). Full recipe: [`references/wsl-setup.md`](references/wsl-setup.md).
 
+### Keeping WSL in sync automatically
+
+WSL is a separate Claude Code store, so a Windows update used to leave the WSL
+hooks stale indefinitely — silently, since nothing on the Windows side knows the
+distro exists. `install.sh --update` now propagates this group into WSL:
+
+```
+▸ context-rotation: WSL install detected — propagating update
+✓ context-rotation updated in WSL (/mnt/c/Users/joss/.claude/.skill-repos/claude-skills)
+```
+
+Conditions, all required — otherwise it's a silent no-op:
+
+- running on **Windows Git Bash** (never fires when the installer is itself
+  running inside WSL — that would recurse into the store it's already updating),
+- `wsl.exe` present and a distro reachable,
+- the group is **already wired in that distro** (`~/.claude/hooks/context-rotation`
+  exists). A distro you never configured is never touched.
+
+It re-runs `wire.sh` from the same Windows clone via its `/mnt/c` path — the repo
+is never re-cloned into the distro. Opt out with `--skip-wsl`. A failure warns
+with the exact command to run manually instead of failing the update.
+
+Note this covers the **hooks only**. Your WSL `settings.json` (including `model`)
+stays per-environment by design — see [`references/wsl-setup.md`](references/wsl-setup.md).
+
 ## Re-wiring
 
 `bash install.sh --skills context-rotation` — idempotent (dedupes its own

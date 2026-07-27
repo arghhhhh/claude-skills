@@ -1,5 +1,5 @@
 ---
-version: 1.11.0
+version: 1.12.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -276,6 +276,23 @@ Any group (tool-only or otherwise) whose install command builds software from a 
 Don't conflate them. A group whose install is a cheap idempotent re-wire deliberately sets `check: "false"` so install always runs — and that must NOT make the group read as "not installed". `group_is_installed` and `--verify` therefore probe tool-only groups with `test.command`, falling back to `install.check` only when no test is declared. Every tool-only group must declare a real `test.command` that inspects the *installed* footprint (a path, a settings entry), not a tautology.
 
 Symptoms of getting this wrong: `--update` silently skips the group forever, and every `--sync` re-offers it as a "new" group.
+
+### Propagating a group into WSL (`wsl_propagate`)
+
+A WSL distro is a **separate Claude Code store** (`/home/<user>/.claude`) that a Windows `install.sh` run otherwise never touches — so anything wired there goes stale silently and indefinitely. A group whose install is an idempotent re-wire can opt in:
+
+```json
+"wsl_propagate": {
+  "check":   "test -d $HOME/.claude/hooks/<group>",
+  "command": "bash {{REPO}}/skill-groups/<group>/install/wire.sh"
+}
+```
+
+- `{{REPO}}` → this repo's `/mnt/c/...` path, so the distro **reuses the Windows clone**. Never re-clone into WSL.
+- `check` runs *inside* the distro and gates everything: it must test that the group is **already set up there**. No `check` → fail closed, never propagates. This is what keeps a distro the user never configured from being silently installed into.
+- Fires only from Windows Git Bash with a reachable distro, and never when the installer is itself running inside WSL (that would recurse). `--skip-wsl` opts out; failures `warn` with the manual command rather than failing the update.
+
+Only for files this repo owns. Per-environment state — `settings.json`, hook command paths, anything holding an absolute OS path — must NOT be propagated; it's per-environment precisely because the two can't share it.
 
 ## Syncing Another Machine
 

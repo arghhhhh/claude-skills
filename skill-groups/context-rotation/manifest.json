@@ -1,10 +1,15 @@
 {
   "name": "context-rotation",
   "type": "tool-only",
-  "description": "Automatic context rotation for Claude Code. At ~65% context usage a PreToolUse hook interrupts and has the agent write a detailed, session-unique ROTATION-HANDOVER-<sid8>.md (decisions + working context, not just a task log — unique names so concurrent sessions in one directory never clobber each other); SessionStart re-injects the right one after /clear (tmux pane pointer → sole fresh file → ask). /long-horizon (or CONTEXT_ROTATION_LONG_HORIZON=1 for one session) arms full auto-rotation (tmux-driven /clear) across a chain of sessions.",
-  "version": "1.9.1",
-  "_update_policy_note": "REQUIRED for this group. Its 'software' is the hook scripts themselves, which live in this repo — so a repo change IS a software change. Without this, update_group() short-circuits tool-only groups ('nothing to update') and never re-runs wire.sh, leaving stale hooks installed while reporting success. wire.sh is idempotent by design.",
+  "description": "Automatic context rotation for Claude Code. At ~65% context usage a PreToolUse hook interrupts and has the agent write a detailed, session-unique ROTATION-HANDOVER-<sid8>.md (decisions + working context, not just a task log \u2014 unique names so concurrent sessions in one directory never clobber each other); SessionStart re-injects the right one after /clear (tmux pane pointer \u2192 sole fresh file \u2192 ask). /long-horizon (or CONTEXT_ROTATION_LONG_HORIZON=1 for one session) arms full auto-rotation (tmux-driven /clear) across a chain of sessions.",
+  "version": "1.10.0",
+  "_update_policy_note": "REQUIRED for this group. Its 'software' is the hook scripts themselves, which live in this repo \u2014 so a repo change IS a software change. Without this, update_group() short-circuits tool-only groups ('nothing to update') and never re-runs wire.sh, leaving stale hooks installed while reporting success. wire.sh is idempotent by design.",
   "update_policy": "latest",
+  "_wsl_propagate_note": "WSL is a separate Claude Code store the Windows installer otherwise never touches, so hands-off long-horizon runs there silently kept stale hooks. 'check' gates on the group ALREADY being wired in the distro \u2014 a WSL install the user never set up is left alone. {{REPO}} is replaced with this repo's /mnt/c path so the distro reuses the Windows clone (never re-clone \u2014 see references/wsl-setup.md).",
+  "wsl_propagate": {
+    "check": "test -d $HOME/.claude/hooks/context-rotation && test -f $HOME/.claude/settings.json",
+    "command": "bash {{REPO}}/skill-groups/context-rotation/install/wire.sh"
+  },
   "prerequisites": [
     {
       "name": "python3",
@@ -14,12 +19,16 @@
     }
   ],
   "install": {
-    "_check_note": "Intentionally 'false' so wire.sh ALWAYS runs on install — it is idempotent and re-syncs hook edits. A file-exists check would skip updates.",
+    "_check_note": "Intentionally 'false' so wire.sh ALWAYS runs on install \u2014 it is idempotent and re-syncs hook edits. A file-exists check would skip updates.",
     "check": "false",
     "methods": [
       {
         "name": "wire",
-        "platforms": ["macos", "linux", "windows"],
+        "platforms": [
+          "macos",
+          "linux",
+          "windows"
+        ],
         "command": "bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/context-rotation/install/wire.sh\""
       }
     ]
@@ -30,10 +39,10 @@
   },
   "post_install_hints": [
     "Restart Claude Code so the PreToolUse / PostToolUse / SessionStart hooks load.",
-    "Default (always on): at ~65% context you'll be interrupted to write a session-unique ROTATION-HANDOVER-<sid8>.md, then run /clear — the next session auto-loads it (if several sessions rotated in the same directory, name the file in your first message, e.g. 'continue from ROTATION-HANDOVER-ab12cd34.md').",
+    "Default (always on): at ~65% context you'll be interrupted to write a session-unique ROTATION-HANDOVER-<sid8>.md, then run /clear \u2014 the next session auto-loads it (if several sessions rotated in the same directory, name the file in your first message, e.g. 'continue from ROTATION-HANDOVER-ab12cd34.md').",
     "Run /long-horizon to arm hands-off auto-rotation (requires tmux for the automatic /clear); /long-horizon-off to disarm.",
-    "Shortcut: `lh` opens a new tmux session running `claude --dsp` with long-horizon armed for that launch only (no shell env leak). `lh 75` sets the threshold; `lh <name>` labels the whole rotated chain name-1, name-2, name-3 … in Claude's /resume picker and the `cs` browser (args may be given in either order). Restart your shell after install to pick it up. NOTE: `lh` is owned solely by install/wire.sh — the old install.sh alias hook was removed in v1.7.0 to stop duplicate lh() blocks.",
-    "Windows: core rotation (detect + handover + re-inject) works in Git Bash, but hands-off auto-/clear needs tmux, which Git Bash lacks — run unattended long-horizon sessions in WSL. See references/wsl-setup.md for the one-time WSL setup (native node+claude, auth, sessions/config sharing with the Windows store).",
-    "Tune ~/.claude/hooks/context-rotation/config (CR_WINDOW, CR_THRESHOLD) or override per-shell with CONTEXT_ROTATION_WINDOW / CONTEXT_ROTATION_THRESHOLD. CR_WINDOW defaults to 'auto' — the hook reads the [1m]/[Nk] marker off your selected model (settings.json) so a 1M-context session isn't measured against a 200k window and rotated at ~15% of real usage. Pin a number only to override."
+    "Shortcut: `lh` opens a new tmux session running `claude --dsp` with long-horizon armed for that launch only (no shell env leak). `lh 75` sets the threshold; `lh <name>` labels the whole rotated chain name-1, name-2, name-3 \u2026 in Claude's /resume picker and the `cs` browser (args may be given in either order). Restart your shell after install to pick it up. NOTE: `lh` is owned solely by install/wire.sh \u2014 the old install.sh alias hook was removed in v1.7.0 to stop duplicate lh() blocks.",
+    "Windows: core rotation (detect + handover + re-inject) works in Git Bash, but hands-off auto-/clear needs tmux, which Git Bash lacks \u2014 run unattended long-horizon sessions in WSL. See references/wsl-setup.md for the one-time WSL setup (native node+claude, auth, sessions/config sharing with the Windows store).",
+    "Tune ~/.claude/hooks/context-rotation/config (CR_WINDOW, CR_THRESHOLD) or override per-shell with CONTEXT_ROTATION_WINDOW / CONTEXT_ROTATION_THRESHOLD. CR_WINDOW defaults to 'auto' \u2014 the hook reads the [1m]/[Nk] marker off your selected model (settings.json) so a 1M-context session isn't measured against a 200k window and rotated at ~15% of real usage. Pin a number only to override."
   ]
 }

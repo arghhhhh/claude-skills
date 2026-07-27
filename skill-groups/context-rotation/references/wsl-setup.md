@@ -89,6 +89,20 @@ ln -sfn /mnt/c/Users/<user>/.claude/hooks/context-rotation/config \
         ~/.claude/hooks/context-rotation/config   # back up the WSL one first if non-empty
 ```
 
+## Keeping it updated
+
+After the one-time setup above, you do **not** need to re-run `wire.sh` in WSL by
+hand. A `bash install.sh --update` on the **Windows** side detects the configured
+distro and re-wires it too (see the group README, "Keeping WSL in sync
+automatically"). Verify with the `✓ context-rotation updated in WSL (...)` line;
+`--skip-wsl` opts out.
+
+Still per-environment (never propagated): `settings.json`, including `model`. A
+missing `model` there is what silently pins WSL to Claude Code's *default* model
+and — because `cr_window` reads that field — measures a 1M session against a 200k
+window, rotating at ~13% of real usage. Step 4b above is the fix; re-check it
+whenever you change models on Windows.
+
 ## Run it
 
 ```bash

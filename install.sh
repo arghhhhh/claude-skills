@@ -2368,6 +2368,65 @@ group_is_installed() {
   return 1
 }
 
+# ─── WSL propagation ────────────────────────────────────────────────────────
+#
+# A WSL distro is a SEPARATE Claude Code store (/home/<user>/.claude) that this
+# installer otherwise knows nothing about — so a Windows update left the WSL
+# copy silently stale forever. For groups whose install is an idempotent re-wire
+# of files living in THIS repo, propagate the update across the boundary.
+#
+# Strictly opt-in per group (manifest "wsl_propagate") and strictly conditional:
+# it only fires when the group is ALREADY set up in WSL, so a distro the user
+# never configured is never touched.
+
+# Convert a Git Bash path (/c/Users/...) to its WSL form (/mnt/c/Users/...).
+win_path_to_wsl() {
+  printf '%s' "$1" | sed -E 's|^/([A-Za-z])/|/mnt/\L\1/|; s|^([A-Za-z]):[\\/]|/mnt/\L\1/|; s|\\|/|g'
+}
+
+# 0 when we're on Windows Git Bash with a usable WSL distro. Never true when
+# this script is ITSELF running inside WSL (that would recurse into the store
+# it is already updating).
+wsl_available() {
+  [ "$PLATFORM" = "windows" ] || return 1
+  grep -qi microsoft /proc/version 2>/dev/null && return 1
+  command -v wsl.exe >/dev/null 2>&1 || return 1
+  wsl.exe -e true >/dev/null 2>&1
+}
+
+propagate_to_wsl() {
+  local group="$1" manifest="$2"
+  [ "$SKIP_WSL" = "true" ] && return 0
+
+  local wsl_cmd wsl_check
+  wsl_cmd=$(json_get_manifest_field "$manifest" "wsl_propagate.command")
+  [ -n "$wsl_cmd" ] || return 0
+  wsl_check=$(json_get_manifest_field "$manifest" "wsl_propagate.check")
+
+  wsl_available || return 0
+
+  # Only touch a distro where this group is ALREADY wired. No check declared =
+  # never propagate (fail closed) rather than installing into a fresh distro.
+  [ -n "$wsl_check" ] || return 0
+  if ! wsl.exe -e bash -lc "$wsl_check" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # The repo lives on the Windows drive; rewrite its path to /mnt/c form so the
+  # same clone is reused from inside the distro (never re-cloned — see
+  # references/wsl-setup.md).
+  local repo_wsl
+  repo_wsl=$(win_path_to_wsl "$SCRIPT_DIR")
+  wsl_cmd=${wsl_cmd//\{\{REPO\}\}/$repo_wsl}
+
+  info "$group: WSL install detected — propagating update"
+  if wsl.exe -e bash -lc "$wsl_cmd" >/dev/null 2>&1; then
+    ok "$group updated in WSL ($repo_wsl)"
+  else
+    warn "$group: WSL update failed — re-run inside WSL: bash $repo_wsl/skill-groups/$group/install/wire.sh"
+  fi
+}
+
 update_group() {
   local group="$1"
   local manifest
@@ -2385,6 +2444,8 @@ update_group() {
       info "$group: update_policy latest — refreshing software"
       install_software "$group" force
       run_test "$group"
+      # Same refresh for an already-configured WSL distro (no-op otherwise).
+      propagate_to_wsl "$group" "$manifest"
     else
       info "$group: update_policy latest, but --skip-software given — not refreshing"
     fi
@@ -2922,6 +2983,7 @@ bump_vendor() {
 main() {
   SELECTED_GROUPS=()
   SKIP_SOFTWARE=false
+  SKIP_WSL=false
   SYNC_MODE=false
   NON_INTERACTIVE=false
   INSTALL_SKIPPED=false
@@ -2940,6 +3002,10 @@ main() {
         ;;
       --skip-software)
         SKIP_SOFTWARE=true
+        shift
+        ;;
+      --skip-wsl)
+        SKIP_WSL=true
         shift
         ;;
       --verify)
@@ -3004,6 +3070,7 @@ main() {
         echo "Options:"
         echo "  --skills GROUP1,GROUP2 Target specific skill groups (default: interactive)"
         echo "  --skip-software        Skip software installation, only install skills/agents"
+        echo "  --skip-wsl             Don't propagate updates into an already-configured WSL distro"
         echo "  --yes, -y              Non-interactive mode (auto-accept prompts, skip manual installs)"
         echo "  --list                 List available skill groups"
         echo "  --help                 Show this help"
