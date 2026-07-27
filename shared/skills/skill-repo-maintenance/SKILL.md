@@ -1,5 +1,5 @@
 ---
-version: 1.10.0
+version: 1.11.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -263,6 +263,19 @@ Any group (tool-only or otherwise) whose install command builds software from a 
 | **`latest`** | Every `--update` re-runs the group's install command even though the binary already exists — the command must be idempotent (pull-or-clone + rebuild, like `git pull --ff-only … && go build`), and `run_test` verifies afterwards. `--skip-software` suppresses this. | My own repos (`arghhhhh/*`) where HEAD is always wanted: `claude-code-sessions`, `claude-conversation-transfer` |
 
 **Rule: any group that clones one of my own repos must set `update_policy: "latest"`** — otherwise fixes pushed from one machine silently never reach the installed binaries on others (the install `check` sees an existing binary and short-circuits). Third-party sources stay pinned/default unless there's a specific reason to track them.
+
+**Same rule for groups whose "software" lives in THIS repo** — a tool-only group that installs by copying/wiring files out of `skill-groups/<group>/` (e.g. `context-rotation`'s hook scripts via `install/wire.sh`). A repo edit *is* a software change there, so without `update_policy: "latest"` the group's `--update` path short-circuits at "tool-only — nothing to update" and machines keep running stale copies while the summary reports success. Such install commands must be idempotent (wire-style copy + dedupe), which is what makes re-running them on every update safe.
+
+### `install.check` vs `test.command` — they answer different questions
+
+| Field | Question | Used by |
+|---|---|---|
+| `install.check` | "May I **skip** the install step?" | `install_software` only |
+| `test.command` | "Is this **correctly installed**?" | `run_test`, `group_is_installed` (tool-only), `--verify` (tool-only) |
+
+Don't conflate them. A group whose install is a cheap idempotent re-wire deliberately sets `check: "false"` so install always runs — and that must NOT make the group read as "not installed". `group_is_installed` and `--verify` therefore probe tool-only groups with `test.command`, falling back to `install.check` only when no test is declared. Every tool-only group must declare a real `test.command` that inspects the *installed* footprint (a path, a settings entry), not a tautology.
+
+Symptoms of getting this wrong: `--update` silently skips the group forever, and every `--sync` re-offers it as a "new" group.
 
 ## Syncing Another Machine
 

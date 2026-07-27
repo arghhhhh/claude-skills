@@ -229,11 +229,29 @@ json_get() {
   echo "$json" | sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1 | tr -d '\r'
 }
 
-# Extract the "check" field from the "install" block (not from prerequisites or methods)
-json_get_install_check() {
-  local json="$1"
-  echo "$json" | tr '\n' ' ' | sed -n 's/.*"install"[[:space:]]*:[[:space:]]*{[[:space:]]*"check"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | tr -d '\r'
+# Extract install.check / test.command from a manifest body. Parsed with node
+# rather than sed: the old sed required "check" to be the FIRST key inside the
+# install block, so adding any sibling key ahead of it (a note, a comment field)
+# silently yielded an empty check — which reads downstream as "no check".
+json_get_manifest_field() {
+  # $1 = manifest json, $2 = dotted path (e.g. install.check)
+  printf '%s' "$1" | node -e '
+    let s="";
+    process.stdin.on("data",d=>s+=d).on("end",()=>{
+      try{
+        let v=JSON.parse(s);
+        for(const k of process.argv[1].split(".")) v=(v||{})[k];
+        if(typeof v==="string") process.stdout.write(v);
+      }catch(e){}
+    });' "$2" 2>/dev/null | tr -d '\r'
 }
+
+# Extract the "check" field from the "install" block (not from prerequisites or methods)
+json_get_install_check() { json_get_manifest_field "$1" "install.check"; }
+
+# Extract the smoke-test command — the authoritative "is this correctly
+# installed?" probe (install.check only answers "may I skip installing?").
+json_get_test_command() { json_get_manifest_field "$1" "test.command"; }
 
 # Substitute {{VAR}} placeholders in a string using values from $CONFIG_FILE.
 # Mirrors the install-time substitution (lines ~1311-1336) so verify and
@@ -1996,7 +2014,7 @@ run_test() {
   manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
 
   local test_cmd
-  test_cmd=$(echo "$manifest" | grep -A2 '"test"' | grep '"command"' | sed 's/.*: *"//;s/".*//')
+  test_cmd=$(json_get_test_command "$manifest")
 
   [ -z "$test_cmd" ] && return 0
 
@@ -2085,12 +2103,16 @@ verify_group() {
     fi
   fi
 
-  # Tool-only: only software check + test
+  # Tool-only: only software check + test. Probe with the smoke test — the
+  # "is this correctly installed?" question verify is actually asking. Using
+  # install.check here made any group with a deliberate check:"false" (always
+  # re-install) report a permanent, unfixable verify failure.
   if [ "$gtype" = "tool-only" ]; then
     info "Software:"
     local check_cmd
-    check_cmd=$(json_get_install_check "$manifest")
-    if [ -n "$check_cmd" ] && [ "$check_cmd" != "true" ]; then
+    check_cmd=$(json_get_test_command "$manifest")
+    [ -n "$check_cmd" ] || check_cmd=$(json_get_install_check "$manifest")
+    if [ -n "$check_cmd" ] && [ "$check_cmd" != "true" ] && [ "$check_cmd" != "false" ]; then
       if eval "$check_cmd" </dev/null >/dev/null 2>&1; then
         ok "Software check passed ($check_cmd)"
       else
@@ -2309,17 +2331,26 @@ integration_test_group() {
 # ─── Update mode (--update) ─────────────────────────────────────────────────
 
 # Returns 0 if the group already has a local footprint: any declared skill or
-# agent symlinked, or — for tool-only groups — its install check passes. Update
+# agent symlinked, or — for tool-only groups — its smoke test passes. Update
 # mode uses this to refresh only installed groups and to spot genuinely-new ones.
+#
+# Tool-only groups probe with the manifest's "test" command, NOT install.check.
+# The two fields answer different questions: `test` = "is this correctly
+# installed?", `check` = "may I skip the install step?". A group whose install is
+# a cheap idempotent re-wire sets check:"false" deliberately so install ALWAYS
+# runs (context-rotation does) — and that made this function report it as never
+# installed, so --update silently skipped it forever and it was re-offered as a
+# "new" group on every sync. Falls back to install.check when no test is declared.
 group_is_installed() {
   local group="$1" manifest gtype
   manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
   gtype=$(group_type "$group")
 
   if [ "$gtype" = "tool-only" ]; then
-    local chk
-    chk=$(json_get_install_check "$manifest")
-    [ -n "$chk" ] && eval "$chk" </dev/null >/dev/null 2>&1
+    local probe
+    probe=$(json_get_test_command "$manifest")
+    [ -n "$probe" ] || probe=$(json_get_install_check "$manifest")
+    [ -n "$probe" ] && eval "$probe" </dev/null >/dev/null 2>&1
     return
   fi
 
