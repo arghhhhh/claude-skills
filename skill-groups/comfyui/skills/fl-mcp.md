@@ -1,5 +1,5 @@
 ---
-version: 1.2.0
+version: 1.2.1
 ---
 
 # ComfyUI FL-MCP Skill (via MCPorter)
@@ -20,7 +20,7 @@ comfy-pilot and FL-MCP are independent servers — comfy-pilot always drives the
 - `ComfyUI_FL-MCP` custom node installed in `ComfyUI/custom_nodes/`
 - MCPorter via npx
 
-**Not installed?** Fork with embedded-Python fixes: `arghhhhh/ComfyUI_FL-MCP` (upstream `filliptm/ComfyUI_FL-MCP`). Clone into `ComfyUI/custom_nodes/`, `pip install -r requirements.txt` into ComfyUI's Python. On the Windows standalone/portable build the fork's fixes are required (see Gotchas).
+**Not installed?** Clone upstream `filliptm/ComfyUI_FL-MCP` into `ComfyUI/custom_nodes/`, `pip install -r requirements.txt` into ComfyUI's Python. Embedded-Python fixes (PRs #5/#6) are merged upstream as of 2026-07-23, so the Windows standalone/portable build works from main.
 
 ## Call Convention
 
@@ -109,7 +109,7 @@ REST userdata (write ops gated): `workflow_list_files`, `workflow_read_file`, `w
 
 ## Quirks & Gotchas
 
-- **Embedded Python (Windows standalone/portable):** the ComfyUI portable build's Python uses a `._pth` (site disabled, no script-dir on `sys.path`, `PYTHONPATH` ignored). Stock upstream FL-MCP fails silently — auto-start backend crashes on `ModuleNotFoundError: comfy_supervisor`, and the stdio server fails on `pywintypes`. The `arghhhhh/ComfyUI_FL-MCP` fork fixes all three in-process (PR to upstream pending). Use the fork on portable installs.
+- **Embedded Python (Windows standalone/portable):** the ComfyUI portable build's Python uses a `._pth` (site disabled, no script-dir on `sys.path`, `PYTHONPATH` ignored). FL-MCP versions before 2026-07-23 failed silently here — auto-start backend crashed on `ModuleNotFoundError: comfy_supervisor`, and the stdio server failed on `pywintypes`. Fixed upstream (PRs #5/#6, merged 2026-07-23); on a portable install that misbehaves this way, `git pull` the node to current main.
 - **Backend must be up** — REST tools proxy through the :8000 backend, not just :8188. If tools error, check `curl http://127.0.0.1:8000/health`.
 - **Two MCP servers, don't confuse them** — `flmcp` here vs `comfyui` (comfy-pilot). Different tool names and APIs.
 - **`requires_browser_bridge`** is expected headless — it's not a failure of setup, just that no frontend tab is connected. Use REST tools or comfy-pilot.
