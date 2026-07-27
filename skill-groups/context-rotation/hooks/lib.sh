@@ -8,6 +8,34 @@ CR_CONFIG="$CR_HOME/config"
 # Load persisted config (CR_WINDOW, CR_THRESHOLD, CR_HANDOFF_MAX_AGE) if present.
 [ -f "$CR_CONFIG" ] && . "$CR_CONFIG"
 
+# Session-unique handover filename. Keyed by the first 8 chars of the session id
+# so two concurrent sessions rotating in the SAME directory never overwrite each
+# other's handover (the old fixed ROTATION-HANDOVER.md name did exactly that).
+cr_handover_name() {
+  # $1 = session_id
+  local sid="${1:-}"
+  [ -n "$sid" ] || { echo "ROTATION-HANDOVER.md"; return; }
+  echo "ROTATION-HANDOVER-${sid:0:8}.md"
+}
+
+# Filesystem-safe key for the current tmux pane ("" outside tmux). The pane id
+# is the one identity that survives /clear (same claude process, same pane), so
+# long-horizon uses it to hand the successor session a pointer to ITS handover.
+cr_pane_key() {
+  local p="${TMUX_PANE:-}"
+  [ -n "$p" ] || { echo ""; return; }
+  printf '%s' "${p//[^A-Za-z0-9._-]/_}"
+}
+
+# Pointer file mapping this tmux pane → the handover path its next session
+# should load. Written by rotate-detect.sh, consumed (and deleted) by
+# session-recover.sh. Empty output when not in tmux.
+cr_pending_file() {
+  local k; k="$(cr_pane_key)"
+  [ -n "$k" ] || { echo ""; return; }
+  echo "$CR_STATE/pending/pane-$k"
+}
+
 # Pull a top-level string field out of a hook's stdin JSON.
 cr_json_get() {
   # $1 = raw json, $2 = key

@@ -45,18 +45,19 @@ cr_log "sid=${sid:0:8} tool=$tool used=$used win=$window thr=$threshold pct=$pct
 mkdir -p "$CR_STATE"
 : > "$notified"
 
-reason="⚠ Context rotation — about ${pct}% of the context window is used (threshold ${threshold}%). Pause the current work and write a file named ROTATION-HANDOVER.md in the current working directory. Write it as MEMORY for a successor with none of your context, not as a status log — capture what a file or the repo could NOT reconstruct. Use exactly these sections:
+hname="$(cr_handover_name "$sid")"
+reason="⚠ Context rotation — about ${pct}% of the context window is used (threshold ${threshold}%). Pause the current work and write a file named exactly ${hname} in the current working directory (the name is session-unique on purpose — other concurrent sessions in this directory may have their own handover files; do NOT reuse or overwrite any other ROTATION-HANDOVER*.md you find). Write it as MEMORY for a successor with none of your context, not as a status log — capture what a file or the repo could NOT reconstruct. Use exactly these sections:
 '## Completed Work' — what is done, with concrete anchors (file paths, IDs, ports, URLs, tab/session ids).
 '## Remaining Tasks' — what is left, in order.
 '## Open Questions / Pending User Decisions' — every unresolved choice awaiting the user, quoted the way you framed it to them, plus any boundaries you were told to respect (e.g. 'do not submit').
 '## Working Context (not in any file)' — the WHY behind key decisions, options you considered and rejected, assumptions/constraints the user stated, and current UI/session state needed to resume.
 '## Next Steps for Incoming Context' — the exact next action(s) and command(s).
 If the project has few docs, err toward verbosity: this handover is the only memory that survives the rotation.
-THEN, before you finish, do a REQUIRED review pass: re-open ROTATION-HANDOVER.md with the Read tool and read it top-to-bottom as if you were the successor who has NONE of your current context. Fix anything a stranger could not act on — unstated assumptions, in-flight state, the exact next command, why rejected paths were rejected. Handover quality is the single most important output of this rotation, so this review is not optional."
+THEN, before you finish, do a REQUIRED review pass: re-open ${hname} with the Read tool and read it top-to-bottom as if you were the successor who has NONE of your current context. Fix anything a stranger could not act on — unstated assumptions, in-flight state, the exact next command, why rejected paths were rejected. Handover quality is the single most important output of this rotation, so this review is not optional."
 if cr_long_horizon_active; then
-  reason="$reason  Long-horizon mode is ON: do NOT ask the user to do anything — once the reviewed ROTATION-HANDOVER.md is saved, the session rotates on its own (/clear is sent for you and the fresh session is automatically prompted to continue)."
+  reason="$reason  Long-horizon mode is ON: do NOT ask the user to do anything — once the reviewed ${hname} is saved, the session rotates on its own (/clear is sent for you and the fresh session is automatically prompted to continue from ${hname})."
 else
-  reason="$reason  When the reviewed handover is saved, tell the user to run /clear. The next session AUTO-LOADS this handover as its opening context (a SessionStart hook injects it), but it does NOT resume the work on its own — after /clear the user sends any message (e.g. 'continue') and the fresh agent picks up the Remaining Tasks. Fully hands-off rotation (auto-/clear plus auto-continue, no user step) happens only in long-horizon mode in a tmux-capable shell — see /long-horizon."
+  reason="$reason  When the reviewed handover is saved, tell the user to run /clear and then start the fresh session with a message that names the file — e.g. 'continue from ${hname}' — so it resumes the RIGHT handover even if other sessions in this directory left their own. The next session AUTO-LOADS the handover as its opening context when it is unambiguous (a SessionStart hook injects it); if several handover files exist it will ask, which the filename in the user's message resolves. It does NOT resume the work on its own — after /clear the user's message kicks it off. Fully hands-off rotation (auto-/clear plus auto-continue, no user step) happens only in long-horizon mode in a tmux-capable shell — see /long-horizon."
 fi
 
 python3 - "$reason" <<'PY'

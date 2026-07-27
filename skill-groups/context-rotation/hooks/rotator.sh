@@ -7,7 +7,10 @@ SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SELF_DIR/lib.sh"
 
 pane="${1:-}"
-lock="$CR_STATE/rotate.lock"
+hname="${2:-ROTATION-HANDOVER.md}"
+# Same per-pane lock name rotate-detect.sh created (derived from $1, not
+# $TMUX_PANE, so cleanup works regardless of the detached environment).
+lock="$CR_STATE/rotate.${pane//[^A-Za-z0-9._-]/_}.lock"
 cleanup() { rm -rf "$lock"; }
 trap cleanup EXIT
 
@@ -26,7 +29,7 @@ sleep 2
 
 # Nudge the fresh session. SessionStart already injected the handover body;
 # this just tells it to act. Sent via buffer to survive special characters.
-prompt='Continue from the ROTATION-HANDOVER.md that was just injected. Pick up the Remaining Tasks and proceed with the Next Steps.'
+prompt="Continue from the $hname handover that was just injected. Pick up the Remaining Tasks and proceed with the Next Steps."
 tmux set-buffer -b cr_cont "$prompt" 2>/dev/null
 tmux paste-buffer -b cr_cont -t "$pane" 2>/dev/null
 tmux send-keys -t "$pane" Enter 2>/dev/null

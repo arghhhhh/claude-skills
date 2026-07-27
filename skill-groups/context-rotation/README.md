@@ -7,9 +7,9 @@ skills/agents; it wires Claude Code hooks + two slash commands via `install/wire
 
 | Layer | Always on? | What happens |
 |---|---|---|
-| **Detect + handover** | ✅ default | `PreToolUse` interrupts **once** when context ≥ threshold and tells the agent to write `ROTATION-HANDOVER.md`, then `/clear`. |
-| **Session recovery** | ✅ default | `SessionStart` re-injects a recent `ROTATION-HANDOVER.md` from the cwd into the fresh session. |
-| **Auto-rotate** | opt-in via `/long-horizon` or `CONTEXT_ROTATION_LONG_HORIZON=1` | `PostToolUse` spots the handover write and a detached `rotator.sh` drives `/clear` via tmux, then re-injects a continuation prompt. `/long-horizon-off` disarms the global marker. |
+| **Detect + handover** | ✅ default | `PreToolUse` interrupts **once** when context ≥ threshold and tells the agent to write `ROTATION-HANDOVER-<sid8>.md` (session-unique name), then `/clear`. |
+| **Session recovery** | ✅ default | `SessionStart` re-injects the right recent `ROTATION-HANDOVER*.md` from the cwd into the fresh session (pane pointer → sole fresh file → ask; see below). |
+| **Auto-rotate** | opt-in via `/long-horizon` or `CONTEXT_ROTATION_LONG_HORIZON=1` | `PostToolUse` spots the handover write, records a pane→handover pointer, and a detached `rotator.sh` drives `/clear` via tmux, then re-injects a continuation prompt naming the file. `/long-horizon-off` disarms the global marker. |
 
 Only the handover-writing tools (`Write`/`Edit`/`MultiEdit`/`NotebookEdit`) are
 exempt — every other tool, **including `Read`**, can trip the interrupt, so a
@@ -35,6 +35,28 @@ the handover write is harmless: you're at the keyboard and `/clear` yourself.
 pct, and the allow/deny outcome. Note: the context % can't be computed on a
 session's *first* tool call (the assistant usage isn't in the transcript yet),
 so that call logs `used=0` and allows. Remove the marker to stop logging.
+
+### Concurrent sessions in one directory
+
+Handover filenames are **session-unique** (`ROTATION-HANDOVER-<first 8 of
+session id>.md`), so two concurrent sessions rotating in the same cwd never
+overwrite each other's handover. The successor finds *its* file by, in order:
+
+1. **tmux pointer (long-horizon):** `rotate-detect.sh` writes
+   `state/pending/pane-<pane-id>` naming the handover; the pane id survives
+   `/clear` (same claude process), so `session-recover.sh` injects exactly that
+   file and deletes the pointer. Locks are also per-pane, so two panes can
+   rotate simultaneously.
+2. **Sole fresh candidate (manual flow):** exactly one fresh
+   `ROTATION-HANDOVER*.md` in cwd → injected as before.
+3. **Ambiguous:** several fresh candidates → no body is injected (the wrong one
+   is another live session's memory); the fresh session is given the list and
+   told to use the file the user's opening message names, or ask. The interrupt
+   prompt tells the user to say e.g. `continue from ROTATION-HANDOVER-ab12cd34.md`
+   after `/clear`, which resolves this without a question.
+
+Each successor deletes only its own handover after absorbing it; the legacy
+fixed `ROTATION-HANDOVER.md` name is still recognized everywhere.
 
 ### Handover contents
 
