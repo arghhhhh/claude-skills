@@ -2,11 +2,11 @@
   "name": "unity-cli",
   "type": "vendored",
   "description": "Unity Editor automation via unity-cli — scene inspection, GameObject editing, prefab workflows, C# navigation/editing, asset management, input system, testing, and UI automation.",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "source": {
-    "repo": "akiojin/unity-cli",
-    "ref": "c4489443c6968d3ee6219a8de5572f9de8e0b70c",
-    "ref_name": "main@2026-06-02",
+    "repo": "arghhhhh/unity-cli",
+    "ref": "14c226a1797b5d02a5548bd220932789f70f7506",
+    "ref_name": "vfx-graph-control-pr@2026-08-04",
     "paths": {
       "skills": ".claude-plugin/plugins/unity-cli/skills",
       "agents": ".claude-plugin/plugins/unity-cli/agents"
@@ -33,18 +33,18 @@
         "name": "cargo",
         "platforms": ["macos", "linux"],
         "check": "cargo --version",
-        "command": "cargo install --git https://github.com/akiojin/unity-cli.git"
+        "command": "cargo install --git https://github.com/arghhhhh/unity-cli.git --branch vfx-graph-control-pr"
       },
       {
         "name": "cargo",
         "platforms": ["windows"],
         "check": "cargo --version",
-        "command": "MSVC_LINK=$(find '/c/Program Files/Microsoft Visual Studio' '/c/Program Files (x86)/Microsoft Visual Studio' -name 'link.exe' -path '*/Hostx64/x64/*' 2>/dev/null | head -1) && if [ -n \"$MSVC_LINK\" ]; then export PATH=\"$(dirname \"$MSVC_LINK\"):$PATH\" && cargo install --git https://github.com/akiojin/unity-cli.git; else echo 'MSVC Build Tools not found — install via: winget install Microsoft.VisualStudio.2022.BuildTools --override \"--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"' && false; fi"
+        "command": "MSVC_LINK=$(find '/c/Program Files/Microsoft Visual Studio' '/c/Program Files (x86)/Microsoft Visual Studio' -name 'link.exe' -path '*/Hostx64/x64/*' 2>/dev/null | head -1) && if [ -n \"$MSVC_LINK\" ]; then export PATH=\"$(dirname \"$MSVC_LINK\"):$PATH\" && cargo install --git https://github.com/arghhhhh/unity-cli.git --branch vfx-graph-control-pr; else echo 'MSVC Build Tools not found — install via: winget install Microsoft.VisualStudio.2022.BuildTools --override \"--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"' && false; fi"
       },
       {
         "name": "binary",
         "platforms": ["macos", "linux", "windows"],
-        "url": "https://github.com/akiojin/unity-cli/releases"
+        "url": "https://github.com/arghhhhh/unity-cli/releases"
       }
     ]
   },
@@ -72,7 +72,8 @@
     "unity-prefab-workflow",
     "unity-scene-create",
     "unity-scene-inspect",
-    "unity-ui-automation"
+    "unity-ui-automation",
+    "unity-vfx-graph"
   ],
   "agents": [
     "unity"
