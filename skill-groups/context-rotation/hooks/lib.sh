@@ -94,8 +94,10 @@ def find_model():
                 pass
     return ""
 # Models whose default (and only) context window is 1M, so Claude Code emits no
-# [1m] marker for them. Matched as a prefix on the marker-stripped id.
-ALWAYS_1M=("claude-fable-5","claude-mythos-5","claude-mythos-preview")
+# [1m] marker for them. Matched as a prefix on the marker-stripped id. Includes
+# the short aliases ("fable", "mythos") — settings.json stores whatever the user
+# typed at /model, which is usually the alias, not the full id.
+ALWAYS_1M=("claude-fable-5","claude-mythos-5","claude-mythos-preview","fable","mythos")
 m=find_model() or ""
 win=200000
 mm=re.search(r'\[(\d+)\s*([mMkK])\]', m)

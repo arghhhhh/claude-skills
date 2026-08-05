@@ -2,7 +2,7 @@
   "name": "context-rotation",
   "type": "tool-only",
   "description": "Automatic context rotation for Claude Code. At ~65% context usage a PreToolUse hook interrupts and has the agent write a detailed, session-unique ROTATION-HANDOVER-<sid8>.md (decisions + working context, not just a task log \u2014 unique names so concurrent sessions in one directory never clobber each other); SessionStart re-injects the right one after /clear (tmux pane pointer \u2192 sole fresh file \u2192 ask). /long-horizon (or CONTEXT_ROTATION_LONG_HORIZON=1 for one session) arms full auto-rotation (tmux-driven /clear) across a chain of sessions.",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "_update_policy_note": "REQUIRED for this group. Its 'software' is the hook scripts themselves, which live in this repo \u2014 so a repo change IS a software change. Without this, update_group() short-circuits tool-only groups ('nothing to update') and never re-runs wire.sh, leaving stale hooks installed while reporting success. wire.sh is idempotent by design.",
   "update_policy": "latest",
   "_wsl_propagate_note": "WSL is a separate Claude Code store the Windows installer otherwise never touches, so hands-off long-horizon runs there silently kept stale hooks. 'check' gates on the group ALREADY being wired in the distro \u2014 a WSL install the user never set up is left alone. {{REPO}} is replaced with this repo's /mnt/c path so the distro reuses the Windows clone (never re-clone \u2014 see references/wsl-setup.md).",
