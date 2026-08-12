@@ -2,7 +2,7 @@
   "name": "claude-notifications",
   "type": "tool-only",
   "description": "Smart desktop notifications for Claude Code — task complete, questions, plan ready, sounds, click-to-focus.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "prerequisites": [
     {
       "name": "claude",
@@ -12,22 +12,23 @@
     }
   ],
   "install": {
-    "check": "claude plugin list 2>/dev/null | grep -q claude-notifications-go",
+    "check": "claude plugin list 2>/dev/null | grep -q claude-notifications-go && PLUGIN_ROOT=$(node -e \"const d=JSON.parse(require('fs').readFileSync(process.env.HOME+'/.claude/plugins/installed_plugins.json','utf8'));const e=((d.plugins||{})['claude-notifications-go@claude-notifications-go']||[]).filter(x=>x.installPath);if(e.length)process.stdout.write(e[e.length-1].installPath)\" 2>/dev/null) && [ -n \"$PLUGIN_ROOT\" ] && ls \"$PLUGIN_ROOT\"/bin/claude-notifications-*-* >/dev/null 2>&1",
     "methods": [
       {
         "name": "bootstrap",
         "platforms": ["macos", "linux", "windows"],
         "check": "curl --version || wget --version",
-        "command": "curl -fsSL https://raw.githubusercontent.com/777genius/claude-notifications-go/main/bin/bootstrap.sh | bash || { echo 'Bootstrap had issues, attempting manual install...' && claude plugin marketplace add 777genius/claude-notifications-go </dev/null 2>/dev/null; claude plugin install claude-notifications-go@claude-notifications-go </dev/null 2>/dev/null && PLUGIN_ROOT=$(node -e \"const d=JSON.parse(require('fs').readFileSync(process.env.HOME+'/.claude/plugins/installed_plugins.json','utf8'));const e=((d.plugins||{})['claude-notifications-go@claude-notifications-go']||[]).filter(x=>x.installPath);if(e.length)process.stdout.write(e[e.length-1].installPath)\" 2>/dev/null) && [ -n \"$PLUGIN_ROOT\" ] && INSTALL_TARGET_DIR=\"$PLUGIN_ROOT/bin\" bash \"$PLUGIN_ROOT/bin/install.sh\"; }"
+        "command": "claude plugin list 2>/dev/null | grep -q claude-notifications-go || { curl -fsSL https://raw.githubusercontent.com/777genius/claude-notifications-go/main/bin/bootstrap.sh | bash || { echo 'Bootstrap had issues, attempting manual install...' && claude plugin marketplace add 777genius/claude-notifications-go </dev/null 2>/dev/null; claude plugin install claude-notifications-go@claude-notifications-go </dev/null 2>/dev/null; }; }; PLUGIN_ROOT=$(node -e \"const d=JSON.parse(require('fs').readFileSync(process.env.HOME+'/.claude/plugins/installed_plugins.json','utf8'));const e=((d.plugins||{})['claude-notifications-go@claude-notifications-go']||[]).filter(x=>x.installPath);if(e.length)process.stdout.write(e[e.length-1].installPath)\" 2>/dev/null) && [ -n \"$PLUGIN_ROOT\" ] && INSTALL_TARGET_DIR=\"$PLUGIN_ROOT/bin\" bash \"$PLUGIN_ROOT/bin/install.sh\""
       }
     ]
   },
   "test": {
-    "command": "claude plugin list 2>/dev/null | grep -q claude-notifications-go",
+    "command": "claude plugin list 2>/dev/null | grep -q claude-notifications-go && PLUGIN_ROOT=$(node -e \"const d=JSON.parse(require('fs').readFileSync(process.env.HOME+'/.claude/plugins/installed_plugins.json','utf8'));const e=((d.plugins||{})['claude-notifications-go@claude-notifications-go']||[]).filter(x=>x.installPath);if(e.length)process.stdout.write(e[e.length-1].installPath)\" 2>/dev/null) && [ -n \"$PLUGIN_ROOT\" ] && ls \"$PLUGIN_ROOT\"/bin/claude-notifications-*-* >/dev/null 2>&1",
     "expect_success": true
   },
   "post_install_hints": [
     "Restart Claude Code for notification hooks to take effect",
-    "Run /claude-notifications-go:settings inside Claude Code to configure sounds and webhooks"
+    "Run /claude-notifications-go:settings inside Claude Code to configure sounds and webhooks",
+    "After 'claude plugin update claude-notifications-go', hooks break until the binary is reinstalled for the new version dir — rerun: bash install.sh --skills claude-notifications (the install check detects the missing binary and repairs it)"
   ]
 }
