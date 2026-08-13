@@ -1,0 +1,31 @@
+{
+  "name": "gen-image",
+  "description": "Generate and edit images via Google's Gemini image models (nano banana) — single-shot text-to-image, image editing, and style-referenced generation from a zero-dependency Node CLI.",
+  "version": "1.0.0",
+  "prerequisites": [
+    {
+      "name": "node",
+      "check": "node --version",
+      "install_hint": "Install Node.js from https://nodejs.org/ — the gen-image CLI is a Node script.",
+      "required": true
+    }
+  ],
+  "install": {
+    "check": "node --version",
+    "methods": [],
+    "notes": "No software to install; the CLI ships inside the skill folder. Requires a Google AI Studio API key — see post_install_hints."
+  },
+  "test": {
+    "command": "node --version",
+    "expect_success": true
+  },
+  "skills": [
+    "gen-image"
+  ],
+  "agents": [],
+  "post_install_hints": [
+    "gen-image needs a Google AI Studio API key (https://aistudio.google.com/apikey).",
+    "Set it once per machine: environment variable GOOGLE_API_KEY (preferred), or write it to ~/.claude/.google-api-key.",
+    "Per-project override: a GOOGLE_API_KEY= line in the project's .env (must be gitignored)."
+  ]
+}
