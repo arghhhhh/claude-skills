@@ -1,5 +1,5 @@
 ---
-version: 1.2.0
+version: 1.3.0
 name: gen-image
 description: Generate and edit images from the command line via Google's Gemini image models (nano banana) or OpenAI's GPT Image models. Single-shot text-to-image, image editing, and style-referenced generation with aspect-ratio and resolution control. Use for quick AI image generation/editing without a ComfyUI workflow.
 ---
@@ -20,7 +20,7 @@ node ~/.claude/skills/gen-image/gen-image.mjs -m gpt-image-2 -i photo.png -o out
 |---|---|---|
 | `-o, --out <path>` | Output PNG path | `./gen-image-<timestamp>.png` |
 | `-m, --model <id>` | Model (see table below); provider inferred from name | `gemini-3-pro-image` |
-| `--ar <w:h>` | Aspect ratio: `1:1` `16:9` `9:16` `4:3` `3:4` `21:9` … OpenAI: mapped to nearest of square/landscape/portrait | `1:1` |
+| `--ar <w:h>` | Aspect ratio: `1:1` `16:9` `9:16` `4:3` `3:4` `21:9` … OpenAI/codex: mapped to nearest of square/landscape/portrait. **`auto` (OpenAI/codex edits): output matches the input image's exact aspect ratio — ✅ verified; use this for photo edits** | `1:1` |
 | `--size <1K\|2K\|4K>` | Resolution — **Gemini pro models only**, ignored elsewhere | `2K` |
 | `--quality <q>` | **OpenAI only**: `low` `medium` `high` `auto` | `high` |
 | `-i, --input <path>` | Input image (png/jpg/webp), repeatable | none |
@@ -66,14 +66,14 @@ node $S -i product-ref.png -o scene.png "Using the attached photo as the exact p
 # multiple refs (style + content)
 node $S -i style.webp -i subject.png -o out.png "Render the subject in the style of the first image."
 
-# OpenAI edit with the same interface
-node $S -m gpt-image-2 -i photo.png -o out.png --ar 4:3 "Replace the storefront window contents with artwork. Keep everything else identical."
+# OpenAI edit with the same interface (--ar auto = keep the photo's exact aspect ratio)
+node $S -m gpt-image-2 -i photo.png -o out.png --ar auto "Replace the storefront window contents with artwork. Keep everything else identical."
 
 # OpenAI masked edit (transparent mask areas get regenerated, rest is preserved)
 node $S -m gpt-image-2 -i photo.png --mask mask.png -o out.png "Fill the masked windows with vibrant murals."
 
 # Subscription-billed via Codex CLI (no API key; slower — allow ~1-3 min)
-node $S -m codex -i photo.png -o out.png --ar 4:3 "Replace the green-masked windows with artwork. Keep everything else identical."
+node $S -m codex -i photo.png -o out.png --ar auto "Replace the green-masked windows with artwork. Keep everything else identical."
 ```
 
 ## Behavior notes (verified in practice)

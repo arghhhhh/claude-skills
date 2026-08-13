@@ -143,7 +143,9 @@ async function runGemini() {
 function runCodex() {
   const m = opts.ar.match(/^(\d+):(\d+)$/);
   const r = m ? Number(m[1]) / Number(m[2]) : 1;
-  const shape = r > 1.15 ? 'landscape 1536x1024' : r < 0.87 ? 'portrait 1024x1536' : 'square 1024x1024';
+  const shape = opts.ar === 'auto'
+    ? (opts.inputs.length ? 'output must match the input image\'s exact aspect ratio' : 'square 1024x1024')
+    : r > 1.15 ? 'landscape 1536x1024' : r < 0.87 ? 'portrait 1024x1536' : 'square 1024x1024';
   const fullPrompt =
     `Use the $imagegen skill (built-in image_gen tool). ${opts.inputs.length ? 'Edit/compose using the attached image(s) as described. ' : ''}` +
     `${prompt.trim()} ${shape}, ${opts.quality} quality. Generate exactly one image. ` +
@@ -170,6 +172,7 @@ function runCodex() {
 
 // ---- OpenAI ----
 function openaiSize(ar) {
+  if (ar === 'auto') return 'auto'; // model matches the input image's aspect ratio
   const m = ar.match(/^(\d+):(\d+)$/);
   if (!m) return 'auto';
   const r = Number(m[1]) / Number(m[2]);
