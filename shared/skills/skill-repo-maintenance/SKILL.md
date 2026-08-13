@@ -1,5 +1,5 @@
 ---
-version: 1.12.0
+version: 1.13.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -382,6 +382,18 @@ Report the results to the user. If any software smoke tests failed, let them kno
 
 Some skills require MCP server registration. Check post-install hints in the installer output. Common ones:
 - `officecli mcp claude` — registers OfficeCLI MCP server
+
+## Running Tests
+
+The `tests/` directory contains a static test suite that validates repo correctness without running the installer.
+
+```bash
+node tests/smoke-check.js          # fast — Node.js, no bash required (438 checks)
+bash tests/run-tests.sh            # full bash suite (Git Bash / Linux / macOS)
+bash tests/run-tests.sh test-manifest-contracts  # one suite
+```
+
+Run the smoke check whenever you add or modify a group to catch manifest schema errors, duplicate skill names, orphaned files, or vendored ref issues early.
 
 ## Key Rules
 
