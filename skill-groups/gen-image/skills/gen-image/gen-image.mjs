@@ -11,6 +11,9 @@
  *   -m, --model <name>     Model id (default gemini-3-pro-image)
  *                          Gemini: gemini-3-pro-image, gemini-3.1-flash-image, gemini-2.5-flash-image
  *                          OpenAI: gpt-image-2, gpt-image-1 (provider inferred from model name)
+ *                          Codex:  codex — gpt-image via Codex CLI's $imagegen, billed to the
+ *                                  logged-in ChatGPT subscription (no API key). Needs `codex login`.
+ *                                  Driver model defaults to gpt-5.5 (override: CODEX_MODEL env).
  *   --ar <ratio>           Aspect ratio: 1:1, 16:9, 9:16, 4:3, 3:4, 21:9, ... (default 1:1)
  *                          OpenAI: mapped to nearest supported size (square/landscape/portrait)
  *   --size <1K|2K|4K>      Output resolution (Gemini pro models only; ignored elsewhere)
@@ -23,9 +26,10 @@
  *   Gemini: GOOGLE_API_KEY env → GOOGLE_API_KEY= in .env (cwd upward) → ~/.claude/.google-api-key
  *   OpenAI: OPENAI_API_KEY env → OPENAI_API_KEY= in .env (cwd upward) → ~/.claude/.openai-api-key
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, copyFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join, extname, resolve, parse, basename } from 'node:path';
 import { homedir } from 'node:os';
+import { spawnSync } from 'node:child_process';
 
 function fail(msg) { console.error('error: ' + msg); process.exit(1); }
 
@@ -83,13 +87,15 @@ if (!prompt.trim()) fail('no prompt given (pass it as an argument or via --promp
 const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
 const mimeOf = (p) => MIME[extname(p).toLowerCase()] ?? fail(`unsupported input image type: ${p}`);
 
-const provider = /^(gpt-image|dall-e)/.test(opts.model) ? 'openai' : 'gemini';
+const provider = opts.model === 'codex' ? 'codex' : /^(gpt-image|dall-e)/.test(opts.model) ? 'openai' : 'gemini';
 let imageBuf;
 
 if (provider === 'gemini') {
   imageBuf = await runGemini();
-} else {
+} else if (provider === 'openai') {
   imageBuf = await runOpenAI();
+} else {
+  imageBuf = runCodex();
 }
 
 const out = opts.out ?? join(process.cwd(), 'gen-image-' + new Date().toISOString().replace(/[:.]/g, '-') + '.png');
@@ -131,6 +137,35 @@ async function runGemini() {
   if (txt) console.error('model says: ' + txt.trim());
   if (!img) fail('no image in response: ' + JSON.stringify(json).slice(0, 1500));
   return Buffer.from(img.inlineData.data, 'base64');
+}
+
+// ---- Codex (ChatGPT-subscription-billed gpt-image via the $imagegen skill) ----
+function runCodex() {
+  const m = opts.ar.match(/^(\d+):(\d+)$/);
+  const r = m ? Number(m[1]) / Number(m[2]) : 1;
+  const shape = r > 1.15 ? 'landscape 1536x1024' : r < 0.87 ? 'portrait 1024x1536' : 'square 1024x1024';
+  const fullPrompt =
+    `Use the $imagegen skill (built-in image_gen tool). ${opts.inputs.length ? 'Edit/compose using the attached image(s) as described. ' : ''}` +
+    `${prompt.trim()} ${shape}, ${opts.quality} quality. Generate exactly one image. ` +
+    `Do not attempt to copy or move the generated file; just report its path.`;
+  const args = ['exec', '--skip-git-repo-check', '-m', process.env.CODEX_MODEL || 'gpt-5.5'];
+  for (const p of opts.inputs) { mimeOf(p); args.push('-i', resolve(p)); }
+  args.push('-');
+  console.error(`provider=codex model=${process.env.CODEX_MODEL || 'gpt-5.5'} shape=${shape.split(' ')[0]} inputs=${opts.inputs.length}`);
+  const res = spawnSync('codex', args, {
+    input: fullPrompt,
+    encoding: 'utf8',
+    shell: process.platform === 'win32', // codex is a .cmd shim on Windows
+    maxBuffer: 64 * 1024 * 1024,
+    timeout: 10 * 60 * 1000,
+  });
+  if (res.error) fail(`could not run codex: ${res.error.message} (is Codex CLI installed and logged in? npm i -g @openai/codex && codex login)`);
+  const outText = (res.stdout ?? '') + '\n' + (res.stderr ?? '');
+  if (/not supported when using Codex with a ChatGPT account/.test(outText))
+    fail('codex model rejected for ChatGPT-account auth — set CODEX_MODEL to a supported model (e.g. gpt-5.5)');
+  const paths = [...outText.matchAll(/[A-Za-z]:[\\/][^\s`"']*generated_images[\\/][^\s`"']+\.png|\/[^\s`"']*generated_images\/[^\s`"']+\.png/g)].map((x) => x[0]);
+  if (!paths.length) fail('codex finished but no generated image path found in output:\n' + outText.slice(-2000));
+  return readFileSync(paths[paths.length - 1]);
 }
 
 // ---- OpenAI ----

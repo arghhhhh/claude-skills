@@ -1,5 +1,5 @@
 ---
-version: 1.1.0
+version: 1.2.0
 name: gen-image
 description: Generate and edit images from the command line via Google's Gemini image models (nano banana) or OpenAI's GPT Image models. Single-shot text-to-image, image editing, and style-referenced generation with aspect-ratio and resolution control. Use for quick AI image generation/editing without a ComfyUI workflow.
 ---
@@ -36,6 +36,7 @@ node ~/.claude/skills/gen-image/gen-image.mjs -m gpt-image-2 -i photo.png -o out
 | `gemini-2.5-flash-image` | Gemini | Legacy fallback |
 | `gpt-image-2` | OpenAI | Top-ranked edit fidelity (Aug 2026). ⚠ If the account lacks access, API errors — fall back to `gpt-image-1` |
 | `gpt-image-1` | OpenAI | Older GPT Image model, broad account access |
+| `codex` | Codex CLI | Same gpt-image quality, billed to the logged-in **ChatGPT subscription** (no API key/credits). Needs `npm i -g @openai/codex` + `codex login` (ChatGPT auth). Slower (agent round-trip); driver model `gpt-5.5` (override: `CODEX_MODEL` env). ✅ Verified: edits with input images work |
 
 ## API keys
 
@@ -70,6 +71,9 @@ node $S -m gpt-image-2 -i photo.png -o out.png --ar 4:3 "Replace the storefront 
 
 # OpenAI masked edit (transparent mask areas get regenerated, rest is preserved)
 node $S -m gpt-image-2 -i photo.png --mask mask.png -o out.png "Fill the masked windows with vibrant murals."
+
+# Subscription-billed via Codex CLI (no API key; slower — allow ~1-3 min)
+node $S -m codex -i photo.png -o out.png --ar 4:3 "Replace the green-masked windows with artwork. Keep everything else identical."
 ```
 
 ## Behavior notes (verified in practice)
