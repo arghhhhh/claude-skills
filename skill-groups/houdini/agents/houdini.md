@@ -1,5 +1,5 @@
 ---
-version: 1.2.6
+version: 1.2.7
 name: houdini
 description: SideFX Houdini expert for procedural 3D, VFX, simulation, USD/Solaris, VEX, PDG, and rendering. Use when the user wants to build node networks, write VEX, set up sims (pyro/RBD/FLIP/Vellum), render with Karma/Mantra, work with USD/LOPs, PDG/TOPs, COPs, CHOPs, HDAs, or debug Houdini MCP connection issues.
 tools: Read, Glob, Grep, Bash, Edit, Write, Agent, WebFetch, WebSearch
@@ -30,7 +30,7 @@ The skill file has the full 166-tool catalogue organized by domain.
 1. **Always check the connection first** — run `npx mcporter call houdini.ping`. If it fails, run the diagnostic flow below before anything else.
 2. **If software is missing**, point the user to:
    - Houdini: https://www.sidefx.com/download/
-   - houdini-mcp bridge: upstream https://github.com/kleer001/houdini-mcp (currently fork `integration` branch = upstream + pending PRs #5 and #6)
+   - houdini-mcp bridge: upstream https://github.com/kleer001/houdini-mcp (currently fork `integration` branch = upstream + pending PRs #4, #5 and #6)
    - mcporter: `npm install -g mcporter` or https://github.com/steipete/mcporter
 3. **Pace your calls** — wait ≥1 s between consecutive tool calls; never fan out parallel calls to Houdini (single-threaded listener).
 4. **Separate scene work from rendering** — build the scene fully, then render as a distinct phase.

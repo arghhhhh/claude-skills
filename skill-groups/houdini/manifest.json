@@ -51,7 +51,7 @@
           "windows"
         ],
         "url": "https://github.com/arghhhhh/houdini-mcp/tree/integration",
-        "note": "Tracks upstream kleer001/houdini-mcp. The `integration` branch = kleer001/main + two pending fixes: PR #5 (Houdini 21 capture_screenshot + opaque output) and PR #6 (install.py honors HOUDINI_USER_PREF_DIR/HOME). Earlier fork patches (Windows path/encoding, parm/vex) are already merged upstream. Clone that branch, then run: uv sync && uv run python scripts/install.py. Once #5 and #6 merge, switch to plain kleer001/houdini-mcp (main)."
+        "note": "Tracks upstream kleer001/houdini-mcp. The `integration` branch = kleer001/main + three pending fixes: PR #4 (get_geo_summary on point-only geo), PR #5 (H21 capture_screenshot + opaque), PR #6 (install.py honors HOUDINI_USER_PREF_DIR/HOME). Rebased on kleer001/main; repoint to plain main once they merge."
       }
     ],
     "post_install": [
