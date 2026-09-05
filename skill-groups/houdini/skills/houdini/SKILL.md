@@ -1,5 +1,5 @@
 ---
-version: 2.1.5
+version: 2.1.6
 name: houdini
 description: Drive a running (or headless) SideFX Houdini session via the houdini-mcp bridge (mcporter) — node networks, VEX wrangles, parameters, geometry, simulations (pyro/RBD/FLIP/Vellum), USD/Solaris, PDG, rendering, HDAs, and 30k+ indexed docs.
 ---
@@ -13,7 +13,7 @@ Bridge: upstream `kleer001/houdini-mcp`, currently on the `integration` branch (
 ## Setup
 
 - **Transport**: `npx mcporter call houdini.<tool> [params]` (MCPorter → houdini-mcp bridge → Houdini/hython over TCP `localhost:9877`)
-- **Port**: pinned to **9877** via `HOUDINIMCP_PORT` to avoid colliding with BlenderMCP (which owns 9876). The bridge gets it from the mcporter `env`; the Houdini GUI plugin gets it from `houdini.env` (`HOUDINIMCP_PORT = 9877`). Both must agree — if you change one, change the other, and restart Houdini.
+- **Port**: pinned to **9877** via `HOUDINIMCP_PORT` to avoid colliding with the Blender MCP add-ons (official on 9876, legacy `blender-assets` on 9878). The bridge gets it from the mcporter `env`; the Houdini GUI plugin gets it from `houdini.env` (`HOUDINIMCP_PORT = 9877`). Both must agree — if you change one, change the other, and restart Houdini.
 - **Houdini-side plugin** must be installed once: `cd $HOUDINI_MCP_DIR && uv run python scripts/install.py`. After that it auto-loads when Houdini starts.
 - **Houdini does NOT need to be open** for most tools — the bridge auto-launches a headless `hython` session if no GUI is detected. Viewport/render/UI tools need a GUI.
 

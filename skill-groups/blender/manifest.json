@@ -1,21 +1,21 @@
 {
   "name": "blender",
-  "description": "Blender 3D scene creation — modeling, materials, asset import, AI 3D generation, Python scripting.",
-  "version": "1.0.4",
+  "description": "Blender 3D — scene/file introspection, bpy docs, screenshots, renders (official Blender Lab MCP) plus asset import and AI 3D generation (ahujasid MCP for Blender).",
+  "version": "2.0.0",
   "prerequisites": [
     {
       "name": "npx",
       "check": "npx --version",
       "install_hint": "Install Node.js from https://nodejs.org/ (npx is bundled with npm)",
       "required": true,
-      "note": "Needed for MCPorter to call blender-mcp tools"
+      "note": "Needed for MCPorter to call the Blender MCP tools"
     },
     {
       "name": "uvx",
       "check": "uvx --version",
       "install_hint": "Install uv from https://docs.astral.sh/uv/getting-started/installation/",
       "required": true,
-      "note": "Needed to run blender-mcp MCP server"
+      "note": "Needed to run both Blender MCP servers"
     }
   ],
   "install": {
@@ -35,9 +35,14 @@
     ],
     "post_install": [
       {
-        "name": "blender-mcp",
-        "description": "BlenderMCP addon for Claude integration",
-        "command": "uvx blender-mcp",
+        "name": "blender-mcp-official-addon",
+        "description": "Official Blender Lab 'MCP' extension (Blender 5.1+). In Blender: Preferences > Get Extensions > add repository https://lab.blender.org/ > install 'MCP' > enable. Listens on 9876 (auto-start).",
+        "url": "https://www.blender.org/lab/mcp-server/"
+      },
+      {
+        "name": "blender-mcp-legacy-addon",
+        "description": "ahujasid 'MCP for Blender' add-on for Poly Haven / Sketchfab / Poly Pizza / Hyper3D / Hunyuan3D. Enable 'Interface: MCP for Blender', set its port to 9878 in the N-panel, click Start MCP Server.",
+        "command": "uvx blender-mcp install-addon",
         "url": "https://github.com/ahujasid/blender-mcp"
       },
       {
@@ -53,9 +58,9 @@
     "expect_success": true
   },
   "integration_test": {
-    "command": "npx mcporter call blender.get_scene_info user_prompt:\"test\"",
+    "command": "npx mcporter call blender.get_objects_summary && npx mcporter call blender-assets.get_addon_status user_prompt:\"test\"",
     "expect_success": true,
-    "description": "Blender must be running with BlenderMCP addon connected"
+    "description": "Blender must be running with the official MCP extension started on 9876 and the legacy MCP for Blender add-on started on 9878"
   },
   "skills": [
     "blender"
@@ -66,7 +71,20 @@
   "mcp_servers": {
     "blender": {
       "command": "uvx",
-      "args": ["blender-mcp"]
+      "args": [
+        "--with",
+        "mcp<2",
+        "--from",
+        "git+https://projects.blender.org/lab/blender_mcp.git#subdirectory=mcp",
+        "blender-mcp"
+      ]
+    },
+    "blender-assets": {
+      "command": "uvx",
+      "args": ["blender-mcp"],
+      "env": {
+        "BLENDER_PORT": "9878"
+      }
     }
   }
 }

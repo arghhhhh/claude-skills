@@ -98,7 +98,7 @@ eevee = "BLENDER_EEVEE_NEXT" if (4,2) <= v[:2] < (5,0) else "BLENDER_EEVEE"
 bpy.context.scene.render.engine = eevee
 ```
 
-Render to file: set `scene.render.filepath`, then `bpy.ops.render.render(write_still=True)`.
+Render to file: set `scene.render.filepath`, then `bpy.ops.render.render(write_still=True)`. Or skip the script: `blender.render_thumbnail_to_path` (fast preview) / `blender.render_viewport_to_path` (current settings) — both save under `<bpy.app.tempdir>/blender_mcp/` and return the path.
 
 ## World / HDRI via nodes
 
@@ -111,7 +111,7 @@ bg.inputs["Color"].default_value = (0.05, 0.05, 0.05, 1.0)
 bg.inputs["Strength"].default_value = 1.0
 ```
 
-For an HDRI, prefer the skill's `download_polyhaven_asset asset_type:"hdris"` — it wires the environment texture for you. Hand-rolling means adding an `ShaderNodeTexEnvironment` and linking it to the Background `Color`.
+For an HDRI, prefer `blender-assets.download_polyhaven_asset asset_type:"hdris"` — it wires the environment texture for you. Hand-rolling means adding an `ShaderNodeTexEnvironment` and linking it to the Background `Color`.
 
 ## Camera & lights
 
@@ -140,10 +140,17 @@ Default scene unit is **metres**; `unit_settings.scale_length = 1.0`. Imported a
 
 ## Returning data to the caller
 
-`execute_blender_code` captures stdout, so `print(...)` is your return channel. Emit a parseable marker and join fields:
+Use the official server's `blender.execute_blender_code`. Assign a JSON-serialisable **dict** to a variable named `result`; it comes back as `result`, anything printed comes back as `stdout`, and an exception returns `status:"error"` with the full traceback:
 
 ```python
-print("RESULT::" + "|".join([f"objs={len(bpy.data.objects)}", f"engine={bpy.context.scene.render.engine}"]))
+import bpy
+result = {"objs": [o.name for o in bpy.data.objects], "engine": bpy.context.scene.render.engine}
 ```
 
-When driving from the shell, multi-line scripts are painful to quote through mcporter — hex-encode and decode in one line: `exec(__import__('binascii').unhexlify('<hex>').decode())` (avoid base64: its `+/=` chars break mcporter's `key:value` parsing).
+The legacy `blender-assets.execute_blender_code` returns **stdout only** (as a string) — if you must use it, `print(...)` a parseable marker: `print("RESULT::" + "|".join([...]))`.
+
+Put the script in a file and pass it with `code=@/path/script.py` — mcporter reads the file verbatim, so quoting, `:`/`=` and newlines are no longer a problem. Fallback if you can't write a file: hex-encode and decode in one line, `exec(__import__('binascii').unhexlify('<hex>').decode())` (avoid base64: its `+/=` chars break mcporter's `key:value` parsing).
+
+## Look it up instead of guessing
+
+`blender.search_api_docs query:"…"` and `blender.get_python_api_docs identifier:bpy.types.X` return the bundled bpy reference for the running Blender version — operator signatures, property names, enum values. Check there before writing an unfamiliar call.

@@ -1,5 +1,5 @@
 ---
-version: 1.2.5
+version: 1.2.6
 name: houdini
 description: SideFX Houdini expert for procedural 3D, VFX, simulation, USD/Solaris, VEX, PDG, and rendering. Use when the user wants to build node networks, write VEX, set up sims (pyro/RBD/FLIP/Vellum), render with Karma/Mantra, work with USD/LOPs, PDG/TOPs, COPs, CHOPs, HDAs, or debug Houdini MCP connection issues.
 tools: Read, Glob, Grep, Bash, Edit, Write, Agent, WebFetch, WebSearch
@@ -46,7 +46,7 @@ The MCP bridge talks to Houdini over TCP **localhost:9877** (moved off 9876 to c
 
 ## Step 0 — Rule out the BlenderMCP port collision (fastest check)
 
-Houdini is pinned to **9877** via `HOUDINIMCP_PORT`; BlenderMCP owns the default **9876**. If the port config didn't take (missing `houdini.env` entry, or Houdini not restarted after adding it), the plugin falls back to 9876 and **Blender silently answers `houdini.*` calls**. Tell-tale signs: `houdini.ping` → `Unknown command type: ping`; `houdini.get_scene_info` returns mesh `Component#…` objects instead of `/obj/...` node paths; `houdini.execute_houdini_code` → `No module named 'hou'`. If you see any of these:
+Houdini is pinned to **9877** via `HOUDINIMCP_PORT`; the official Blender MCP add-on owns **9876** and the legacy (`blender-assets`) add-on is on **9878**. If the port config didn't take (missing `houdini.env` entry, or Houdini not restarted after adding it), the plugin falls back to 9876 and **Blender silently answers `houdini.*` calls**. Tell-tale signs: `houdini.ping` → `Unknown command type: ping`; `houdini.get_scene_info` returns mesh `Component#…` objects instead of `/obj/...` node paths; `houdini.execute_houdini_code` → `No module named 'hou'`. If you see any of these:
 1. Confirm `~/Documents/houdini<ver>/houdini.env` (Win) contains `HOUDINIMCP_PORT = 9877` and **restart Houdini** — the plugin reads the port at startup.
 2. Confirm the mcporter/`.mcp.json` houdini entry has `env.HOUDINIMCP_PORT = "9877"` so the bridge connects to the same port.
 This is a *wrong-server* failure, not a *no-server* one, so Steps 1–7 below (which assume no/stale Houdini listener) won't find it.
