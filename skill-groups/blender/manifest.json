@@ -1,7 +1,7 @@
 {
   "name": "blender",
   "description": "Blender 3D — scene/file introspection, bpy docs, screenshots, renders (official Blender Lab MCP) plus asset import and AI 3D generation (ahujasid MCP for Blender).",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "prerequisites": [
     {
       "name": "npx",
@@ -23,13 +23,19 @@
     "methods": [
       {
         "name": "brew",
-        "platforms": ["macos"],
+        "platforms": [
+          "macos"
+        ],
         "check": "brew --version",
         "command": "brew install --cask blender"
       },
       {
         "name": "manual",
-        "platforms": ["macos", "linux", "windows"],
+        "platforms": [
+          "macos",
+          "linux",
+          "windows"
+        ],
         "url": "https://www.blender.org/download/"
       }
     ],
@@ -63,7 +69,8 @@
     "description": "Blender must be running with the official MCP extension started on 9876 and the legacy MCP for Blender add-on started on 9878"
   },
   "skills": [
-    "blender"
+    "blender",
+    "blender-assets"
   ],
   "agents": [
     "blender"
@@ -81,7 +88,9 @@
     },
     "blender-assets": {
       "command": "uvx",
-      "args": ["blender-mcp"],
+      "args": [
+        "blender-mcp"
+      ],
       "env": {
         "BLENDER_PORT": "9878"
       }
