@@ -1,7 +1,7 @@
 {
   "name": "houdini",
   "description": "SideFX Houdini automation — nodes, rendering, geometry, PDG/TOPs, USD/Solaris, HDAs, VEX, DOPs, viewport, COPs, CHOPs via 166 MCP tools.",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "prerequisites": [
     {
       "name": "git",
@@ -30,17 +30,26 @@
     "methods": [
       {
         "name": "bootstrap-unix",
-        "platforms": ["macos", "linux"],
+        "platforms": [
+          "macos",
+          "linux"
+        ],
         "command": "git clone -b integration https://github.com/arghhhhh/houdini-mcp.git '{{HOUDINI_MCP_DIR}}' && cd '{{HOUDINI_MCP_DIR}}' && bash bootstrap.sh"
       },
       {
         "name": "bootstrap-windows",
-        "platforms": ["windows"],
+        "platforms": [
+          "windows"
+        ],
         "command": "git clone -b integration https://github.com/arghhhhh/houdini-mcp.git '{{HOUDINI_MCP_DIR}}' && cd '{{HOUDINI_MCP_DIR}}' && cmd.exe /c bootstrap.bat"
       },
       {
         "name": "manual",
-        "platforms": ["macos", "linux", "windows"],
+        "platforms": [
+          "macos",
+          "linux",
+          "windows"
+        ],
         "url": "https://github.com/arghhhhh/houdini-mcp/tree/integration",
         "note": "Tracks upstream kleer001/houdini-mcp. The `integration` branch = kleer001/main + two pending fixes: PR #5 (Houdini 21 capture_screenshot + opaque output) and PR #6 (install.py honors HOUDINI_USER_PREF_DIR/HOME). Earlier fork patches (Windows path/encoding, parm/vex) are already merged upstream. Clone that branch, then run: uv sync && uv run python scripts/install.py. Once #5 and #6 merge, switch to plain kleer001/houdini-mcp (main)."
       }
@@ -99,6 +108,6 @@
   "post_install_hints": [
     "Restart Houdini for the plugin to take effect (or rely on the auto-launched headless hython).",
     "PORT: the bridge is pinned to HOUDINIMCP_PORT=9877 (via mcp_servers.env) to avoid colliding with BlenderMCP, which also defaults to 9876. For the Houdini GUI plugin to bind 9877, add this line to your houdini.env (Windows: ~/Documents/houdini<ver>/houdini.env; macOS: ~/Library/Preferences/houdini/<ver>/houdini.env; Linux: ~/houdini<ver>/houdini.env), then restart Houdini:  HOUDINIMCP_PORT = 9877",
-    "Bridge tracks upstream kleer001/houdini-mcp. The clone is on branch `integration` = kleer001/main + two pending fixes (PR #5: H21 capture_screenshot + opaque; PR #6: install.py honors HOUDINI_USER_PREF_DIR/HOME). Older fork patches (Windows, parm/vex) are already merged upstream. Once #5 and #6 merge, repoint to plain kleer001/main: git checkout main && git pull origin main."
+    "Bridge tracks upstream kleer001/houdini-mcp. The clone is on branch `integration` = kleer001/main + three pending fixes (PR #4: get_geo_summary crash on point-only geo; PR #5: H21 capture_screenshot + opaque output; PR #6: install.py honors HOUDINI_USER_PREF_DIR/HOME). Older fork patches (Windows, parm/vex) are already merged upstream. Keep it rebased: git fetch origin && git rebase origin/main && git push --force-with-lease fork integration (never rebase the fix/* branches — they are the open PR heads). Once #4/#5/#6 merge, repoint to plain kleer001/main: git checkout main && git pull origin main."
   ]
 }
