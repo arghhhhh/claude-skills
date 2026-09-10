@@ -1249,7 +1249,7 @@ install_software() {
   manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
 
   local check_cmd
-  check_cmd=$(json_get_install_check "$manifest")
+  check_cmd=$(subst_placeholders "$(json_get_install_check "$manifest")")
 
   # "force" re-runs the install method even when the check passes — used by
   # update mode for groups with update_policy "latest", whose install commands
@@ -1299,8 +1299,9 @@ install_software() {
     fi
 
     if [ -n "$cmd" ]; then
+      cmd=$(subst_placeholders "$cmd")
       info "Installing via $method: $cmd"
-      if eval "$cmd"; then
+      if eval "$cmd" </dev/null; then
         # Add tool-specific bin dirs to PATH for subsequent commands
         case "$method" in
           go)    export PATH="$HOME/go/bin:$PATH" ;;
@@ -2014,7 +2015,7 @@ run_test() {
   manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
 
   local test_cmd
-  test_cmd=$(json_get_test_command "$manifest")
+  test_cmd=$(subst_placeholders "$(json_get_test_command "$manifest")")
 
   [ -z "$test_cmd" ] && return 0
 
@@ -2110,8 +2111,8 @@ verify_group() {
   if [ "$gtype" = "tool-only" ]; then
     info "Software:"
     local check_cmd
-    check_cmd=$(json_get_test_command "$manifest")
-    [ -n "$check_cmd" ] || check_cmd=$(json_get_install_check "$manifest")
+    check_cmd=$(subst_placeholders "$(json_get_test_command "$manifest")")
+    [ -n "$check_cmd" ] || check_cmd=$(subst_placeholders "$(json_get_install_check "$manifest")")
     if [ -n "$check_cmd" ] && [ "$check_cmd" != "true" ] && [ "$check_cmd" != "false" ]; then
       if eval "$check_cmd" </dev/null >/dev/null 2>&1; then
         ok "Software check passed ($check_cmd)"
@@ -2348,8 +2349,8 @@ group_is_installed() {
 
   if [ "$gtype" = "tool-only" ]; then
     local probe
-    probe=$(json_get_test_command "$manifest")
-    [ -n "$probe" ] || probe=$(json_get_install_check "$manifest")
+    probe=$(subst_placeholders "$(json_get_test_command "$manifest")")
+    [ -n "$probe" ] || probe=$(subst_placeholders "$(json_get_install_check "$manifest")")
     [ -n "$probe" ] && eval "$probe" </dev/null >/dev/null 2>&1
     return
   fi

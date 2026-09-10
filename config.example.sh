@@ -25,6 +25,10 @@ OBS_CONFIG_DIR=""  # e.g. ~/.config/obs-studio or C:/Users/you/AppData/Roaming/o
 # gobs-cli config (contains OBS_PASSWORD)
 GOBS_CONFIG=""  # e.g. ~/.config/gobs-cli/config.env or C:/Users/you/AppData/Local/gobs-cli/config.env
 
+# ─── Houdini ─────────────────────────────────────────────────────────────────
+# Where the houdini-mcp bridge repo is cloned
+HOUDINI_MCP_DIR=""  # e.g. ~/.local/share/houdini-mcp or C:/Users/you/.local/share/houdini-mcp
+
 # ─── Blender ─────────────────────────────────────────────────────────────────
 # No machine-specific config needed — blender-mcp uses mcporter + localhost:9876
 
