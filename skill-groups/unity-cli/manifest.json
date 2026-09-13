@@ -2,11 +2,11 @@
   "name": "unity-cli",
   "type": "vendored",
   "description": "Unity Editor automation via unity-cli — scene inspection, GameObject editing, prefab workflows, C# navigation/editing, asset management, input system, testing, and UI automation.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "source": {
     "repo": "arghhhhh/unity-cli",
-    "ref": "8e3662766ade3ca37e03650c25aab36c8ec712e2",
-    "ref_name": "vfx-graph-control-pr@2026-09-10",
+    "ref": "6b58be69f21f63a675ae4bd074eda586d21992a0",
+    "ref_name": "vfx-graph-control-pr@2026-09-13",
     "paths": {
       "skills": ".claude-plugin/plugins/unity-cli/skills",
       "agents": ".claude-plugin/plugins/unity-cli/agents"
