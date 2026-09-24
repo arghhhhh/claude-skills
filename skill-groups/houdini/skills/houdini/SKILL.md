@@ -1,5 +1,5 @@
 ---
-version: 2.1.7
+version: 2.2.0
 name: houdini
 description: Drive a running (or headless) SideFX Houdini session via the houdini-mcp bridge (mcporter) — node networks, VEX wrangles, parameters, geometry, simulations (pyro/RBD/FLIP/Vellum), USD/Solaris, PDG, rendering, HDAs, and 30k+ indexed docs.
 ---
@@ -20,7 +20,7 @@ Bridge: upstream `kleer001/houdini-mcp`, currently on the `integration` branch (
 ## Not Installed?
 
 - **Houdini**: https://www.sidefx.com/download/
-- **houdini-mcp bridge**: upstream https://github.com/kleer001/houdini-mcp (currently the `integration` branch on the arghhhhh fork = upstream + pending PRs #4, #5 and #6)
+- **houdini-mcp bridge**: https://github.com/kleer001/houdini-mcp (upstream `main`; the fork that carried PRs #4/#5/#6 is retired — they merged 2026-09-23)
 - **MCPorter**: runs via `npx mcporter` (auto-fetched)
 
 ## Critical Rules
