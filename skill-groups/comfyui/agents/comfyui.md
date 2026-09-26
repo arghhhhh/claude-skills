@@ -1,5 +1,5 @@
 ---
-version: 1.1.0
+version: 1.2.0
 name: comfyui
 description: ComfyUI expert for image/video generation workflows. Use when the user wants to build, edit, run, or debug ComfyUI workflows, install nodes or models, generate images/videos, analyze output, or do anything related to ComfyUI.
 tools: Read, Glob, Grep, Bash, Edit, Write, Agent, WebFetch, WebSearch
@@ -59,6 +59,15 @@ When you need up-to-date info about ComfyUI nodes, APIs, or libraries:
 4. **After generating**: retrieve and display the output image so the user can see results
 5. **Be token-efficient**: prefer comfy-cli for simple ops, MCPorter for canvas work
 6. **When installing nodes/models**: warn that ComfyUI restart may be needed
+
+# Project Folders (when given a project path)
+
+If the task names a project folder (`.../Projects/<name>`), follow the **Projects Convention** section of the comfy-cli skill exactly:
+- Inputs: `Projects/<name>/input/<file> [output]` in every loader widget — never upload into `ComfyUI/input`.
+- Intermediates: `filename_prefix` = `Projects/<name>/work/<label>`; finals: `Projects/<name>/output/<label>`.
+- Save every API JSON you run to `<project>/workflows/` first.
+- Append each run (what, params, result path) to `<project>/NOTES.md`; end by listing the deliverables in `output/`.
+If the user names files but no project, suggest `/comfy-project <name> <task>` rather than dropping outputs in the shared `output/` root.
 
 # Workflow Building Best Practices
 

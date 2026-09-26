@@ -1,5 +1,5 @@
 ---
-version: 1.2.0
+version: 1.3.0
 ---
 
 # ComfyUI Pilot Skill (via MCPorter)
@@ -152,3 +152,16 @@ ComfyUI saves workflows in two formats: **UI format** (browser) and **API format
 - `edit_graph` operations execute in order — put creates before connects/sets that reference them.
 - Node management (install/uninstall/update) requires ComfyUI restart to take effect.
 - Some custom nodes output `None` when given empty/disabled inputs instead of passing through. Check for passthrough nodes if CLIP or MODEL is unexpectedly None.
+
+## Projects Convention
+
+When working inside a project folder (see **Projects Convention** in the comfy-cli skill), set loader widgets via `edit_graph` to the annotated path and saver prefixes to the project subfolder:
+
+```bash
+npx mcporter call comfyui.edit_graph operations:'[
+  {"action": "set", "node_id": "1", "property": "image", "value": "Projects/<name>/input/src.png [output]"},
+  {"action": "set", "node_id": "9", "property": "filename_prefix", "value": "Projects/<name>/output/final"}
+]'
+```
+
+Don't use `comfy_upload_image` / `comfy_asset_upload` (FL-MCP) for project inputs — they duplicate files into `ComfyUI/input/`. After the run, `view_image node_id:"9"` still works; the file is at `<easy-install-root>/Projects/<name>/output/`.

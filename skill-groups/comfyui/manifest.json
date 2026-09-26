@@ -1,7 +1,7 @@
 {
   "name": "comfyui",
-  "description": "ComfyUI image/video generation — server management, workflow editing, node/model management.",
-  "version": "0.4.1",
+  "description": "ComfyUI image/video generation \u00e2\u20ac\u201d server management, workflow editing, node/model management.",
+  "version": "0.5.0",
   "prerequisites": [
     {
       "name": "pip",
@@ -23,7 +23,11 @@
     "methods": [
       {
         "name": "pip",
-        "platforms": ["macos", "linux", "windows"],
+        "platforms": [
+          "macos",
+          "linux",
+          "windows"
+        ],
         "check": "pip --version || python -m pip --version || python3 -m pip --version",
         "command": "pip install comfy-cli || python -m pip install comfy-cli || python3 -m pip install comfy-cli"
       }
@@ -77,14 +81,24 @@
   "mcp_servers": {
     "comfyui": {
       "command": "{{COMFYUI_PYTHON}}",
-      "args": ["{{COMFYUI_WORKSPACE}}/custom_nodes/comfy-pilot/mcp_server.py"]
+      "args": [
+        "{{COMFYUI_WORKSPACE}}/custom_nodes/comfy-pilot/mcp_server.py"
+      ]
     },
     "flmcp": {
       "command": "{{COMFYUI_PYTHON}}",
-      "args": ["{{COMFYUI_WORKSPACE}}/custom_nodes/ComfyUI_FL-MCP/backend/mcp_server.py"],
+      "args": [
+        "{{COMFYUI_WORKSPACE}}/custom_nodes/ComfyUI_FL-MCP/backend/mcp_server.py"
+      ],
       "env": {
         "COMFYUI_SERVER_URL": "http://127.0.0.1:8188"
       }
     }
-  }
+  },
+  "commands": [
+    "comfy-project"
+  ],
+  "post_install_hints": [
+    "/comfy-project <name> <task> runs ComfyUI work inside <easy-install-root>/Projects/<name>/ (a junction to ComfyUI/output/Projects) with no file duplication."
+  ]
 }

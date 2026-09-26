@@ -1,5 +1,5 @@
 ---
-version: 1.1.0
+version: 1.2.0
 ---
 
 # ComfyUI CLI Skill
@@ -101,3 +101,35 @@ PYTHONIOENCODING=utf-8 comfy which
 After `comfy run --wait` returns file paths:
 1. Use the Read tool to view the image directly (cheapest option)
 2. If path isn't accessible, fall back to comfy-pilot's `view_image` via MCPorter
+
+## Projects Convention (organized, no-duplication runs)
+
+All agent-driven ComfyUI work lives in one folder per project. The user starts one with `/comfy-project <name> <task>`; if you are given a project path, follow these rules.
+
+**Layout** — real folder is `{{COMFYUI_WORKSPACE}}/output/Projects/<name>/`; `<easy-install-root>/Projects` is a junction to `output/Projects`, so the user sees the same files at the top level. Create with:
+
+```bash
+bash "$HOME/.claude/.skill-repos/claude-skills/skill-groups/comfyui/scripts/comfy-project-init.sh" <name> [files to move into input/...]
+```
+
+```
+Projects/<name>/
+  input/       source files (moved here, never copied into ComfyUI/input)
+  work/        intermediates: frames, masks, test renders
+  output/      final deliverables
+  workflows/   every UI + API JSON you ran
+  NOTES.md     task, runs (what/why/params), where deliverables are
+```
+
+**Why it works without copies:** the folder is inside ComfyUI's output tree, and every loader accepts an `[output]` suffix that reads from there. ComfyUI resolves junctions in its path checks, so the reverse (a Projects folder outside the tree linked *into* input/output) is rejected — don't try it.
+
+**Rules**
+- Load inputs with the annotated path: `"image": "Projects/<name>/input/src.png [output]"`. Works for LoadImage, LoadVideo, LoadAudio, VHS LoadVideo, and any node using `get_annotated_filepath`. Subfolders are fine: these nodes skip the dropdown-list check.
+- Save with a subfolder prefix: `"filename_prefix": "Projects/<name>/work/mask"` or `.../output/final`. Works for SaveImage, VHS VideoCombine, SaveAudio, etc. ComfyUI creates the folders.
+- Never call upload tools (`comfy_upload_image`, `/upload/image`, canvas drag-drop) — they copy into `ComfyUI/input/`. Move files with the shell instead.
+- Never write to the workflow-default `output/` root; everything goes under the project.
+- Save each API JSON you run to `workflows/` before running it; name it after the step (`01_extract_frames_api.json`).
+- Append to `NOTES.md` after each run: what you ran, key params/seed, output path, and whether it succeeded.
+- Shared assets that many projects use (a reference face, a LUT) may stay in `ComfyUI/input/` — say so in NOTES.md rather than moving them.
+
+**Verify** a run landed correctly: `ls "<project>/output"` — the `/history` entry reports `"subfolder": "Projects\<name>\output"`.
