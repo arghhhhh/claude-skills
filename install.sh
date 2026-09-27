@@ -1947,7 +1947,37 @@ install_claude_md_snippet() {
   local marker
   marker=$(echo "$snippet_content" | grep -m1 '^## ' || echo "$snippet_content" | head -1)
   if grep -qF "$marker" "$CLAUDE_MD" 2>/dev/null; then
-    ok "CLAUDE.md: $group snippet already present"
+    # Curated snippets are the source of truth: refresh the existing section
+    # (marker line up to the next '---' line) so snippet edits propagate.
+    # Generated defaults are left alone. CLAUDE.md is backed up before a rewrite.
+    # BINMODE=3 stops Git Bash's gawk from silently converting CRLF files to LF.
+    if [ ! -f "$snippet_file" ]; then
+      ok "CLAUDE.md: $group snippet already present"
+      return 0
+    fi
+    local tmp_out
+    tmp_out=$(mktemp)
+    awk -v BINMODE=3 -v marker="$marker" -v snip="$snippet_file" '
+      BEGIN { n = 0; while ((getline l < snip) > 0) { sub(/\r$/, "", l); lines[++n] = l } }
+      { line = $0; eol = ""; if (line ~ /\r$/) { eol = "\r"; sub(/\r$/, "", line) } }
+      !done && !in_sec && line == marker {
+        in_sec = 1
+        last = n; while (last > 0 && lines[last] == "") last--
+        for (i = 1; i <= last; i++) printf "%s%s\n", lines[i], eol
+        next
+      }
+      in_sec && line == "---" { in_sec = 0; done = 1; printf "%s\n", eol; print; next }
+      in_sec { next }
+      { print }
+    ' "$CLAUDE_MD" > "$tmp_out"
+    if cmp -s "$tmp_out" "$CLAUDE_MD"; then
+      rm -f "$tmp_out"
+      ok "CLAUDE.md: $group snippet up to date"
+    else
+      cp "$CLAUDE_MD" "$CLAUDE_MD.bak-$(date +%Y%m%d-%H%M%S)"
+      cat "$tmp_out" > "$CLAUDE_MD" && rm -f "$tmp_out"
+      ok "CLAUDE.md: refreshed $group snippet (backup saved alongside)"
+    fi
     return 0
   fi
 

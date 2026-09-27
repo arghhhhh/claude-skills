@@ -1,14 +1,12 @@
 ## ComfyUI - Image/Video Generation
 
-**Three skills, all via CLI/MCPorter (no MCP overhead):**
-1. **comfy-cli** — server management, running workflow files, node/model management. Read `~/.claude/skills/comfy-cli.md`.
-2. **comfy-pilot** — live workflow editing, node discovery, image viewing, canvas control (via MCPorter `comfyui` server). Read `~/.claude/skills/comfy-pilot.md`.
-3. **fl-mcp** — FL-MCP's ~108-tool surface (via MCPorter `flmcp` server): broad REST automation (queue/exec/models/settings/logs), node-library introspection, ComfyUI-Manager ops, custom-node Python authoring, and a browser-bridge canvas editor. Read `~/.claude/skills/fl-mcp.md`.
+**Delegate hands-on ComfyUI work to the `comfyui` agent (runs on Sonnet).** That means running or polling workflows, building/editing graphs, installing nodes or models, batch renders, file shuffling, and debugging node errors. Keep the main session for talking with the user, choosing the approach, and reviewing results (Read the output images the agent reports). A one-off check (is the server up, what's in a folder) is fine to do directly; anything that needs a run or more than ~3 tool calls goes to the agent. Give the agent the goal, input paths, constraints, and the project folder if there is one.
 
-**When to use which:**
-- Launch/stop server, run a workflow file, list/install nodes/models → comfy-cli skill
-- Build/edit workflows on canvas, search node types, view output images, check status → comfy-pilot skill
-- Broad REST control (queue/models/settings/logs), node-library details, Manager operations, or authoring/patching custom-node code → fl-mcp skill
-- Analyze generated images → `comfy run --wait` to get file path, then Read tool to view image
+**Project-scoped work:** `/comfy-project <name> <task>` sets up `Projects/<name>/` and runs the task in the comfyui agent directly.
+
+**Skills the agent uses** (read them yourself only if you are doing the work directly):
+1. **comfy-cli** — server management, running workflow files, node/model management, Projects convention. `~/.claude/skills/comfy-cli.md`
+2. **comfy-pilot** — live canvas editing, node discovery, image viewing (MCPorter `comfyui` server). `~/.claude/skills/comfy-pilot.md`
+3. **fl-mcp** — FL-MCP's ~108-tool surface (MCPorter `flmcp` server): broad REST automation, node-library introspection, ComfyUI-Manager ops, custom-node Python authoring. `~/.claude/skills/fl-mcp.md`
 
 Trigger phrases: "comfyui", "comfy", "workflow", "generate image", "generate video", "install node", "download model", "run workflow", "fl-mcp", "comfyui manager", "custom node dev", "node library", "queue status"
