@@ -1,7 +1,7 @@
 {
   "name": "comfyui",
   "description": "ComfyUI image/video generation \u00e2\u20ac\u201d server management, workflow editing, node/model management.",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "prerequisites": [
     {
       "name": "pip",
