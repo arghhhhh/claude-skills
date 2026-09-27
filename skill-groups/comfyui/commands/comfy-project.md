@@ -15,9 +15,20 @@ Parse the request as `<project-name> <task description>`. The first token is the
 bash "$HOME/.claude/.skill-repos/claude-skills/skill-groups/comfyui/scripts/comfy-project-init.sh" <project-name> [input files...]
 ```
 
-The script takes only the project name and the files; it finds the ComfyUI workspace itself. The last line printed is the project path. Input files are **moved** (not copied) into `input/`. If a named input already lives in ComfyUI's own `input/` folder, move it too unless the task says it's a shared asset.
+The script takes only the project name and the files; it finds the ComfyUI workspace itself. The last line printed is the project path. Input files are **moved** (not copied) into `input/`. If a named input already lives in ComfyUI's own `input/` folder, move it too unless the task says it's a shared asset. Re-running it on an existing project is safe: it only creates missing folders, never overwrites `NOTES.md`, and never replaces files in `input/`.
 
-## 2. Do the task
+## 2. Resume an existing project
+
+If `NOTES.md` already has runs logged or `workflows/` is not empty, this is a resume. Before building anything:
+
+1. Read `NOTES.md` in full: the original task, every run, params/seeds, and what was delivered.
+2. List `workflows/`, `output/` and `work/` newest first (`ls -t`).
+3. Start from the most recent workflow JSON that fits the new task. Edit it rather than rebuilding the graph; keep the step-numbered naming (`05_...` follows `04_...`).
+4. Append a `## Session <YYYY-MM-DD>` heading to `NOTES.md` before logging new runs.
+
+If no task was given (just the project name), report the project's state from `NOTES.md` and the folder listing, then stop.
+
+## 3. Do the task
 
 Read the **Projects Convention** section of `~/.claude/skills/comfy-cli.md`. The rules that matter most:
 
@@ -30,6 +41,6 @@ Read the **Projects Convention** section of `~/.claude/skills/comfy-cli.md`. The
 "9": {"class_type": "SaveImage", "inputs": {"images": ["8", 0], "filename_prefix": "Projects/<name>/output/final"}}
 ```
 
-## 3. Report
+## 4. Report
 
 End with the project path, the deliverables in `output/` (absolute paths), and anything left in `work/` worth keeping.
