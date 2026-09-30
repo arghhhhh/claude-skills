@@ -2,11 +2,11 @@
   "name": "unity-cli",
   "type": "vendored",
   "description": "Unity Editor automation via unity-cli \u2014 scene inspection, GameObject editing, prefab workflows, C# navigation/editing, asset management, input system, testing, and UI automation.",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "source": {
     "repo": "arghhhhh/unity-cli",
-    "ref": "46a52b87a8e8ccd1fe06259594eb8e743f0fe1e9",
-    "ref_name": "stable@2026-09-30 (upstream v0.16.0 + #242 daemon fix + #360 daemon pipe leak; #357 loopback host is in upstream since v0.15.3)",
+    "ref": "d53ea1dbcbfaff82e45dbb5090acbe4fa287832c",
+    "ref_name": "stable@2026-09-30 (upstream v0.16.0 + #242 daemon fix + #360 daemon pipe leak + #408 optional Addressables (bridge only); #357 loopback host is in upstream since v0.15.3)",
     "paths": {
       "skills": ".claude-plugin/plugins/unity-cli/skills",
       "agents": ".claude-plugin/plugins/unity-cli/agents"
@@ -27,7 +27,7 @@
     }
   ],
   "install": {
-    "check": "cargo install --list 2>/dev/null | grep -qF 'rev=46a52b87a8e8ccd1fe06259594eb8e743f0fe1e9'",
+    "check": "cargo install --list 2>/dev/null | grep -qF 'rev=d53ea1dbcbfaff82e45dbb5090acbe4fa287832c'",
     "methods": [
       {
         "name": "cargo",
@@ -36,7 +36,7 @@
           "linux"
         ],
         "check": "cargo --version",
-        "command": "cargo install --git https://github.com/arghhhhh/unity-cli.git --force --rev 46a52b87a8e8ccd1fe06259594eb8e743f0fe1e9 && bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/unity-cli/install/sync-managed.sh\""
+        "command": "cargo install --git https://github.com/arghhhhh/unity-cli.git --force --rev d53ea1dbcbfaff82e45dbb5090acbe4fa287832c && bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/unity-cli/install/sync-managed.sh\""
       },
       {
         "name": "cargo",
@@ -44,7 +44,7 @@
           "windows"
         ],
         "check": "cargo --version",
-        "command": "MSVC_LINK=$(find '/c/Program Files/Microsoft Visual Studio' '/c/Program Files (x86)/Microsoft Visual Studio' -name 'link.exe' -path '*/Hostx64/x64/*' 2>/dev/null | head -1) && if [ -n \"$MSVC_LINK\" ]; then export PATH=\"$(dirname \"$MSVC_LINK\"):$PATH\" && cargo install --git https://github.com/arghhhhh/unity-cli.git --force --rev 46a52b87a8e8ccd1fe06259594eb8e743f0fe1e9 && bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/unity-cli/install/sync-managed.sh\"; else echo 'MSVC Build Tools not found \u2014 install via: winget install Microsoft.VisualStudio.2022.BuildTools --override \"--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"' && false; fi"
+        "command": "MSVC_LINK=$(find '/c/Program Files/Microsoft Visual Studio' '/c/Program Files (x86)/Microsoft Visual Studio' -name 'link.exe' -path '*/Hostx64/x64/*' 2>/dev/null | head -1) && if [ -n \"$MSVC_LINK\" ]; then export PATH=\"$(dirname \"$MSVC_LINK\"):$PATH\" && cargo install --git https://github.com/arghhhhh/unity-cli.git --force --rev d53ea1dbcbfaff82e45dbb5090acbe4fa287832c && bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/unity-cli/install/sync-managed.sh\"; else echo 'MSVC Build Tools not found \u2014 install via: winget install Microsoft.VisualStudio.2022.BuildTools --override \"--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"' && false; fi"
       },
       {
         "name": "binary",
