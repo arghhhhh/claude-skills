@@ -5,7 +5,7 @@ allowed-tools: Bash(unity-cli:*), Read, Grep, Glob
 user-invocable: false
 metadata:
   author: akiojin
-  version: 0.6.0
+  version: 0.7.0
   category: foundation
   triggers:
     - bootstrap
@@ -64,12 +64,17 @@ unity-cli raw analyze_scene_contents --json '{"includeInactive":true}'
 ## Required Environment (this fork)
 
 This install tracks a **fork** (`arghhhhh/unity-cli`, branch `stable`): upstream v0.15.2 plus
-two fixes not yet released upstream — #242 (a bad connection no longer kills `unityd`) and
-#357 (default host `127.0.0.1`, avoiding a ~2s IPv6 fallback per connection on Windows).
+three fixes not yet released upstream:
+
+| PR | Fix |
+|---|---|
+| #242 | A bad connection no longer kills `unityd`. |
+| #357 | Default host `127.0.0.1`, avoiding a ~2s IPv6 fallback per connection on Windows. |
+| #360 | The call that auto-starts `unityd` no longer hangs whatever reads its output (Windows). |
 
 | Variable | Value | Why |
 |---|---|---|
-| `UNITY_CLI_NO_AUTO_UPDATE` | `1` | **Load-bearing.** The managed binary auto-updates from `akiojin/unity-cli` GitHub releases. Left on, it overwrites the fork build with upstream's and silently drops both fixes. The claude-skills installer sets it at user scope. |
+| `UNITY_CLI_NO_AUTO_UPDATE` | `1` | **Load-bearing.** The managed binary auto-updates from `akiojin/unity-cli` GitHub releases. Left on, it overwrites the fork build with upstream's and silently drops all three fixes. The claude-skills installer sets it at user scope. |
 | `UNITY_CLI_HOST` | **leave unset** | ❌ Setting it makes `resolve_endpoint` ignore `instances set-active` entirely — every call goes to port 6400. The fork build already defaults to `127.0.0.1`. Set it only for a non-local Unity (Docker → `host.docker.internal`). |
 
 ```bash
@@ -80,21 +85,18 @@ echo "NO_AUTO_UPDATE=$UNITY_CLI_NO_AUTO_UPDATE  HOST=$UNITY_CLI_HOST"
 powershell -c "[Environment]::SetEnvironmentVariable('UNITY_CLI_NO_AUTO_UPDATE','1','User')"
 ```
 
-### Start `unityd` yourself before the first call (Windows)
+### A call that answers but never returns = upstream build (Windows)
 
-❌ Any remote call auto-starts `unityd` when it isn't running (#270). On Windows the spawned
-daemon inherits the caller's stdout pipe handle, so **whatever is reading the output — the Bash
-tool, `| head`, `$(...)` — hangs until the daemon idles out** (minutes), even though Unity
-answered instantly. Only the call that spawns the daemon hangs; later calls are ~250 ms.
-
-✅ Start it with output discarded first, then call normally:
+Any remote call auto-starts `unityd` when it isn't running (#270). In upstream builds the
+spawned daemon inherits the caller's stdout pipe, so **whatever reads the output — the Bash tool,
+`| head`, `$(...)` — hangs until the daemon idles out** (up to 600s), even though Unity answered
+instantly. This fork build fixes it (#360). If you see it anyway, the binary was replaced by an
+upstream release: re-run the installer (see below). Meanwhile, starting the daemon with output
+discarded avoids it:
 
 ```bash
-unity-cli unityd start >/dev/null 2>&1   # ~1s; NUL handles are what the daemon inherits
-unity-cli system ping
+unity-cli unityd start >/dev/null 2>&1
 ```
-
-Re-run it after `unityd stop`, a reboot, or a long idle (`UNITY_CLI_UNITYD_IDLE_TIMEOUT`).
 
 ### Installing or upgrading the binary
 

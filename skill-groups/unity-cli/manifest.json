@@ -2,11 +2,11 @@
   "name": "unity-cli",
   "type": "vendored",
   "description": "Unity Editor automation via unity-cli \u2014 scene inspection, GameObject editing, prefab workflows, C# navigation/editing, asset management, input system, testing, and UI automation.",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "source": {
     "repo": "arghhhhh/unity-cli",
-    "ref": "e03af5cdfe5b3fb8c4c327816f5dac94f5c17326",
-    "ref_name": "stable@2026-09-30 (upstream v0.15.2 + #242 daemon fix + #357 loopback host)",
+    "ref": "d1d7906e47e387f0b39f2855a6f59da3bf5c3948",
+    "ref_name": "stable@2026-09-30 (upstream v0.15.2 + #242 daemon fix + #357 loopback host + #360 daemon pipe leak)",
     "paths": {
       "skills": ".claude-plugin/plugins/unity-cli/skills",
       "agents": ".claude-plugin/plugins/unity-cli/agents"
@@ -27,7 +27,7 @@
     }
   ],
   "install": {
-    "check": "cargo install --list 2>/dev/null | grep -qF 'rev=e03af5cdfe5b3fb8c4c327816f5dac94f5c17326'",
+    "check": "cargo install --list 2>/dev/null | grep -qF 'rev=d1d7906e47e387f0b39f2855a6f59da3bf5c3948'",
     "methods": [
       {
         "name": "cargo",
@@ -36,7 +36,7 @@
           "linux"
         ],
         "check": "cargo --version",
-        "command": "cargo install --git https://github.com/arghhhhh/unity-cli.git --force --rev e03af5cdfe5b3fb8c4c327816f5dac94f5c17326 && bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/unity-cli/install/sync-managed.sh\""
+        "command": "cargo install --git https://github.com/arghhhhh/unity-cli.git --force --rev d1d7906e47e387f0b39f2855a6f59da3bf5c3948 && bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/unity-cli/install/sync-managed.sh\""
       },
       {
         "name": "cargo",
@@ -44,7 +44,7 @@
           "windows"
         ],
         "check": "cargo --version",
-        "command": "MSVC_LINK=$(find '/c/Program Files/Microsoft Visual Studio' '/c/Program Files (x86)/Microsoft Visual Studio' -name 'link.exe' -path '*/Hostx64/x64/*' 2>/dev/null | head -1) && if [ -n \"$MSVC_LINK\" ]; then export PATH=\"$(dirname \"$MSVC_LINK\"):$PATH\" && cargo install --git https://github.com/arghhhhh/unity-cli.git --force --rev e03af5cdfe5b3fb8c4c327816f5dac94f5c17326 && bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/unity-cli/install/sync-managed.sh\"; else echo 'MSVC Build Tools not found \u2014 install via: winget install Microsoft.VisualStudio.2022.BuildTools --override \"--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"' && false; fi"
+        "command": "MSVC_LINK=$(find '/c/Program Files/Microsoft Visual Studio' '/c/Program Files (x86)/Microsoft Visual Studio' -name 'link.exe' -path '*/Hostx64/x64/*' 2>/dev/null | head -1) && if [ -n \"$MSVC_LINK\" ]; then export PATH=\"$(dirname \"$MSVC_LINK\"):$PATH\" && cargo install --git https://github.com/arghhhhh/unity-cli.git --force --rev d1d7906e47e387f0b39f2855a6f59da3bf5c3948 && bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/unity-cli/install/sync-managed.sh\"; else echo 'MSVC Build Tools not found \u2014 install via: winget install Microsoft.VisualStudio.2022.BuildTools --override \"--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"' && false; fi"
       },
       {
         "name": "binary",
@@ -62,7 +62,7 @@
     "command": "unity-cli --version",
     "expect_success": true
   },
-  "_user_env_note": "UNITY_CLI_NO_AUTO_UPDATE=1 stops the managed binary (~/.unity/tools/unity-cli/<rid>/, what unityd runs) from auto-updating to an upstream release, which would silently drop the fork's unreleased fixes (#242, #357). Do NOT add UNITY_CLI_HOST here: when it is set, resolve_endpoint ignores 'instances set-active' entirely. The fork build defaults to 127.0.0.1 instead.",
+  "_user_env_note": "UNITY_CLI_NO_AUTO_UPDATE=1 stops the managed binary (~/.unity/tools/unity-cli/<rid>/, what unityd runs) from auto-updating to an upstream release, which would silently drop the fork's unreleased fixes (#242, #357, #360). Do NOT add UNITY_CLI_HOST here: when it is set, resolve_endpoint ignores 'instances set-active' entirely. The fork build defaults to 127.0.0.1 instead.",
   "user_env": {
     "UNITY_CLI_NO_AUTO_UPDATE": "1"
   },

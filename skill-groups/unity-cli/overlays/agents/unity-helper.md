@@ -1,5 +1,5 @@
 ---
-version: 1.2.0
+version: 1.3.0
 name: unity
 description: |
   Specialized agent for all Unity Editor automation via unity-cli. Handles scene inspection, GameObject/component editing, prefab workflows, C# code navigation and editing, asset management, input system, testing, and UI automation. Use this agent for ANY Unity-related task.
@@ -39,12 +39,13 @@ unity-cli communicates with the Unity Editor via the **`com.akiojin.unity-cli-br
 
 ## Critical: Connection Check
 
-After confirming the bridge package is installed, start the daemon with its output discarded, then verify the editor is reachable:
+After confirming the bridge package is installed, verify the editor is reachable:
 
 ```bash
-unity-cli unityd start >/dev/null 2>&1   # Windows: a call that auto-spawns unityd hangs the Bash tool until the daemon idles out
 unity-cli system ping
 ```
+
+If a call prints its result but the Bash tool never returns, the binary is an upstream build without the fork's daemon fix (#360) — see the `unity-cli-usage` skill.
 
 If ping fails, stop and report the issue — the Unity Editor may not be running or may still be importing the bridge package.
 
