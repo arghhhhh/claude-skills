@@ -2082,7 +2082,7 @@ show_post_install_hints() {
 # ─── Per-group user environment variables (manifest "user_env") ─────────────
 #
 # A group can declare {"user_env": {"NAME": "value"}} for variables its tool
-# should always see (e.g. unity-cli's UNITY_CLI_HOST). Applied on every install
+# should always see (e.g. unity-cli's UNITY_CLI_NO_AUTO_UPDATE). Applied on every install
 # and --update, so an upgrade re-asserts it. Never clobbers a value the user set
 # themselves: Windows only writes the User-scope var when it is unset, and the
 # bash/zsh block uses ${NAME:=value} so an earlier export wins.
@@ -3445,6 +3445,11 @@ main() {
       continue
     fi
 
+    # Step 2a: Per-group user environment variables (manifest "user_env").
+    # Before software install, so the tool's own install/smoke-test invocations
+    # already see them (e.g. unity-cli's UNITY_CLI_NO_AUTO_UPDATE).
+    install_user_env "$group"
+
     # Step 2: Install software
     if [ "$SKIP_SOFTWARE" = "false" ]; then
       install_software "$group"
@@ -3471,9 +3476,6 @@ main() {
 
     # Step 8: Per-group shell aliases (e.g. cs() for claude-code-sessions)
     install_group_shell_aliases "$group"
-
-    # Step 8b: Per-group user environment variables (manifest "user_env")
-    install_user_env "$group"
 
     # Step 8: Show post-install hints
     show_post_install_hints "$group"

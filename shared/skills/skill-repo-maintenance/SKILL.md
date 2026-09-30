@@ -1,5 +1,5 @@
 ---
-version: 1.14.0
+version: 1.14.1
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -162,7 +162,7 @@ Optional fields:
 - **`mcp_servers`**: Object mapping server names to `{ "command": "...", "args": [...] }`. The installer auto-generates `~/.mcporter/mcporter.json` and `~/.claude/.mcp.json` entries. Use `{{PLACEHOLDER}}` for machine-specific paths (resolved from `skills-config.sh`). Commands are auto-resolved to full paths on Windows.
 - **`post_install_hints`**: Array of strings printed after install. Use for optional setup steps the installer can't automate (e.g., API keys, browser auth, manual addon installation).
 - **`agent_renames`**: Object mapping source filenames to agent names when they differ.
-- **`user_env`**: Object of `{ "NAME": "value" }` the group's tool should always see (e.g. unity-cli's `UNITY_CLI_HOST`). Re-applied on every install and `--update`. Windows: User-scope env var, written only when unset. macOS/Linux: managed `${NAME:=value}` block in `~/.bashrc`/`~/.zshrc`. A user-set value is never clobbered; `--verify` warns when it differs.
+- **`user_env`**: Object of `{ "NAME": "value" }` the group's tool should always see (e.g. unity-cli's `UNITY_CLI_NO_AUTO_UPDATE`). Applied before software install on every install and `--update`. Windows: User-scope env var, written only when unset. macOS/Linux: managed `${NAME:=value}` block in `~/.bashrc`/`~/.zshrc`. A user-set value is never clobbered; `--verify` warns when it differs.
 
 ### 3. Create CLAUDE.md snippet
 
