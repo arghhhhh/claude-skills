@@ -5,7 +5,7 @@ allowed-tools: Bash(unity-cli:*), Read, Grep, Glob
 user-invocable: false
 metadata:
   author: akiojin
-  version: 0.5.0
+  version: 0.6.0
   category: foundation
   triggers:
     - bootstrap
@@ -79,6 +79,22 @@ echo "NO_AUTO_UPDATE=$UNITY_CLI_NO_AUTO_UPDATE  HOST=$UNITY_CLI_HOST"
 # set persistently (Windows) — a shell `export` doesn't reach the daemon
 powershell -c "[Environment]::SetEnvironmentVariable('UNITY_CLI_NO_AUTO_UPDATE','1','User')"
 ```
+
+### Start `unityd` yourself before the first call (Windows)
+
+❌ Any remote call auto-starts `unityd` when it isn't running (#270). On Windows the spawned
+daemon inherits the caller's stdout pipe handle, so **whatever is reading the output — the Bash
+tool, `| head`, `$(...)` — hangs until the daemon idles out** (minutes), even though Unity
+answered instantly. Only the call that spawns the daemon hangs; later calls are ~250 ms.
+
+✅ Start it with output discarded first, then call normally:
+
+```bash
+unity-cli unityd start >/dev/null 2>&1   # ~1s; NUL handles are what the daemon inherits
+unity-cli system ping
+```
+
+Re-run it after `unityd stop`, a reboot, or a long idle (`UNITY_CLI_UNITYD_IDLE_TIMEOUT`).
 
 ### Installing or upgrading the binary
 
