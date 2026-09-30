@@ -62,12 +62,10 @@ chmod 600 ~/.claude/.credentials.json
 #    re-clone".)
 bash /mnt/c/Users/<user>/.claude/.skill-repos/claude-skills/skill-groups/context-rotation/install/wire.sh
 
-# 4b. Set the context window. cr_window auto-detects from the `model` in
-#     ~/.claude/settings.json. A fresh WSL ~/.claude has NO model set, so a
-#     1M-context model is measured against the 200k default and rotates early
-#     (e.g. real 3% shows as ~14%). Set "model" to the SAME id + marker Claude
-#     Code uses — the [1m]/[Nk] suffix is what opts a model into its long window
-#     and is required for cr_window to pick 1M (a bare id stays 200k):
+# 4b. (Optional) Set the context window. cr_window auto-detects from the `model`
+#     in ~/.claude/settings.json and defaults to 1M when none is set, so this is
+#     only needed for a smaller-window model (Haiku, or an explicit [200k]). Set
+#     "model" to the SAME id + marker Claude Code uses:
 python3 - <<'PY'
 import json, os
 p = os.path.expanduser("~/.claude/settings.json")
@@ -97,11 +95,9 @@ distro and re-wires it too (see the group README, "Keeping WSL in sync
 automatically"). Verify with the `✓ context-rotation updated in WSL (...)` line;
 `--skip-wsl` opts out.
 
-Still per-environment (never propagated): `settings.json`, including `model`. A
-missing `model` there is what silently pins WSL to Claude Code's *default* model
-and — because `cr_window` reads that field — measures a 1M session against a 200k
-window, rotating at ~13% of real usage. Step 4b above is the fix; re-check it
-whenever you change models on Windows.
+Still per-environment (never propagated): `settings.json`, including `model`.
+`cr_window` reads that field; a missing `model` falls back to a 1M window. If you
+run a 200k-window model in WSL, set it per step 4b.
 
 ## Run it
 

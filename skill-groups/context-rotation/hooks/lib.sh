@@ -50,10 +50,9 @@ except Exception:
 
 # Effective context window (tokens).
 # Precedence: env CONTEXT_ROTATION_WINDOW > numeric CR_WINDOW config >
-# auto-detect from the selected model's context marker > 200000.
+# auto-detect from the selected model's context marker > 1000000.
 # A non-numeric CR_WINDOW (e.g. "auto", or unset) forces detection — this is the
-# shipped default so a 1M-context session isn't measured against a 200k window
-# (which would rotate at ~15-20% of real usage). Set a plain number to pin it.
+# shipped default. Set a plain number to pin it.
 cr_window() {
   local w="${CONTEXT_ROTATION_WINDOW:-${CR_WINDOW:-auto}}"
   case "$w" in
@@ -63,18 +62,17 @@ cr_window() {
 }
 
 # Map the currently-selected model to a token window. Two signals, in order:
-#   1. A [<n>m]/[<n>k] bracket suffix — Claude Code names its opt-in long-context
-#      variants this way (claude-opus-4-8[1m], claude-sonnet-5[1m]), and the marker
-#      is authoritative when present. The transcript's message.model field drops the
-#      suffix, so it can't be read there — hence reading the model config instead.
-#   2. No marker → look the base id up in ALWAYS_1M: models whose default (and only)
-#      context is 1M and therefore never carry a marker (Fable 5, Mythos). Opus/Sonnet
-#      without a marker stay 200k — in Claude Code the marker is what opts them into 1M.
+#   1. A [<n>m]/[<n>k] bracket suffix (claude-opus-4-8[1m], ...[200k]) — authoritative
+#      when present. The transcript's message.model field drops the suffix, so it
+#      can't be read there — hence reading the model config instead.
+#   2. No marker → look the base id up in SMALL_200K: models still capped at 200k
+#      (Haiku). Everything else — including no model set at all — is 1M, since
+#      Claude Code now gives most models a 1M window by default.
 # Model source, first hit wins: env ANTHROPIC_MODEL/CLAUDE_MODEL, then
 # settings.local.json / settings.json in $CLAUDE_PROJECT_DIR, then in ~/.claude.
-# Anything unrecognised → 200000.
+# Anything unrecognised (or python3 missing) → 1000000.
 cr_detect_window() {
-  python3 - <<'PY' 2>/dev/null || echo 200000
+  python3 - <<'PY' 2>/dev/null || echo 1000000
 import json,os,re
 def find_model():
     for ev in ("ANTHROPIC_MODEL","CLAUDE_MODEL"):
@@ -93,20 +91,19 @@ def find_model():
             except Exception:
                 pass
     return ""
-# Models whose default (and only) context window is 1M, so Claude Code emits no
-# [1m] marker for them. Matched as a prefix on the marker-stripped id. Includes
-# the short aliases ("fable", "mythos") — settings.json stores whatever the user
+# Models still capped at a 200k window. Matched as a prefix on the marker-stripped
+# id. Includes the short alias ("haiku") — settings.json stores whatever the user
 # typed at /model, which is usually the alias, not the full id.
-ALWAYS_1M=("claude-fable-5","claude-mythos-5","claude-mythos-preview","fable","mythos")
+SMALL_200K=("claude-haiku","haiku")
 m=find_model() or ""
-win=200000
+win=1000000
 mm=re.search(r'\[(\d+)\s*([mMkK])\]', m)
 if mm:
     n=int(mm.group(1)); win=n*1000000 if mm.group(2) in "mM" else n*1000
 else:
     base=m.split("[",1)[0].strip().lower()
-    if any(base.startswith(x) for x in ALWAYS_1M):
-        win=1000000
+    if any(base.startswith(x) for x in SMALL_200K):
+        win=200000
 print(win)
 PY
 }

@@ -158,13 +158,10 @@ Claude Code names its long-context variants with a bracket suffix —
 `CR_WINDOW=auto` (the default), `cr_window` reads that model id (env
 `ANTHROPIC_MODEL`/`CLAUDE_MODEL` first, then `$CLAUDE_PROJECT_DIR/.claude` and
 `~/.claude` `settings.local.json`/`settings.json`) and maps `[<n>m]`/`[<n>k]` →
-tokens (`[1m]` → 1,000,000). When there's no marker, the base id is checked
-against a list of always-1M models — Fable 5 and Mythos, whose default (and only)
-context is 1M and which therefore never carry a marker — otherwise it's 200,000.
-(Opus/Sonnet without a marker stay 200k: in Claude Code the `[1m]` marker is what
-opts them into 1M mode.) This fixes the old bug where a 1M session measured against
-a hardcoded 200k window rotated at ~15% of real usage. Pin a number in the config
-to override detection.
+tokens (`[1m]` → 1,000,000, `[200k]` → 200,000). When there's no marker — or no
+model is set at all — the window is **1,000,000**, since Claude Code now gives most
+models a 1M window. Only models on the `SMALL_200K` list (Haiku) fall back to
+200,000. Pin a number in the config to override detection.
 
 ## Requirements
 
