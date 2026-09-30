@@ -2,11 +2,11 @@
   "name": "unity-cli",
   "type": "vendored",
   "description": "Unity Editor automation via unity-cli \u00e2\u20ac\u201d scene inspection, GameObject editing, prefab workflows, C# navigation/editing, asset management, input system, testing, and UI automation.",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "source": {
     "repo": "arghhhhh/unity-cli",
-    "ref": "2c41cb81ee4593f8ee15b2c50bca4cff3165ac99",
-    "ref_name": "stable@2026-09-24",
+    "ref": "4a6c9a1f478000090767e8fc66a82287c4d80023",
+    "ref_name": "stable@2026-09-29 (upstream v0.15.2 + #242 daemon fix)",
     "paths": {
       "skills": ".claude-plugin/plugins/unity-cli/skills",
       "agents": ".claude-plugin/plugins/unity-cli/agents"
@@ -36,7 +36,7 @@
           "linux"
         ],
         "check": "cargo --version",
-        "command": "cargo install --git https://github.com/arghhhhh/unity-cli.git --branch vfx-graph-control-pr"
+        "command": "cargo install --git https://github.com/arghhhhh/unity-cli.git --rev 4a6c9a1f478000090767e8fc66a82287c4d80023"
       },
       {
         "name": "cargo",
@@ -44,7 +44,7 @@
           "windows"
         ],
         "check": "cargo --version",
-        "command": "MSVC_LINK=$(find '/c/Program Files/Microsoft Visual Studio' '/c/Program Files (x86)/Microsoft Visual Studio' -name 'link.exe' -path '*/Hostx64/x64/*' 2>/dev/null | head -1) && if [ -n \"$MSVC_LINK\" ]; then export PATH=\"$(dirname \"$MSVC_LINK\"):$PATH\" && cargo install --git https://github.com/arghhhhh/unity-cli.git --branch vfx-graph-control-pr; else echo 'MSVC Build Tools not found \u00e2\u20ac\u201d install via: winget install Microsoft.VisualStudio.2022.BuildTools --override \"--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"' && false; fi"
+        "command": "MSVC_LINK=$(find '/c/Program Files/Microsoft Visual Studio' '/c/Program Files (x86)/Microsoft Visual Studio' -name 'link.exe' -path '*/Hostx64/x64/*' 2>/dev/null | head -1) && if [ -n \"$MSVC_LINK\" ]; then export PATH=\"$(dirname \"$MSVC_LINK\"):$PATH\" && cargo install --git https://github.com/arghhhhh/unity-cli.git --rev 4a6c9a1f478000090767e8fc66a82287c4d80023; else echo 'MSVC Build Tools not found \u00e2\u20ac\u201d install via: winget install Microsoft.VisualStudio.2022.BuildTools --override \"--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"' && false; fi"
       },
       {
         "name": "binary",

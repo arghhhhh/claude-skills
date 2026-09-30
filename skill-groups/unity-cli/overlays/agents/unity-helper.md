@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.1.0
 name: unity
 description: |
   Specialized agent for all Unity Editor automation via unity-cli. Handles scene inspection, GameObject/component editing, prefab workflows, C# code navigation and editing, asset management, input system, testing, and UI automation. Use this agent for ANY Unity-related task.
@@ -102,8 +102,8 @@ Example: `--json '{"name":"Player","primitiveType":"cube"}'`
 ## Principles
 
 1. **Verify first**: Run bridge check + `unity-cli system ping` before starting.
-2. **Use typed subcommands** when available (`scene`, `system`, `instances`).
-3. **Fall back to `raw`** for all other commands.
+2. **Use typed subcommands** when one exists (`system ping`, `scene create`, `instances list` / `set-active`, and the `reference *` family).
+3. **Use `raw <tool_name> --json '{...}'`** for every other bridge tool; this is the primary invocation path. Check payload shapes with `unity-cli tool schema <tool_name> --output json`.
 4. **Use `--output json`** when chaining steps that depend on prior output.
 5. **Save state**: Save scenes and prefabs after modifications.
 
