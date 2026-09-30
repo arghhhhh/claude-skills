@@ -2079,6 +2079,109 @@ show_post_install_hints() {
   fi
 }
 
+# ─── Per-group user environment variables (manifest "user_env") ─────────────
+#
+# A group can declare {"user_env": {"NAME": "value"}} for variables its tool
+# should always see (e.g. unity-cli's UNITY_CLI_HOST). Applied on every install
+# and --update, so an upgrade re-asserts it. Never clobbers a value the user set
+# themselves: Windows only writes the User-scope var when it is unset, and the
+# bash/zsh block uses ${NAME:=value} so an earlier export wins.
+
+# Prints "NAME=value" per declared variable.
+json_user_env() {
+  node -e "
+    const m = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+    for (const [k, v] of Object.entries(m.user_env || {})) console.log(k + '=' + v);
+  " "$1" 2>/dev/null | tr -d '\r' || true
+}
+
+# Current User-scope value on Windows (empty when unset).
+windows_user_env_get() {
+  { powershell.exe -NoProfile -Command "[Environment]::GetEnvironmentVariable('$1','User')" 2>/dev/null || true; } | tr -d '\r'
+}
+
+install_user_env() {
+  local group="$1"
+  local pairs
+  pairs=$(json_user_env "$SKILL_GROUPS_DIR/$group/manifest.json")
+  [ -n "$pairs" ] || return 0
+
+  if [ "$PLATFORM" = "windows" ]; then
+    local name value current
+    while IFS='=' read -r name value; do
+      [ -n "$name" ] || continue
+      current=$(windows_user_env_get "$name")
+      if [ -z "$current" ]; then
+        powershell.exe -NoProfile -Command "[Environment]::SetEnvironmentVariable('$name','$value','User')" >/dev/null 2>&1 \
+          && ok "User env: $name=$value (new terminals and Claude Code sessions pick it up)" \
+          || warn "User env: could not set $name — run: setx $name $value"
+      elif [ "$current" = "$value" ]; then
+        ok "User env: $name=$value already set"
+      else
+        warn "User env: $name is '$current' (expected $value) — left as-is since you set it; unset it to use the default"
+      fi
+      export "$name=${current:-$value}"
+    done <<< "$pairs"
+    return 0
+  fi
+
+  local marker_begin="# >>> claude-skills user_env ($group) >>>"
+  local marker_end="# <<< claude-skills user_env ($group) <<<"
+  local block="$marker_begin"$'\n'"# Managed by claude-skills installer — do not edit between markers."
+  local name value
+  while IFS='=' read -r name value; do
+    [ -n "$name" ] || continue
+    block+=$'\n'": \"\${$name:=$value}\"; export $name"
+    export "$name=${!name:-$value}"
+  done <<< "$pairs"
+  block+=$'\n'"$marker_end"
+
+  local targets=("$HOME/.bashrc")
+  if [ "$PLATFORM" = "macos" ] || [ -f "$HOME/.zshrc" ]; then
+    targets+=("$HOME/.zshrc")
+  fi
+  local rc tmp
+  for rc in "${targets[@]}"; do
+    [ -f "$rc" ] || touch "$rc"
+    if grep -qF "$marker_begin" "$rc"; then
+      tmp=$(mktemp)
+      awk -v begin="$marker_begin" -v end="$marker_end" '
+        $0 == begin { skipping=1; next }
+        skipping && $0 == end { skipping=0; next }
+        !skipping { print }
+      ' "$rc" > "$tmp" && mv "$tmp" "$rc"
+    fi
+    if [ -s "$rc" ] && [ "$(tail -c1 "$rc" 2>/dev/null | od -An -c | tr -d ' ')" != "\n" ]; then
+      printf '\n' >> "$rc"
+    fi
+    printf '%s\n' "$block" >> "$rc"
+    ok "User env: $group variables written to $rc"
+  done
+}
+
+verify_user_env() {
+  local group="$1"
+  local pairs
+  pairs=$(json_user_env "$SKILL_GROUPS_DIR/$group/manifest.json")
+  [ -n "$pairs" ] || return 0
+  local name value current
+  while IFS='=' read -r name value; do
+    [ -n "$name" ] || continue
+    if [ "$PLATFORM" = "windows" ]; then
+      current=$(windows_user_env_get "$name")
+    else
+      current=$( { grep -hF ": \"\${$name:=" "$HOME/.bashrc" "$HOME/.zshrc" 2>/dev/null || true; } | head -1 | sed -n "s/.*:=\([^}]*\)}.*/\1/p")
+    fi
+    if [ "$current" = "$value" ]; then
+      ok "User env: $name=$value"
+    elif [ -n "$current" ]; then
+      warn "User env: $name is '$current' (default $value is overridden)"
+    else
+      fail "User env: $name not set — re-run installer"
+    fi
+  done <<< "$pairs"
+}
+
 # ─── Verify installation (--verify) ─────────────────────────────────────────
 
 verify_group() {
@@ -2327,6 +2430,8 @@ verify_group() {
       fi
     done
   fi
+
+  verify_user_env "$group"
 }
 
 # ─── Integration test (--test-integration) ──────────────────────────────────
@@ -3243,6 +3348,7 @@ main() {
 
     for group in "${update_targets[@]}"; do
       update_group "$group"
+      install_user_env "$group"
     done
 
     # Prune managed symlinks no longer in any manifest
@@ -3365,6 +3471,9 @@ main() {
 
     # Step 8: Per-group shell aliases (e.g. cs() for claude-code-sessions)
     install_group_shell_aliases "$group"
+
+    # Step 8b: Per-group user environment variables (manifest "user_env")
+    install_user_env "$group"
 
     # Step 8: Show post-install hints
     show_post_install_hints "$group"

@@ -1,8 +1,8 @@
 {
   "name": "unity-cli",
   "type": "vendored",
-  "description": "Unity Editor automation via unity-cli \u00e2\u20ac\u201d scene inspection, GameObject editing, prefab workflows, C# navigation/editing, asset management, input system, testing, and UI automation.",
-  "version": "0.8.0",
+  "description": "Unity Editor automation via unity-cli \u2014 scene inspection, GameObject editing, prefab workflows, C# navigation/editing, asset management, input system, testing, and UI automation.",
+  "version": "0.9.0",
   "source": {
     "repo": "arghhhhh/unity-cli",
     "ref": "4a6c9a1f478000090767e8fc66a82287c4d80023",
@@ -44,7 +44,7 @@
           "windows"
         ],
         "check": "cargo --version",
-        "command": "MSVC_LINK=$(find '/c/Program Files/Microsoft Visual Studio' '/c/Program Files (x86)/Microsoft Visual Studio' -name 'link.exe' -path '*/Hostx64/x64/*' 2>/dev/null | head -1) && if [ -n \"$MSVC_LINK\" ]; then export PATH=\"$(dirname \"$MSVC_LINK\"):$PATH\" && cargo install --git https://github.com/arghhhhh/unity-cli.git --rev 4a6c9a1f478000090767e8fc66a82287c4d80023; else echo 'MSVC Build Tools not found \u00e2\u20ac\u201d install via: winget install Microsoft.VisualStudio.2022.BuildTools --override \"--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"' && false; fi"
+        "command": "MSVC_LINK=$(find '/c/Program Files/Microsoft Visual Studio' '/c/Program Files (x86)/Microsoft Visual Studio' -name 'link.exe' -path '*/Hostx64/x64/*' 2>/dev/null | head -1) && if [ -n \"$MSVC_LINK\" ]; then export PATH=\"$(dirname \"$MSVC_LINK\"):$PATH\" && cargo install --git https://github.com/arghhhhh/unity-cli.git --rev 4a6c9a1f478000090767e8fc66a82287c4d80023; else echo 'MSVC Build Tools not found \u2014 install via: winget install Microsoft.VisualStudio.2022.BuildTools --override \"--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"' && false; fi"
       },
       {
         "name": "binary",
@@ -60,6 +60,10 @@
   "test": {
     "command": "unity-cli --version",
     "expect_success": true
+  },
+  "_user_env_note": "The Unity bridge binds IPv4 (0.0.0.0 by default, 127.0.0.1 for localhost). The CLI default localhost resolves to ::1 first on Windows, costing ~2s per fresh connection (every eval_csharp, the first call after a domain reload or daemon start, instances list). Pinning the IPv4 literal avoids it. Only set when unset, so a Docker/WSL host override survives.",
+  "user_env": {
+    "UNITY_CLI_HOST": "127.0.0.1"
   },
   "integration_test": {
     "command": "unity-cli system ping",
