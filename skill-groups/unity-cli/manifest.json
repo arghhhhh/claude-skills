@@ -2,11 +2,11 @@
   "name": "unity-cli",
   "type": "vendored",
   "description": "Unity Editor automation via unity-cli \u2014 scene inspection, GameObject editing, prefab workflows, C# navigation/editing, asset management, input system, testing, and UI automation.",
-  "version": "0.13.1",
+  "version": "0.14.0",
   "source": {
     "repo": "arghhhhh/unity-cli",
-    "ref": "d53ea1dbcbfaff82e45dbb5090acbe4fa287832c",
-    "ref_name": "stable@2026-09-30 (upstream v0.16.0 + #242 daemon fix + #360 daemon pipe leak + #408 optional Addressables (bridge only); #357 loopback host is in upstream since v0.15.3)",
+    "ref": "7f45d7aec2a866abda88ba3768bf4057c5f23053",
+    "ref_name": "stable@2026-10-02 (= upstream v0.18.1, no fork-only commits; #242 daemon fix, #360 daemon pipe leak and #408 optional Addressables all shipped in upstream v0.18.0)",
     "paths": {
       "skills": ".claude-plugin/plugins/unity-cli/skills",
       "agents": ".claude-plugin/plugins/unity-cli/agents"
@@ -27,7 +27,7 @@
     }
   ],
   "install": {
-    "check": "cargo install --list 2>/dev/null | grep -qF 'rev=d53ea1dbcbfaff82e45dbb5090acbe4fa287832c'",
+    "check": "cargo install --list 2>/dev/null | grep -qF 'rev=7f45d7aec2a866abda88ba3768bf4057c5f23053'",
     "methods": [
       {
         "name": "cargo",
@@ -36,7 +36,7 @@
           "linux"
         ],
         "check": "cargo --version",
-        "command": "cargo install --git https://github.com/arghhhhh/unity-cli.git --force --rev d53ea1dbcbfaff82e45dbb5090acbe4fa287832c && bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/unity-cli/install/sync-managed.sh\""
+        "command": "cargo install --git https://github.com/arghhhhh/unity-cli.git --force --rev 7f45d7aec2a866abda88ba3768bf4057c5f23053 && bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/unity-cli/install/sync-managed.sh\""
       },
       {
         "name": "cargo",
@@ -44,7 +44,7 @@
           "windows"
         ],
         "check": "cargo --version",
-        "command": "MSVC_LINK=$(find '/c/Program Files/Microsoft Visual Studio' '/c/Program Files (x86)/Microsoft Visual Studio' -name 'link.exe' -path '*/Hostx64/x64/*' 2>/dev/null | head -1) && if [ -n \"$MSVC_LINK\" ]; then export PATH=\"$(dirname \"$MSVC_LINK\"):$PATH\" && cargo install --git https://github.com/arghhhhh/unity-cli.git --force --rev d53ea1dbcbfaff82e45dbb5090acbe4fa287832c && bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/unity-cli/install/sync-managed.sh\"; else echo 'MSVC Build Tools not found \u2014 install via: winget install Microsoft.VisualStudio.2022.BuildTools --override \"--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"' && false; fi"
+        "command": "MSVC_LINK=$(find '/c/Program Files/Microsoft Visual Studio' '/c/Program Files (x86)/Microsoft Visual Studio' -name 'link.exe' -path '*/Hostx64/x64/*' 2>/dev/null | head -1) && if [ -n \"$MSVC_LINK\" ]; then export PATH=\"$(dirname \"$MSVC_LINK\"):$PATH\" && git config --global core.longpaths true && cargo install --git https://github.com/arghhhhh/unity-cli.git --force --rev 7f45d7aec2a866abda88ba3768bf4057c5f23053 && bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/unity-cli/install/sync-managed.sh\"; else echo 'MSVC Build Tools not found \u2014 install via: winget install Microsoft.VisualStudio.2022.BuildTools --override \"--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"' && false; fi"
       },
       {
         "name": "binary",
@@ -56,13 +56,14 @@
         "url": "https://github.com/arghhhhh/unity-cli/releases"
       }
     ],
-    "_check_note": "Keyed to the pinned SHA, not 'unity-cli --version': the version string is identical across fork pins (and matches upstream releases), so a version check skipped every upgrade."
+    "_longpaths_note": "Windows: upstream v0.18 ships paths over 260 chars (docs/verification/issue-381/...), so cargo's git checkout fails with 'path too long' unless git core.longpaths is true. The Windows command sets it globally before building.",
+    "_check_note": "Keyed to the pinned SHA, not 'unity-cli --version': the version string can be identical across pins (and matches upstream releases), so a version check skipped every upgrade."
   },
   "test": {
     "command": "unity-cli --version",
     "expect_success": true
   },
-  "_user_env_note": "UNITY_CLI_NO_AUTO_UPDATE=1 stops the managed binary (~/.unity/tools/unity-cli/<rid>/, what unityd runs) from auto-updating to an upstream release, which would silently drop the fork's unreleased fixes (#242, #360). Do NOT add UNITY_CLI_HOST here: when it is set, resolve_endpoint ignores 'instances set-active' entirely. The fork build defaults to 127.0.0.1 instead.",
+  "_user_env_note": "UNITY_CLI_NO_AUTO_UPDATE=1 stops the managed binary (~/.unity/tools/unity-cli/<rid>/, what unityd runs) from auto-updating to an upstream release, which would move it off the pinned SHA and out of sync with the cargo build and the bridge version pinned in Unity projects (the pin currently equals upstream v0.18.1, so no fixes are lost, only the pin). Do NOT add UNITY_CLI_HOST here: when it is set, resolve_endpoint ignores 'instances set-active' entirely. The fork build defaults to 127.0.0.1 instead.",
   "user_env": {
     "UNITY_CLI_NO_AUTO_UPDATE": "1"
   },
@@ -72,8 +73,10 @@
     "description": "Unity Editor must be running with com.akiojin.unity-cli-bridge package installed"
   },
   "skills": [
+    "unity-2d-sprite-tilemap",
     "unity-addressables",
     "unity-asset-management",
+    "unity-audio-setup",
     "unity-cli-usage",
     "unity-csharp-edit",
     "unity-csharp-navigate",
@@ -82,11 +85,16 @@
     "unity-editor-tools",
     "unity-gameobject-edit",
     "unity-input-system",
+    "unity-localization",
+    "unity-package-management",
     "unity-playmode-testing",
     "unity-prefab-workflow",
+    "unity-project-bootstrap",
     "unity-scene-create",
     "unity-scene-inspect",
     "unity-ui-automation",
+    "unity-ui-toolkit-build",
+    "unity-urp-setup",
     "unity-vfx-graph"
   ],
   "agents": [

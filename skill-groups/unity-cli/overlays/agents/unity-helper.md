@@ -1,5 +1,5 @@
 ---
-version: 1.3.0
+version: 1.3.1
 name: unity
 description: |
   Specialized agent for all Unity Editor automation via unity-cli. Handles scene inspection, GameObject/component editing, prefab workflows, C# code navigation and editing, asset management, input system, testing, and UI automation. Use this agent for ANY Unity-related task.
@@ -45,7 +45,7 @@ After confirming the bridge package is installed, verify the editor is reachable
 unity-cli system ping
 ```
 
-If a call prints its result but the Bash tool never returns, the binary is an upstream build without the fork's daemon fix (#360) — see the `unity-cli-usage` skill.
+If a call prints its result but the Bash tool never returns, one of the two binaries is a build older than v0.18.0 (before the #360 daemon fix) — see the `unity-cli-usage` skill.
 
 If ping fails, stop and report the issue — the Unity Editor may not be running or may still be importing the bridge package.
 
