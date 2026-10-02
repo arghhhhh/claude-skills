@@ -1,7 +1,7 @@
 ---
-version: 1.14.1
+version: 1.15.0
 name: skill-repo-maintenance
-description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
+description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when updating/pulling claude-skills, editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
 
 # Skill Repo Maintenance
@@ -11,6 +11,29 @@ This skill governs how to keep the `claude-skills` repo (`arghhhhh/claude-skills
 ## Repo Location
 
 The repo lives at `~/.claude/.skill-repos/claude-skills/`. All skill edits should happen in this directory, not directly in `~/.claude/skills/` (those are symlinks).
+
+## Updating claude-skills ("update claude-skills")
+
+When the user asks to update claude-skills (or "update my skills", "pull the latest skills"), the goal is: **refresh EVERYTHING claude-skills already installed on this machine, but ASK before adding anything that wasn't installed before.** Not just the group the user happened to mention — "update claude-skills and make sure unity-cli is updated" still means update all installed groups. Do not stop at `git pull`: hooks, commands and some tool files are COPIED out of the repo at install time, so a pull alone leaves them stale.
+
+1. **Pull.** `git status --short` first; if there are uncommitted changes, surface them to the user instead of pulling. Then `git pull origin main`.
+2. **Preview what's new** (read-only):
+   ```bash
+   cd ~/.claude/.skill-repos/claude-skills && bash install.sh --preview-update | grep -E '^(NEW|UPDATE)'
+   ```
+   - `NEW-GROUP <g>` — group in the repo that was never installed or offered here
+   - `NEW-ITEM <g> <skill|agent|command> <name>` — newly added to a group that IS installed (`--update` would link it)
+   - `NEW-ENV <g> <NAME>` — env var `--update` would set
+   - `UPDATE <g>` — installed, nothing new; safe to refresh
+3. **If any `NEW-*` lines appear, ask the user** (AskUserQuestion, multiSelect) which to accept, with each item's description from its manifest/SKILL.md. Never install new things without a yes. `--update` can't skip one item inside a group, so declining a `NEW-ITEM`/`NEW-ENV` means holding back that group's whole update this time — say so in the question.
+4. **Update everything installed** (minus any held-back groups):
+   ```bash
+   bash install.sh --update --yes                         # nothing held back
+   bash install.sh --update --yes --skills g1,g2,...      # every UPDATE/accepted group, excluding held-back ones
+   ```
+   `--yes` makes it non-interactive (agent shells have no stdin); new groups are then listed but not installed, and recorded in the known-groups ledger so they aren't re-offered. That's fine because the user already answered in step 3. Do NOT add `--sync` (that copies local edits back INTO the repo — a separate task) or `--skip-software` (it skips the rebuilds for `update_policy: "latest"` groups).
+5. **Install accepted new groups:** `bash install.sh --skills <g1,g2> --yes`.
+6. **Verify and report:** `bash install.sh --status` should show no `update available` / `not installed` for installed groups except ones the user held back. Tell the user what was refreshed, what's new, what was held back, and to restart Claude Code (hooks/settings load at startup). WSL: groups with `wsl_propagate` refresh the distro automatically; a separate WSL clone (`/home/<user>/.claude/.skill-repos/claude-skills`) needs its own pull + `--update` run inside WSL.
 
 ## Group Types
 
@@ -32,11 +55,7 @@ Today: `unity-cli` and `officecli` are vendored. `claude-notifications` is tool-
 cd ~/.claude/.skill-repos/claude-skills && git pull origin main
 ```
 
-If the pull has changes, re-run the installer to update local symlinks:
-
-```bash
-cd ~/.claude/.skill-repos/claude-skills && bash install.sh --skills <affected-group> --skip-software
-```
+If the pull brought changes, apply them to this machine with the full procedure in **Updating claude-skills** above (preview → ask about anything new → `install.sh --update`). Don't refresh only the group you're about to edit — that leaves every other changed group (copied hooks included) stale.
 
 For **vendored** groups, never edit upstream files in `~/.claude/.skill-repos/<owner>-<repo>/` — those are read-only mirrors. Customize via overlays (see below).
 
@@ -304,6 +323,8 @@ cd ~/.claude/.skill-repos/claude-skills
 git pull origin main
 bash install.sh --update --sync
 ```
+
+(An agent doing this follows **Updating claude-skills** above — preview first, ask before anything new.)
 
 **`--update` only refreshes groups already installed on that machine** — it never silently installs groups the user didn't pick. If the pull brought in groups that machine doesn't have, they're listed and the user is prompted whether to install them (skipped with a notice under `-y`). A ledger at `~/.claude/.skills-meta/known-groups` records what's already been offered, so a declined group isn't re-prompted on every sync. Net effect: syncing a Mac won't drag in a Windows-only group unless the user says yes.
 

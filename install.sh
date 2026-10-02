@@ -2853,6 +2853,62 @@ sync_skill_to_repo() {
   info "Copied to repo. Run 'cd $(dirname "$repo_path") && git add -A && git commit && git push' to share."
 }
 
+# ─── Preview-update mode (--preview-update) ─────────────────────────────────
+#
+# Read-only dry run of what `--update` would ADD on this machine (run it after
+# pulling). `--update` refreshes installed groups, but in doing so it also links
+# any skill/agent/command a pull newly added to an installed group, and writes
+# newly-declared user_env vars. Agents use this to ask the user before anything
+# that wasn't previously installed lands. Machine-readable lines:
+#   NEW-ITEM <group> <skill|agent|command> <name>   new inside an installed group
+#   NEW-ENV  <group> <NAME>                         user_env var not yet set
+#   NEW-GROUP <group>                               in repo, never installed or offered
+#   UPDATE   <group>                                installed, nothing new to add
+# Never-installed groups already in the known-groups ledger (i.e. previously
+# offered and declined) are not reported.
+preview_update() {
+  local group manifest gtype has_new item name value current
+  local ledger_seeded=true
+  [ -f "$KNOWN_GROUPS_FILE" ] || ledger_seeded=false
+
+  for group in "${SELECTED_GROUPS[@]}"; do
+    [ -f "$SKILL_GROUPS_DIR/$group/manifest.json" ] || continue
+    manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
+    gtype=$(group_type "$group")
+
+    if ! group_is_installed "$group"; then
+      if [ "$ledger_seeded" = true ] && ! grep -qxF "$group" "$KNOWN_GROUPS_FILE" 2>/dev/null; then
+        echo "NEW-GROUP $group"
+      fi
+      continue
+    fi
+
+    has_new=false
+    if [ "$gtype" != "tool-only" ]; then
+      for item in $(json_array "$manifest" "skills"); do
+        [ -n "$(resolve_skill_path "$SKILLS_DIR/$item")" ] || { echo "NEW-ITEM $group skill $item"; has_new=true; }
+      done
+      for item in $(json_array "$manifest" "agents"); do
+        [ -e "$AGENTS_DIR/$item.md" ] || { echo "NEW-ITEM $group agent $item"; has_new=true; }
+      done
+      for item in $(json_array "$manifest" "commands"); do
+        [ -e "$COMMANDS_DIR/$item.md" ] || { echo "NEW-ITEM $group command $item"; has_new=true; }
+      done
+    fi
+    while IFS='=' read -r name value; do
+      [ -n "$name" ] || continue
+      if [ "$PLATFORM" = "windows" ]; then
+        current=$(windows_user_env_get "$name")
+      else
+        current="${!name:-}"
+      fi
+      [ -n "$current" ] || { echo "NEW-ENV $group $name"; has_new=true; }
+    done <<< "$(json_user_env "$SKILL_GROUPS_DIR/$group/manifest.json")"
+
+    [ "$has_new" = true ] || echo "UPDATE $group"
+  done
+}
+
 # ─── Status mode (--status) ─────────────────────────────────────────────────
 
 show_status() {
@@ -3168,6 +3224,10 @@ main() {
         MODE="status"
         shift
         ;;
+      --preview-update)
+        MODE="preview-update"
+        shift
+        ;;
       --vendor-status)
         MODE="vendor-status"
         shift
@@ -3198,6 +3258,7 @@ main() {
         echo "  --test-integration     Test live connections (Unity running, ComfyUI server, etc.)"
         echo "  --update               Update only ALREADY-INSTALLED groups; prompts before adding new ones"
         echo "  --update --sync        Also sync newer local skills back to repo"
+        echo "  --preview-update       Dry run: list what --update would newly add (run after pulling)"
         echo "  --status               Show version table for all skills"
         echo "  --vendor-status        Show pinned vs upstream SHA for vendored groups"
         echo "  --bump-vendor GROUP    Bump pinned ref of a vendored group to upstream HEAD"
@@ -3266,6 +3327,12 @@ main() {
   # ── Status mode ──
   if [ "$MODE" = "status" ]; then
     show_status
+    exit 0
+  fi
+
+  # ── Preview-update mode ──
+  if [ "$MODE" = "preview-update" ]; then
+    preview_update
     exit 0
   fi
 
