@@ -2017,23 +2017,18 @@ install_shared_skills() {
     fi
   done
 
-  # Append shared claude-md snippets
+  install_shared_claude_md
+}
+
+# Shared (non-group) CLAUDE.md snippets. Routed through install_claude_md_snippet
+# so they get the same append-or-refresh treatment as curated group snippets —
+# previously they were appended once and never refreshed, so edits to them never
+# reached existing machines. Called from both install and --update.
+install_shared_claude_md() {
+  local snippet
   for snippet in mcporter skill-repo-maintenance; do
-    local snippet_file="$SHARED_DIR/claude-md/$snippet.md"
-    [ -f "$snippet_file" ] || continue
-    if [ ! -f "$CLAUDE_MD" ]; then
-      echo "# Global Rules" > "$CLAUDE_MD"
-      echo "" >> "$CLAUDE_MD"
-    fi
-    local marker
-    marker=$(grep -m1 '^## ' "$snippet_file" 2>/dev/null || head -1 "$snippet_file")
-    if ! grep -qF "$marker" "$CLAUDE_MD" 2>/dev/null; then
-      echo "" >> "$CLAUDE_MD"
-      echo "---" >> "$CLAUDE_MD"
-      echo "" >> "$CLAUDE_MD"
-      cat "$snippet_file" >> "$CLAUDE_MD"
-      ok "CLAUDE.md: appended $snippet snippet"
-    fi
+    [ -f "$SHARED_DIR/claude-md/$snippet.md" ] || continue
+    install_claude_md_snippet "$snippet"
   done
 }
 
@@ -3417,6 +3412,8 @@ main() {
       update_group "$group"
       install_user_env "$group"
     done
+
+    install_shared_claude_md
 
     # Prune managed symlinks no longer in any manifest
     sweep_orphans
