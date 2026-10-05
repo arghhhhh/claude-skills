@@ -1,5 +1,5 @@
 ---
-version: 1.1.0
+version: 1.1.1
 name: capcut-cli
 description: Programmatically edit CapCut / JianYing video drafts from the terminal via the `capcut` CLI. Use to inspect projects, build drafts from specs, add video/audio/text, apply transitions/masks/effects, import/export/translate subtitles, transcribe captions, and cut long-form video — all by reading and writing the local draft store directly (JSON in, JSON out, no server).
 ---
@@ -50,7 +50,7 @@ Independent, unofficial CLI ([renezander030/capcut-cli](https://github.com/renez
 |---|---|
 | `init` | `capcut init <name> [--template <dir>] [--drafts <dir>]` — new empty draft |
 | `quickstart` | `capcut quickstart <name> [--video <f>] [--audio <f>] [--srt <f>] [--drafts <dir>]` — create + add one input + lint |
-| `compile` | `capcut compile <spec.json> [--out <draftdir> \| --into <project>] [--data <rows.jsonl\|->]` — build a draft from a declarative JSON spec (inverse of `describe`); `--data` builds one draft per JSONL row, substituting `{{key}}` placeholders |
+| `compile` | `capcut compile <spec.json> [--out <draftdir> \| --into <project>] [--data <rows.jsonl\|->] [--check \| --plan]` — build a draft from a declarative JSON spec (inverse of `describe`); `--data` builds one draft per JSONL row, substituting `{{key}}` placeholders |
 | `init` / `quickstart` canvas | both accept `--ratio 16:9\|9:16\|1:1\|4:3\|3:4` or exact `--width <px> --height <px>` |
 
 ### Add media / elements (mutates)
