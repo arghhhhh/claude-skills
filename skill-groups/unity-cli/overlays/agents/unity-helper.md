@@ -1,5 +1,5 @@
 ---
-version: 1.3.2
+version: 1.3.3
 name: unity
 description: |
   Specialized agent for all Unity Editor automation via unity-cli. Handles scene inspection, GameObject/component editing, prefab workflows, C# code navigation and editing, asset management, input system, testing, and UI automation. Use this agent for ANY Unity-related task.
@@ -30,12 +30,11 @@ unity-cli communicates with the Unity Editor via the **`com.akiojin.unity-cli-br
 
 **Before any work**, check if the bridge is installed by reading the project's `Packages/manifest.json` and looking for `com.akiojin.unity-cli-bridge`. If it's missing:
 
-1. Tell the user the bridge package is not installed in this project
-2. Offer to add it by inserting this line into the `dependencies` block of `Packages/manifest.json`:
-   ```json
-   "com.akiojin.unity-cli-bridge": "https://github.com/akiojin/unity-cli.git?path=UnityCliBridge/Packages/unity-cli-bridge"
-   ```
-3. After adding, the user must switch to Unity and wait for the package to import before unity-cli will work
+1. Tell the user the bridge package is not installed in this project, and that setup edits `Packages/manifest.json` (adds the OpenUPM scoped registry and the bridge pinned to the CLI's version).
+2. With their OK, run `unity-cli --output json setup --launch-editor` from the project root (or pass `--project-path`). Don't add the bridge as a git URL; that tracks upstream HEAD instead of the CLI's version.
+3. The first import can take several minutes; rerun `setup` to keep waiting.
+
+If `unity-cli` itself is missing, install it with `bash ~/.claude/.skill-repos/claude-skills/install.sh --skills unity-cli`, never upstream's install script.
 
 ## Connection Check
 

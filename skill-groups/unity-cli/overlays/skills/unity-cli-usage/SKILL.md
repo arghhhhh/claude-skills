@@ -44,10 +44,7 @@ Bootstrap the unity-cli toolchain so other Unity skills can run reliably. This i
 ## Preferred Flow
 
 1. **Bootstrap once per project** (skip when `unity-cli system ping` already succeeds):
-   1. If `command -v unity-cli` fails, install the release binary without asking for a manual step:
-      - macOS / Linux: `curl -fsSL https://raw.githubusercontent.com/akiojin/unity-cli/main/scripts/install.sh | sh`, then use `~/.local/bin/unity-cli` if `~/.local/bin` is not on `PATH`.
-      - Windows: run `scripts/install.ps1` the same way when it is published; otherwise download the release asset from GitHub Releases.
-      - Only inside a unity-cli source checkout, `cargo run -- <args>` is an alternative for development.
+   1. If `command -v unity-cli` fails, install it through claude-skills: `bash ~/.claude/.skill-repos/claude-skills/install.sh --skills unity-cli`. It builds the pinned SHA and sets `UNITY_CLI_NO_AUTO_UPDATE` (see Pinned Install below). Don't use upstream's `scripts/install.sh` / `install.ps1` or a release download; they bypass the pin.
    2. Tell the user that setup edits `Packages/manifest.json` (adds the OpenUPM scoped registry and `com.akiojin.unity-cli-bridge` pinned to the CLI version) and, for legacy-input-only projects, sets `activeInputHandler` to Both in `ProjectSettings/ProjectSettings.asset`; then run `unity-cli --output json setup --launch-editor` from the Unity project root (or pass `--project-path`).
    3. Read the JSON: `ok: true` means the Editor answered `ping` for this project. On `ok: false`, act on `editor.hint` (first import can take several minutes; rerun `setup` to keep waiting). Report any `warnings` — a `versionCheck.status` of `mismatch` means run `unity-cli bridge upgrade`.
 2. Verify reachability with `unity-cli system ping`; its `versionCheck` reports CLI ↔ bridge version drift. If it fails, run `unity-cli doctor --output json` and follow the `diagnosis` code (`SAFE_MODE`, `BRIDGE_NOT_INSTALLED`, `PORT_IN_USE`, `EDITOR_NOT_RUNNING`, `SANDBOX_BLOCKED`) before retrying; see the Connection Recovery section of the runtime checklist. On `BRIDGE_NOT_INSTALLED`, run `unity-cli setup`.
@@ -74,10 +71,7 @@ For example, a failed ping returns `{"success":false,"command":"system ping","da
 `run_tests` normally returns a running job with exit 0. Poll `get_test_status` until `data.status` is `completed`; that final call returns exit 8 for failures and 0 for all passed. Response timeout (`TIMEOUT`, exit 6) may follow an executed mutation: inspect its job/request ID before resending.
 
 ```bash
-if ! command -v unity-cli >/dev/null 2>&1; then
-  curl -fsSL https://raw.githubusercontent.com/akiojin/unity-cli/main/scripts/install.sh | sh
-  export PATH="$HOME/.local/bin:$PATH"
-fi
+command -v unity-cli >/dev/null 2>&1 || bash ~/.claude/.skill-repos/claude-skills/install.sh --skills unity-cli
 unity-cli --version
 unity-cli --output json setup --launch-editor   # bridge install + Editor connection check
 unity-cli bridge status                        # declared / resolved bridge version
@@ -108,10 +102,9 @@ powershell -c "[Environment]::SetEnvironmentVariable('UNITY_CLI_NO_AUTO_UPDATE',
 
 ### Install the CLI through claude-skills, not upstream's bootstrap
 
-Upstream's bootstrap (`scripts/install.sh`, `install.ps1`, `unity-cli setup`) downloads the latest
-upstream release binary. That is functionally fine from v0.18.0 on, but it bypasses the pin and
-leaves the two binaries below out of sync. Install and upgrade the CLI only through the
-claude-skills installer (below). `unity-cli setup` / `bridge install|upgrade|status` are fine for
+Upstream's bootstrap (`scripts/install.sh`, `install.ps1`) downloads the latest upstream release
+binary, which bypasses the pin and leaves the two binaries below out of sync. Install and upgrade
+the CLI only through the claude-skills installer (below). `unity-cli setup` / `bridge install|upgrade|status` are fine for
 the **bridge package** in a Unity project.
 
 ### A call that answers but never returns = build older than v0.18.0 (Windows)
