@@ -1,5 +1,5 @@
 ---
-version: 1.1.1
+version: 1.1.2
 name: playwright-cli
 description: Automate browser interactions, test web pages and work with Playwright tests.
 allowed-tools: Bash(playwright-cli:*) Bash(npx:*) Bash(npm:*)
@@ -294,10 +294,10 @@ If global `playwright-cli` command is not available, try a local version via `np
 npx --no-install playwright-cli --version
 ```
 
-When local version is available, use `npx playwright-cli` in all commands. Otherwise, install `playwright-cli` as a global command:
+When local version is available, use `npx playwright-cli` in all commands. Otherwise, install it through claude-skills, which pins the version:
 
 ```bash
-npm install -g @playwright/cli@latest
+bash ~/.claude/.skill-repos/claude-skills/install.sh --skills playwright-cli
 ```
 
 ## Example: Form submission
