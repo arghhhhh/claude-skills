@@ -1,7 +1,7 @@
 {
   "name": "obsidian-cli",
   "description": "Obsidian CLI control — search/read/create notes, daily notes, tags, tasks, run commands & JavaScript, reload plugins, all against a running Obsidian instance.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "prerequisites": [
     {
       "name": "obsidian-app",

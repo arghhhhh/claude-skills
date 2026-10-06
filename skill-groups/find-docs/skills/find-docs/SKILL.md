@@ -1,5 +1,5 @@
 ---
-version: 1.0.1
+version: 1.0.2
 name: find-docs
 description: Retrieves and queries up-to-date documentation and code examples from Context7 for any programming library or framework. Use when writing code that depends on external packages, verifying API signatures, looking up usage patterns, generating code with specific libraries, or when training data may be outdated. Covers setup questions, migration guides, and version-specific docs.
 ---
@@ -8,7 +8,7 @@ description: Retrieves and queries up-to-date documentation and code examples fr
 
 Retrieve current documentation and code examples for any library using the Context7 CLI.
 
-**IMPORTANT: Always use `npx ctx7@latest` — never call `ctx7` directly.** The global CLI may not be installed and will fail with `command not found`. `npx ctx7@latest` works without any prior installation.
+Call the CLI as `npx ctx7@latest`, not bare `ctx7`: the global CLI may not be installed and fails with `command not found`, while `npx ctx7@latest` works without prior installation.
 
 ## Workflow
 
@@ -22,9 +22,9 @@ npx ctx7@latest library <name> <query>
 MSYS_NO_PATHCONV=1 npx ctx7@latest docs <libraryId> <query>
 ```
 
-You MUST call `ctx7 library` first to obtain a valid library ID UNLESS the user explicitly provides a library ID in the format `/org/project` or `/org/project/version`.
+Call `ctx7 library` first to get a valid library ID, unless the user gives one in the format `/org/project` or `/org/project/version`.
 
-IMPORTANT: Do not run these commands more than 3 times per question. If you cannot find what you need after 3 attempts, use the best result you have.
+Stop after 3 lookups per question and use the best result you have — the free tier is quota-limited (see Error Handling).
 
 ## Step 1: Resolve a Library
 
@@ -50,18 +50,9 @@ Each result includes:
 - **Benchmark Score** — Quality indicator (100 is the highest score)
 - **Versions** — List of versions if available. Use one of those versions if the user provides a version in their query. The format is `/org/project/version`.
 
-### Selection process
+### Selection
 
-1. Analyze the query to understand what library/package the user is looking for
-2. Select the most relevant match based on:
-   - Name similarity to the query (exact matches prioritized)
-   - Description relevance to the query's intent
-   - Documentation coverage (prioritize libraries with higher Code Snippet counts)
-   - Source reputation (consider libraries with High or Medium reputation more authoritative)
-   - Benchmark score (higher is better, 100 is the maximum)
-3. If multiple good matches exist, acknowledge this but proceed with the most relevant one
-4. If no good matches exist, clearly state this and suggest query refinements
-5. For ambiguous queries, request clarification before proceeding with a best-guess match
+Pick the match that best fits the user's intent, weighing name similarity, description relevance, Code Snippet count, Source Reputation, and Benchmark Score. If several fit, say so and proceed with the most relevant; if none fit, say so and suggest a refined query; if the request itself is ambiguous, ask before guessing.
 
 ### Version-specific IDs
 

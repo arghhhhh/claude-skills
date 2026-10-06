@@ -1,5 +1,5 @@
 ---
-version: 1.1.1
+version: 1.1.2
 name: app-ui-mvvm
 description: "Expert for App UI MVVM pattern and dependency injection - ObservableObject, RelayCommand, AppBuilder, service registration, and DI. Use this skill whenever the user wants to create a ViewModel, bind data to UI elements, set up dependency injection, register services, implement commands for button actions, use [ObservableProperty] or [RelayCommand] attributes, create an AppBuilder, or structure their Unity App UI project with the MVVM architecture pattern. Also trigger when the user asks about data binding in UXML, property change notifications, or service lifetimes (transient, singleton, scoped)."
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
@@ -10,37 +10,6 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ## Overview
 
 The MVVM (Model-View-ViewModel) pattern is a design pattern that separates user interface from business logic. Combined with Dependency Injection (DI), it creates a powerful architecture for building maintainable, testable, and scalable applications using Unity's UI Toolkit.
-
-## When to Use MVVM
-
-Use MVVM when you need to:
-- Separate UI concerns from business logic
-- Make your code testable and maintainable
-- Bind UI elements to data that changes dynamically
-- Handle complex user interactions with clean code organization
-- Enable designers and developers to work independently
-
-## Core Concepts
-
-### Model
-The **Model** is a simple data structure containing the data used by business logic. It has no knowledge of the UI.
-
-### ViewModel
-The **ViewModel** contains business logic and is responsible for:
-- Updating the Model when the user interacts with the View
-- Notifying the View when the Model changes (via property notifications)
-- Handling commands (user actions like button clicks)
-- Managing state and orchestrating operations
-
-ViewModels connect to Views through data binding.
-
-### View
-The **View** is the UI layer responsible for displaying data to the user. It should contain:
-- Only UI element definitions and styling logic
-- Event handlers that invoke ViewModel commands
-- Data bindings to ViewModel properties
-
-Views should never contain business logic.
 
 ## Key Namespaces
 
@@ -177,12 +146,6 @@ void Save() { }
 
 private bool CanSave => !string.IsNullOrEmpty(Name);
 ```
-
-## Dependency Injection Lifetimes
-
-- **Transient**: New instance every time it's requested
-- **Singleton**: Same instance for the entire application lifetime
-- **Scoped**: Same instance within a scope, new instance for different scopes
 
 ## UI Binding
 

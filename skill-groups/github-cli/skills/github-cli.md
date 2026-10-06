@@ -1,5 +1,5 @@
 ---
-version: 1.1.0
+version: 1.1.1
 ---
 
 # GitHub CLI (gh) Skill
@@ -15,75 +15,6 @@ Use this skill when working with GitHub issues, pull requests, repos, CI checks,
 ## Not Installed?
 
 - **GitHub CLI**: https://cli.github.com/ — install via `winget install --id GitHub.cli`, `brew install gh`, or download from the site
-
-## Commands
-
-### Issues
-```bash
-gh issue list [--label "bug"] [--state open]
-gh issue view <number>
-gh issue create --title "title" --body "description" [--label "label"]
-gh issue close <number>
-gh issue comment <number> --body "comment text"
-```
-
-### Pull Requests
-```bash
-gh pr list
-gh pr view <number>
-gh pr create --title "title" --body "## Summary ..."
-gh pr checkout <number>
-gh pr merge <number>
-gh pr checks <number>
-gh pr review <number> --approve
-gh pr diff <number>
-gh pr comment <number> --body "comment text"
-```
-
-### Repos
-```bash
-gh repo view [owner/repo]
-gh repo clone owner/repo
-gh repo create <name> [--public|--private]
-gh repo fork owner/repo
-```
-
-### Releases
-```bash
-gh release list
-gh release view <tag>
-gh release create <tag> [--title "title"] [--notes "notes"] [files...]
-```
-
-### Workflow Runs (CI)
-```bash
-gh run list
-gh run view <run-id>
-gh run watch <run-id>
-gh workflow list
-gh workflow run <workflow> [--ref branch]
-```
-
-### API (escape hatch for anything else)
-```bash
-gh api repos/{owner}/{repo}/pulls/{number}/comments
-gh api user
-gh api graphql -f query='{ viewer { login } }'
-```
-
-### Gists
-```bash
-gh gist list
-gh gist create <file> [--public] [--desc "description"]
-gh gist view <id>
-```
-
-## Common Workflows
-
-- **Issue-driven dev**: `gh issue list` → branch → implement → `gh pr create`
-- **PR review**: `gh pr view` → check comments → fix → push
-- **CI checks**: `gh pr checks` or `gh run list` → `gh run view`
-- **Release**: tag → `gh release create` with artifacts
 
 ## Tips
 

@@ -1,5 +1,5 @@
 ---
-version: 1.1.0
+version: 1.1.1
 name: playwright-cli
 description: Automate browser interactions, test web pages and work with Playwright tests.
 allowed-tools: Bash(playwright-cli:*) Bash(npx:*) Bash(npm:*)
@@ -7,11 +7,11 @@ allowed-tools: Bash(playwright-cli:*) Bash(npx:*) Bash(npm:*)
 
 # Browser Automation with playwright-cli
 
-## Cleanup (REQUIRED after testing)
+## Cleanup after testing
 
 `playwright-cli` writes snapshot YAMLs, screenshots, traces, videos, and other artifacts into a `.playwright-cli/` folder in the current working directory. This folder is temporary scratch space — leaving it behind clutters the user's project.
 
-When you finish a browser-automation task, you MUST:
+When you finish a browser-automation task:
 
 1. Close any sessions you opened: `playwright-cli close` (or `playwright-cli close-all` if you opened multiple).
 2. Remove the scratch folder from wherever you ran commands: `rm -rf .playwright-cli`

@@ -1,7 +1,8 @@
 # context-rotation
 
 Automatic context-window rotation for Claude Code. Tool-only group — ships no
-skills/agents; it wires Claude Code hooks + two slash commands via `install/wire.sh`.
+skills/agents; it wires Claude Code hooks + three slash commands (`/long-horizon`,
+`/long-horizon-off`, `/rotation`) via `install/wire.sh`.
 
 ## Behavior
 

@@ -64,7 +64,7 @@ if (r) Log("Resource found");
 
 **There is no `SetResource`, `SetShader`, or `AssignResource` method.** The full Node Object setter list is: `SetEnvelopeValue`, `SetFloat`, `SetInt`, `SetName`, `SetNodeGraphPosition`, `SetPropertyArtnet*`, `SetString`, `SetTransformArray`, `SetVisible`. Resource-typed attributes have no scriptable setter in the public JS API.
 
-`SetString("Attributes.Shader", "filename.fx")` **silently no-ops** — the attribute is a resource reference, not a string. The previous v0.5.0 docs claimed this worked; it does not. Any apparent "success" was the user having manually picked the shader in the UI earlier and it persisting.
+`SetString("Attributes.Shader", "filename.fx")` **silently no-ops** — the attribute is a resource reference, not a string. If it appears to work, the shader was picked manually in the UI earlier and the binding persisted.
 
 **Known paths to bind a resource-typed attribute:**
 
@@ -118,9 +118,6 @@ Same RTT feeds both the visible sky AND the PBR-reflection IBL. The `Generators:
 
 If Notch ships a new version and the index goes stale:
 
-```bash
-curl -sL "https://manual.notch.one/<version>/en/" -o /tmp/notch_home.html
-# Re-run the URL extraction (see notch-node-info.js bottom + git history of this skill).
-```
+`notch-node-index.json` was extracted once from the manual's homepage (`https://manual.notch.one/<version>/en/`); no extractor script ships with this skill, and `notch-node-info.js` only reads the index. Rebuilding it for a new version is a manual job: tell the user rather than improvising one. Until then, `notch-node-info.js --url <node page URL>` still works for any node page.
 
 The version in the URL needs to be the actual Notch version (e.g. `2026.1`). Inferred `CreateNode` strings stay correct as long as the doc URL → CreateNode-string convention holds.

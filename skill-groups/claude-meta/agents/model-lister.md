@@ -1,7 +1,7 @@
 ---
-version: 1.1.0
+version: 1.1.1
 name: model-lister
-description: Fetches and formats the current list of Claude models from the Anthropic docs. Use when the user runs /models or asks for the current model list.
+description: Fetches and formats the current list of Claude models from the Anthropic docs. Use when the user runs /models-list or asks for the current model list.
 tools: WebFetch
 model: haiku
 ---
@@ -21,7 +21,7 @@ Extraction prompt: "List every Claude model on this page. For each model give me
 Return ONLY the markdown below. No preamble, no closing prose, no commentary. Use these exact section headers. Within each section, most recent first. Omit a section entirely if it has no entries.
 
 ```
-> **Tip:** Append `[1m]` to any model ID marked **1M** below to get its 1M-token context variant (e.g. `claude-opus-4-7[1m]`). Works for both current and legacy 1M-capable models.
+> **Tip:** Append `[1m]` to any model ID marked **1M** below to get its 1M-token context variant (e.g. `<model-id>[1m]`). Works for both current and legacy 1M-capable models.
 
 ## Newest tier
 - `model-id` — short description **(1M)** (alias: `alias` if any)

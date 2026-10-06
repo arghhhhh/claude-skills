@@ -1,5 +1,5 @@
 ---
-version: 1.1.1
+version: 1.1.2
 name: app-ui-theming
 description: "Expert for App UI theming and styling - USS variables, custom themes, dark/light mode, scale factors, and BEM conventions. Use this skill whenever the user wants to change colors, create a branded theme, customize fonts or typography, adjust spacing, implement dark/light mode switching, toggle between themes at runtime, set up responsive scaling (small/medium/large), register custom icons, style components with USS variables, apply BEM naming conventions, create a .tss or .uss file, or configure PanelSettings for theming. Also trigger when the user mentions design tokens, appui-- prefix, ThemeContext, ScaleContext, or asks about color palettes and USS variable overrides."
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
@@ -251,19 +251,7 @@ VisualElement {}
 1. **Always use `appui--` prefix** - Required for proper theme identification and context switching
 2. **Import base palette when extending** - Use `@import url("App UI - Palette.uss")` for color variable access
 3. **Use design tokens consistently** - Prefer USS variables over hardcoded values
-4. **Plan color hierarchy** - Define primary, secondary, accent, and semantic colors
-5. **Test both light and dark modes** - Ensure readability in all theme variants
-6. **Document custom variables** - Add comments explaining your theme variables
-7. **Validate scale factors** - Test UI scaling with small/medium/large context values
-8. **Use resource() for high DPI assets** - When supporting multiple DPI densities
-
-## Color Token Density
-
-App UI uses a 25-step color density scale (25, 50, 75... up to 1300) allowing:
-- Fine-grained color control
-- Predictable color progression
-- Easy light/dark theme mapping
-- Accessible contrast ratios
+4. **Use resource() for high DPI assets** - When supporting multiple DPI densities
 
 ## File Locations
 

@@ -1,5 +1,5 @@
 ---
-version: 1.1.1
+version: 1.1.2
 name: app-ui-navigation
 description: "Expert for App UI navigation system - NavGraph, NavHost, NavController, destinations, and visual controllers (AppBar, Drawer, BottomNavBar). Use this skill whenever the user wants to add screens or pages to their Unity app, create a navigation graph, set up a bottom tab bar, implement a side drawer or hamburger menu, add an app bar or toolbar, navigate between views, pass data between screens, manage back stack behavior, create a multi-screen flow (onboarding, login, settings), or implement any kind of screen-to-screen navigation in App UI. Also trigger when the user mentions NavigationScreen, NavigationRail, NavAction, or asks about deep linking or nested navigation."
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
@@ -35,15 +35,12 @@ The App UI navigation system consists of these key components:
 
 ## Essential Patterns
 
-### 1. Never Forget the Start Destination
+### 1. Set the Start Destination
 
-A NavGraph MUST have a start destination. This is the first page shown:
+Every NavGraph needs a start destination. It is the first page shown, and a graph without one causes runtime errors:
 
 ```csharp
-// CORRECT: Set start destination
 navGraph.startDestination = homeDestination;
-
-// WRONG: Missing start destination causes runtime errors
 ```
 
 ### 2. Always Implement INavVisualController
@@ -245,13 +242,10 @@ settingsGraph.destinations.Add(settingsHomeDestination);
 navController.Navigate("settings");
 ```
 
-## Important Patterns to Avoid
+## Gotchas
 
-1. **Don't forget to set start destination** - Every graph must have one
-2. **Don't mix global and local action logic** - Keep them separate
-3. **Don't modify destination.label at runtime** - It won't affect AppBar title, use the visual controller
-4. **Don't assume OnEnter/OnExit are called multiple times** - They're called per navigation
-5. **Don't navigate without a valid NavController reference** - Ensure it's properly initialized
+- Changing `destination.label` at runtime does not update the AppBar title; set the title in the visual controller instead.
+- `OnEnter`/`OnExit` run once per navigation to or from that screen.
 
 ## Integration with App Builder
 

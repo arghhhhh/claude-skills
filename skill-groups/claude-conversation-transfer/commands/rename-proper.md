@@ -3,7 +3,7 @@ description: Rename a Claude Code project in place — migrate its conversation 
 allowed-tools: Bash, PowerShell
 ---
 
-Rename a project **on this machine**: migrate its full conversation history from the old CWD's encoded folder in `~/.claude/projects/` to the new one, rewrite embedded paths, verify, and — only after verification passes — delete the old folder. Collapses the old `/export-proper` → rename folder → new session → `/import-proper` → manual cleanup dance into one call.
+Rename a project **on this machine**: migrate its full conversation history from the old CWD's encoded folder in `~/.claude/projects/` to the new one, rewrite embedded paths, verify, and — only after verification passes — delete the old folder.
 
 This delegates to the `claude-conversation-transfer` binary — installed by the `claude-skills` installer under `~/.local/share/claude-conversation-transfer/`. The binary composes the same tested export + import + verify path (in-process byte-level rewriting, no shell argv → no backslash-collapse bug) and handles old-folder deletion and preexisting-target backup. **Do not** re-derive any of this from prose.
 

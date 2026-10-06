@@ -287,16 +287,13 @@ builder.AddCase(Actions.AddItem, (state, action) =>
 });
 ```
 
-### IMPORTANT: Use AddCase, Not Add
+### Registering Reducers
+
+Register reducers with `AddCase`, not `Add`:
 
 ```csharp
-// CORRECT - Use AddCase
 builder.AddCase(Actions.Increment, (state, action) =>
     state with { Count = state.Count + 1 });
-
-// WRONG - Do not use Add
-builder.Add(Actions.Increment, (state, action) =>
-    state with { Count = state.Count + 1 }); // INCORRECT!
 ```
 
 ## AsyncThunk

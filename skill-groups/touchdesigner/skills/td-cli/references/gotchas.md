@@ -33,7 +33,7 @@ render.par.geometry = geo
 render.par.lights = light.path   # string path
 ```
 
-## geometryCOMP — `pathsop` Cook Loop (CRITICAL)
+## geometryCOMP — `pathsop` Cook Loop
 
 `geo.par.pathsop` can self-loop. Safer pattern: set display/render flags on the output SOP **inside** the geo:
 
@@ -50,7 +50,7 @@ null_out.render = True
 # DO NOT: geo.par.pathsop = 'out'  ← cook loop
 ```
 
-## GLSL TOP — `premultrgbbyalpha` Silently Zeroes RGB (CRITICAL)
+## GLSL TOP — `premultrgbbyalpha` Silently Zeroes RGB
 
 Every GLSL TOP defaults `par.premultrgbbyalpha = True`. The output stage multiplies RGB by alpha — so anywhere the shader writes `alpha < 1.0`, the stored RGB gets scaled down (and at `alpha = 0`, RGB collapses to zero). The on-screen node thumbnail may still look fine, but the saved PNG or anything downstream that reads RGB will be black/dim wherever alpha was low.
 
@@ -61,7 +61,7 @@ glsl.par.premultrgbbyalpha = False   # required whenever the shader writes RGB a
 
 `td-cli screenshot --opaque` does **not** rescue this — it only forces output alpha to 255 in the PNG file. If TD already zeroed RGB during premultiplication, the file is genuinely black; `--opaque` will just hide the alpha=0 symptom and make the loss look like a "broken shader" instead of "premultiplication ate the RGB." Disable `premultrgbbyalpha` at the source.
 
-## feedbackTOP — Wiring Pattern (CRITICAL)
+## feedbackTOP — Wiring Pattern
 
 Needs **both** `par.top` AND a wire input from the **same independent upstream node**:
 
@@ -133,7 +133,7 @@ glsl.seq.vec.numBlocks = 6         # adds vec0..vec5
 
 Same pattern for any "Vectors" / "Channels" / similar repeating page in TD.
 
-## Audio Signal Calibration (CRITICAL)
+## Audio Signal Calibration
 
 Raw `audiodeviceinCHOP` is typically -60 to -20 dB (peak ~0.01–0.05). After `audiofilterCHOP` + `analyzeCHOP(rmspower)`, values are ~0.001–0.01. The chain needs amplification:
 
@@ -153,7 +153,7 @@ par.expr = "op('math_bass')['chan1'] * 2.0"   # ✅ live binding
 par.val = X                                    # ❌ static set
 ```
 
-## Expression Paths — Absolute Inside COMPs (CRITICAL)
+## Expression Paths — Absolute Inside COMPs
 
 Expressions resolve **relative to the operator that owns the parameter**. Inside a SOP that lives in `geo_main`, `op('math_bass')` resolves to `/project1/geo_main/math_bass` (wrong).
 

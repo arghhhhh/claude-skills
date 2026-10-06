@@ -1,5 +1,5 @@
 ---
-version: 1.1.1
+version: 1.1.2
 name: obsidian-cli
 description: Control a running Obsidian instance from the command line — search, read, create, and append notes, open daily notes, list tags/tasks/unresolved links, and run editor commands or JavaScript. Use whenever the user wants an agent to read from or drive their Obsidian vault(s) programmatically.
 ---
@@ -10,7 +10,7 @@ Drive a **running** Obsidian desktop app from the shell. "Anything you can do in
 
 ## Hard Requirements
 
-1. **Obsidian must be running.** Every command talks to the live app. If commands hang or error with no connection, the app is closed.
+1. **Every command talks to the live app**, and launches Obsidian if it isn't already running (see Troubleshooting). If commands hang or error with no connection, the CLI isn't registered or the Windows installer shell is outdated.
 2. **The CLI must be registered once** (GUI step the agent cannot do): Settings → General → enable **Obsidian CLI**, then click **Register** and follow the OS dialog.
    - macOS: symlink at `/usr/local/bin/obsidian` (asks for admin).
    - Linux: binary copied to `~/.local/bin/obsidian` (ensure it's on PATH).
@@ -74,7 +74,7 @@ obsidian devtools vault="Planning"                                     # open De
 
 ## Troubleshooting
 
-- **No response / connection error** → Obsidian isn't running, or the CLI was never registered (Settings → General → Register).
+- **No response / connection error** → the CLI was never registered (Settings → General → Register), or the app failed to start.
 - **`obsidian: command not found`** → registration didn't add it to PATH; on Windows restart the terminal; on Linux ensure `~/.local/bin` is on PATH.
 - **The GUI window pops open on every `obsidian <cmd>` (Windows)** → the installer `.exe` shell is older than 1.11.7, so no redirector exists and commands hit the GUI exe, whose single-instance handler just focuses/opens the window. Check with `(Get-Item 'C:\Program Files\Obsidian\Obsidian.exe').VersionInfo.ProductVersion` (or wherever installed). Fix: rerun the current installer from https://obsidian.md (UAC if under Program Files), then Settings → General → Obsidian CLI → Register, then restart the shell. Afterward `obsidian` resolves to `Obsidian.com` and commands round-trip over the named pipe without opening a window.
 - **Obsidian launches when a command runs** → expected, even with a current redirector: every CLI command (including `version`) starts the app if it isn't running so it can answer over the pipe. Don't use `obsidian <cmd>` as a passive health check in scripts — test presence with `command -v obsidian` instead, and only execute the CLI when you actually intend to use Obsidian.

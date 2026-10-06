@@ -1,7 +1,7 @@
 {
   "name": "houdini",
   "description": "SideFX Houdini automation \u00e2\u20ac\u201d nodes, rendering, geometry, PDG/TOPs, USD/Solaris, HDAs, VEX, DOPs, viewport, COPs, CHOPs via 166 MCP tools.",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "prerequisites": [
     {
       "name": "git",

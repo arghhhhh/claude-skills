@@ -1,5 +1,5 @@
 ---
-version: 1.15.0
+version: 1.15.1
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when updating/pulling claude-skills, editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -45,7 +45,7 @@ Each `skill-groups/<group>/manifest.json` declares a `type:`. Missing/empty defa
 | **`vendored`** | `manifest.json` (pinned `source.ref` SHA) + optional `overlays/` | Overlays at `skill-groups/<group>/overlays/{skills,agents}/...` mirroring upstream paths | Installer clones `source.repo` at the pinned SHA into `~/.claude/.skill-repos/<owner>-<repo>/`, then symlinks overlay files first and upstream files for the rest |
 | **`tool-only`** | `manifest.json` only — no `skills:`, no `agents:` | n/a | Installer runs `install` + `test` only; no symlinks under `~/.claude/skills/` |
 
-Today: `unity-cli` and `officecli` are vendored. `claude-notifications` is tool-only. Everything else is authored.
+The manifest's `type:` field is the source of truth; `bash install.sh --status` lists every group. Examples: `unity-cli` and `officecli` are vendored; `claude-notifications` and `context-rotation` are tool-only.
 
 ## Before Any Skill Edit
 
@@ -205,7 +205,7 @@ bash install.sh --skills <name>
 
 A skill driven by an MCP server (Blender, ComfyUI, Houdini, Mermaid, Notch…) is **a normal skill group** — it is *not* special-cased by location. Follow "Adding a New Skill Group" above, with these MCP-specific points:
 
-1. **Locate by domain, not mechanism.** The group and skill are named for the tool (`blender`, `comfy-pilot`), never for the transport. Do **not** create a `skills/mcp/` directory and do **not** append `-mcp` to the skill name — that was an early mistake (only legacy blender/houdini used it; comfy-pilot/td got it right). The skill lives at `skill-groups/<tool>/skills/<tool>/SKILL.md`.
+1. **Locate by domain, not mechanism.** The group and skill are named for the tool (`blender`, `comfy-pilot`), never for the transport. Don't create a `skills/mcp/` directory or append `-mcp` to the skill name. The skill lives at `skill-groups/<tool>/skills/<tool>/SKILL.md`.
 2. **Declare the server in the manifest**, not in the path — add an `mcp_servers` block (see the optional fields above). The installer wires `~/.mcporter/mcporter.json` + `~/.claude/.mcp.json`. This field is also what `--check-drift` keys off.
 3. **Discover the real tool surface before writing.** With the server running:
    ```bash
@@ -321,7 +321,7 @@ On any other machine, just pull and reinstall:
 ```bash
 cd ~/.claude/.skill-repos/claude-skills
 git pull origin main
-bash install.sh --update --sync
+bash install.sh --update
 ```
 
 (An agent doing this follows **Updating claude-skills** above — preview first, ask before anything new.)

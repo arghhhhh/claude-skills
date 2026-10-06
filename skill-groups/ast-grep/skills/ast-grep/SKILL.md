@@ -1,5 +1,5 @@
 ---
-version: 1.0.1
+version: 1.0.2
 name: ast-grep
 description: Guide for writing ast-grep rules to perform structural code search and analysis. Use when users need to search codebases using Abstract Syntax Tree (AST) patterns, find specific code structures, or perform complex code queries that go beyond simple text search. This skill should be used when users ask to search for code patterns, find specific language constructs, or locate code with particular structural characteristics.
 ---
@@ -10,26 +10,13 @@ description: Guide for writing ast-grep rules to perform structural code search 
 
 This skill helps translate natural language queries into ast-grep rules for structural code search. ast-grep uses Abstract Syntax Tree (AST) patterns to match code based on its structure rather than just text, enabling powerful and precise code search across large codebases.
 
-## When to Use This Skill
-
-Use this skill when users:
-- Need to search for code patterns using structural matching (e.g., "find all async functions that don't have error handling")
-- Want to locate specific language constructs (e.g., "find all function calls with specific parameters")
-- Request searches that require understanding code structure rather than just text
-- Ask to search for code with particular AST characteristics
-- Need to perform complex code queries that traditional text search cannot handle
-
 ## General Workflow
 
-Follow this process to help users write effective ast-grep rules:
+Test every rule against a small example before running it on the codebase.
 
-### Step 1: Understand the Query
+### Step 1: Pin Down the Target
 
-Clearly understand what the user wants to find. Ask clarifying questions if needed:
-- What specific code pattern or structure are they looking for?
-- Which programming language?
-- Are there specific edge cases or variations to consider?
-- What should be included or excluded from matches?
+Establish the language and which variations should and should not match; ask only when the request leaves these open.
 
 ### Step 2: Create Example Code
 
@@ -214,8 +201,6 @@ ast-grep scan --rule my_rule.yml --json /path/to/project
 - Relational rules (inside, has, precedes, follows)
 - Composite logic (all, any, not)
 - When you need the power of full YAML rules
-
-**Tip:** For relational rules (inside/has), always add `stopBy: end` to ensure complete traversal.
 
 ## Tips for Writing Effective Rules
 

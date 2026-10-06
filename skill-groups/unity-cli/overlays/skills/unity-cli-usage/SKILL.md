@@ -91,18 +91,11 @@ unity-cli raw analyze_scene_contents --json '{"includeInactive":true}'
 ## Pinned Install (claude-skills)
 
 This install is built from `arghhhhh/unity-cli`, branch `stable`, pinned by SHA in the claude-skills
-manifest. At the current pin `stable` **is upstream v0.18.1** — it carries no fork-only commits. The
-fixes it used to carry all shipped upstream in v0.18.0:
-
-| PR | Fix |
-|---|---|
-| #242 | A bad connection no longer kills `unityd`. |
-| #360 | The call that auto-starts `unityd` no longer hangs whatever reads its output (Windows). |
-| #408 | The bridge no longer hard-depends on `com.unity.addressables`. |
+manifest. At the current pin `stable` is identical to upstream v0.18.1.
 
 | Variable | Value | Why |
 |---|---|---|
-| `UNITY_CLI_NO_AUTO_UPDATE` | `1` | Keeps the managed binary on the pinned build. Unset, it auto-updates from `akiojin/unity-cli` GitHub releases and drifts from the cargo build and from the bridge version pinned in Unity projects. It no longer drops fixes (nothing is fork-only), but upgrades should go through the pin. The claude-skills installer sets it at user scope. |
+| `UNITY_CLI_NO_AUTO_UPDATE` | `1` | Keeps the managed binary on the pinned build. Unset, it auto-updates from `akiojin/unity-cli` GitHub releases and drifts from the cargo build and from the bridge version pinned in Unity projects; upgrades go through the pin. The claude-skills installer sets it at user scope. |
 | `UNITY_CLI_HOST` | **leave unset** | ❌ Setting it makes `resolve_endpoint` ignore `instances set-active` entirely — every call goes to port 6400. The default is already `127.0.0.1`. Set it only for a non-local Unity (Docker → `host.docker.internal`). |
 
 ```bash

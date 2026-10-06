@@ -1,5 +1,5 @@
 ---
-version: 1.1.1
+version: 1.1.2
 name: app-ui-redux
 description: "Expert for App UI Redux state management - Store, Slices, Reducers, Actions, AsyncThunks, middleware, and Redux DevTools. Use this skill whenever the user wants to manage global state, create a Redux store, define actions and reducers, dispatch events, subscribe to state changes, implement async data fetching with thunks, add middleware for logging or analytics, use the Redux DevTools window, or architect a predictable state management layer in their Unity App UI project. Also trigger when the user mentions ActionCreator, StoreFactory, PartitionedState, or asks about centralized state, immutable records, or state slices."
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
@@ -12,26 +12,6 @@ Expert assistant for implementing Redux state management in Unity using the App 
 ## Overview
 
 Redux is a predictable state management pattern for Unity applications. It provides a centralized store to manage application state, making it easier to debug, test, and maintain complex state logic. App UI implements Redux using C# with support for slices, async thunks, middleware, and Redux DevTools.
-
-## Key Concepts
-
-### Why Use Redux?
-
-Use Redux when you need to:
-- Manage complex, interconnected state
-- Share state across multiple components or systems
-- Track state changes for debugging (Redux DevTools)
-- Implement predictable state mutations
-- Decouple UI from business logic
-- Build scalable applications
-
-### Core Principles
-
-1. **Single Source of Truth** - All application state is stored in one centralized store
-2. **State is Immutable** - State is never modified directly; new state objects are created
-3. **Pure Reducers** - Reducers are pure functions with no side effects
-4. **Actions Describe Changes** - Actions are dispatched to describe what happened
-5. **Predictability** - Same state + same action = same new state
 
 ## Key Namespace
 
@@ -103,7 +83,9 @@ public static readonly ActionCreator<int> AddAmount = "counter/AddAmount";
 public static readonly ActionCreator<string> SetName = "user/SetName";
 ```
 
-### Reducers - IMPORTANT: Use AddCase, NOT Add
+### Reducers
+
+Register reducers with `builder.AddCase(...)`, not `builder.Add(...)`:
 
 ```csharp
 builder.AddCase(Actions.Increment, (state, action) =>
@@ -111,12 +93,6 @@ builder.AddCase(Actions.Increment, (state, action) =>
 
 builder.AddCase(Actions.AddAmount, (state, action) =>
     state with { Count = state.Count + action.payload });
-```
-
-**Wrong pattern (do not use):**
-```csharp
-// DO NOT USE Add() - use AddCase() instead
-builder.Add(Actions.Increment, reducer); // INCORRECT
 ```
 
 ### AsyncThunk Operations

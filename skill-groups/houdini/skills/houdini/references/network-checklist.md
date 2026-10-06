@@ -2,7 +2,7 @@
 
 Run through this when building a Houdini network from scratch via MCP tools / `execute_houdini_code`. Each item maps to a trap in `hou-cookbook.md`.
 
-1. `get_scene_info` (or `get_scene_summary`) first — and confirm you're actually talking to Houdini, not Blender on the shared port 9876 (paths should look like `/obj/...`, not mesh `Component#…`).
+1. `get_scene_info` (or `get_scene_summary`) first — and confirm you're actually talking to Houdini, not Blender (Blender owns 9876, and a Houdini whose port config didn't take falls back to it): paths should look like `/obj/...`, not mesh `Component#…`.
 2. Create the OBJ container before SOPs: `create_node node_type:"geo" parent_path:"/obj"`. SOPs (`box`, `sphere`, wrangles) go **inside** the geo, never at `/obj`.
 3. After creating, **read back the real node name/path** — Houdini auto-suffixes collisions (`box1`, `box2`).
 4. Wire inputs explicitly (`connect_nodes` / `setInput(0, src)`); order matters for merges and booleans.

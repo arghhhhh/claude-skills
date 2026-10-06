@@ -15,7 +15,7 @@ Silent no-ops, nodes that don't render, post-FX that doesn't fire, lookalike-nod
     var oy = Math.max(jp[1], rp[1]) + 250;
     ```
 2. **Property won't take.** You forgot the `Category.` prefix. Use the MCP or extractor to get the exact name. Or try multiple candidate names per call.
-3. **Node created but doesn't render or affect lighting.** You forgot `AddChild(root, node)`. CreateNode adds to the layer but doesn't parent to the composition root.
+3. **Node created but doesn't render or affect lighting.** You forgot `root.AddChild(node)`. CreateNode adds to the layer but doesn't parent to the composition root.
 4. **Video Loader shows nothing.** `Filename` is dormant until `Load External File = 1` is set first.
 5. **`Set*` returns undefined from Get*.** Almost always a wrong property name — `Set*` silently no-ops on unknown names. Verify with the extractor.
 6. **Sky Light doesn't exist as `Skylight`.** It's `Sky Light` (two words) — `Lighting::Sky Light`.

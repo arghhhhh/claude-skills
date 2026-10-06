@@ -1,5 +1,5 @@
 ---
-version: 2.2.0
+version: 2.2.1
 name: houdini
 description: Drive a running (or headless) SideFX Houdini session via the houdini-mcp bridge (mcporter) — node networks, VEX wrangles, parameters, geometry, simulations (pyro/RBD/FLIP/Vellum), USD/Solaris, PDG, rendering, HDAs, and 30k+ indexed docs.
 ---
@@ -8,7 +8,7 @@ description: Drive a running (or headless) SideFX Houdini session via the houdin
 
 Use this skill to inspect and modify a Houdini session through the houdini-mcp bridge, called over `npx mcporter call houdini.<tool>`. Covers scene/network editing, VEX, simulation, USD/Solaris, PDG/TOPs, COPs, CHOPs, HDAs, rendering, and doc search.
 
-Bridge: upstream `kleer001/houdini-mcp`, currently on the `integration` branch (= `kleer001/main` + three pending fixes: PR #4 `get_geo_summary` on point-only geo, PR #5 H21 `capture_screenshot`+opaque, PR #6 `install.py` pref-dir resolution). Older fork patches are already merged upstream; switch to plain `kleer001/main` once #4/#5/#6 land. 166 tools total.
+Bridge: upstream `kleer001/houdini-mcp` (`main`).
 
 ## Setup
 
@@ -39,69 +39,69 @@ npx mcporter call houdini.get_scene_info            # read path — confirms hou
 
 **Confirm you're talking to Houdini, not Blender** (both share port lineage — see Setup): `get_scene_info` should show `/obj`-style node paths, not mesh `Component#…`. A Blender-looking scene, `No module named 'hou'`, or `ping` → `Unknown command type` means the port didn't take — see the agent's Connection Diagnostics.
 
-## Tool Catalogue (166 tools across 19 domains)
+## Tool Catalogue (by domain — `npx mcporter list houdini --all-parameters` is authoritative)
 
-### Scene & Network (15)
+### Scene & Network
 `get_scene_info` `get_scene_summary` `get_network_overview` `get_cook_chain` `find_error_nodes` `explain_node` `save_scene` `load_scene` `set_current_network` `list_panes` `get_selection` `set_selection` `find_nodes` `list_node_types` `get_env_variable`
 
-### Nodes (12)
+### Nodes
 `create_node` `modify_node` `delete_node` `get_node_info` `connect_nodes` `connect_nodes_batch` `disconnect_node_input` `set_node_flags` `copy_node` `move_node` `rename_node` `list_children` `layout_children` `set_node_color` `reorder_inputs`
 
-### Parameters & Expressions (16)
+### Parameters & Expressions
 `get_parameter` `set_parameter` `set_parameters` `get_parameter_schema` `get_expression` `set_expression` `revert_parameter` `link_parameters` `lock_parameter` `create_spare_parameter` `create_spare_parameters` `evaluate_expression` `execute_hscript`
 
-### Animation / Playbar (8)
+### Animation / Playbar
 `set_keyframe` `set_keyframes` `delete_keyframe` `get_keyframes` `set_frame` `get_frame` `set_frame_range` `set_playback_range` `playbar_control`
 
-### Geometry (8)
+### Geometry
 `get_geo_summary` `get_points` `get_prims` `get_attrib_values` `set_detail_attrib` `get_groups` `get_group_members` `get_bounding_box` `get_prim_intrinsics` `find_nearest_point`
 
-### VEX / Wrangles (5)
+### VEX / Wrangles
 `create_wrangle` `set_wrangle_code` `get_wrangle_code` `create_vex_expression` `validate_vex`
 
-### Materials (7)
+### Materials
 `set_material` `list_materials` `get_material_info` `create_material_network` `assign_material` `list_material_types` `create_material_workflow` `assign_material_workflow`
 
-### Rendering (10)
+### Rendering
 `render_single_view` `render_quad_views` `render_specific_camera` `list_render_nodes` `get_render_settings` `set_render_settings` `create_render_node` `start_render` `get_render_progress` `monitor_render` `render_flipbook` `setup_render`
 
-### Viewport (8)
+### Viewport
 `get_viewport_info` `set_viewport_camera` `set_viewport_display` `set_viewport_renderer` `frame_selection` `frame_all` `set_viewport_direction` `capture_screenshot`
 
-### PDG / TOPs (5)
+### PDG / TOPs
 `pdg_cook` `pdg_status` `pdg_workitems` `pdg_dirty` `pdg_cancel`
 
-### LOPs / USD / Solaris (12)
+### LOPs / USD / Solaris
 `lop_stage_info` `lop_prim_get` `lop_prim_search` `lop_layer_info` `lop_import` `create_lop_node` `list_usd_prims` `get_usd_attribute` `set_usd_attribute` `get_usd_prim_stats` `get_last_modified_prims` `get_usd_composition` `get_usd_variants` `inspect_usd_layer` `list_lights`
 
-### HDAs (8)
+### HDAs
 `hda_list` `hda_get` `hda_install` `hda_create` `uninstall_hda` `reload_hda` `update_hda` `get_hda_sections` `get_hda_section_content` `set_hda_section_content`
 
-### DOPs / Simulation (10)
+### DOPs / Simulation
 `get_simulation_info` `list_dop_objects` `get_dop_object` `get_dop_field` `get_dop_relationships` `step_simulation` `reset_simulation` `get_sim_memory_usage` `setup_pyro_sim` `setup_rbd_sim` `setup_flip_sim` `setup_vellum_sim`
 
-### COPs (7)
+### COPs
 `get_cop_info` `get_cop_geometry` `get_cop_layer` `create_cop_node` `set_cop_flags` `list_cop_node_types` `get_cop_vdb`
 
-### CHOPs (4)
+### CHOPs
 `get_chop_data` `create_chop_node` `list_chop_channels` `export_chop_to_parm`
 
-### Takes (4)
+### Takes
 `list_takes` `get_current_take` `set_current_take` `create_take`
 
-### Cache (4)
+### Cache
 `list_caches` `get_cache_status` `clear_cache` `write_cache`
 
-### Workflows (3)
+### Workflows
 `build_sop_chain` `batch` `geo_export`
 
-### Events (2)
+### Events
 `get_houdini_events` `subscribe_houdini_events`
 
 ### Documentation (30,000+ indexed Houdini docs + example HIPs)
 `search_docs` `get_doc`
 
-### Code Execution (2)
+### Code Execution
 `execute_houdini_code` `execute_hscript`
 
 ## Common Workflows
@@ -124,7 +124,6 @@ npx mcporter call houdini.get_scene_info            # read path — confirms hou
 - **`execute_houdini_code` blocks dangerous patterns** (`hou.exit`, `os.remove`, `subprocess`, `__import__`, `exec`, …) — pass `allow_dangerous:true` only when genuinely needed (e.g. the hex-decode trick for multi-line scripts).
 - **Headless mode** — viewport/screenshot/UI tools require an actual Houdini GUI; the auto-launched hython session is headless.
 - **Cold start** — headless hython takes ~30 s; mcporter's default 60 s call timeout is tight. Prelaunch the server for reliability (see agent diagnostics).
-- **Patched fork** — the local clone has Windows path/encoding + parm/vex crash fixes on the `patched` branch. Re-apply if you pull upstream.
 - **Offline docs** — `search_docs` needs `uv run python scripts/fetch_houdini_docs.py` from the clone (~100 MB, skipped by default).
 - **Reconcile this doc after a bridge update** — `npx mcporter list houdini --all-parameters` is authoritative; `install.sh --check-drift --skills houdini` flags doc drift.
 

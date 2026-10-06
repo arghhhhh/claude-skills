@@ -1,5 +1,5 @@
 ---
-version: 2.1.0
+version: 2.1.1
 name: linear-cli
 description: Manage Linear.app from the terminal via the `linear` CLI (schpet/linear-cli) — issues, projects, milestones, cycles, initiatives, labels, documents, teams, and raw GraphQL. Use when the user mentions Linear, a Linear issue (e.g. ENG-123), starting/creating/updating issues, or Linear projects/cycles/documents.
 ---
@@ -21,7 +21,7 @@ Drive [Linear.app](https://linear.app) from the terminal with `linear` ([schpet/
 
 ## Not Installed?
 
-`linear --version` fails → reinstall (Deno is present on this machine):
+`linear --version` fails → reinstall. If `deno --version` succeeds, use Deno:
 ```bash
 deno install -A --reload -f -g -n linear jsr:@schpet/linear-cli
 ```
@@ -31,8 +31,8 @@ Other methods: `brew install schpet/tap/linear` (macOS/Linux), prebuilt binaries
 
 ## Agent-friendly conventions
 
-- **JSON output is NOT universal.** `-j`/`--json` exists on: `issue query`, `issue view`, `issue comment list`, `project list`, `project create`, `initiative list`, `label list`, `team members`, `team states`, `user list`, `document list` (`--json` only), `document view` (`--json` only). It does **not** exist on `issue list`, `team list`, `project view`, `milestone *`, `cycle *` — parse text or use `linear api` for those. `issue view`/`query --json` now include cycle info; `issue view --json` includes labels; `team members --json` carries role markers.
-- `issue list` sort **defaults to `priority`** (v2.3.0+): override with `--sort priority|manual`, `issue_sort` in `.linear.toml`, or `LINEAR_ISSUE_SORT`. An *invalid* configured sort now errors instead of silently defaulting. `issue query` also defaults to priority.
+- **JSON output is NOT universal.** `-j`/`--json` exists on: `issue query`, `issue view`, `issue comment list`, `project list`, `project create`, `initiative list`, `label list`, `team members`, `team states`, `user list`, `document list` (`--json` only), `document view` (`--json` only). It does **not** exist on `issue list`, `team list`, `project view`, `milestone *`, `cycle *` — parse text or use `linear api` for those. `issue view`/`query --json` include cycle info; `issue view --json` includes labels; `team members --json` carries role markers.
+- `issue list` sort **defaults to `priority`** (v2.3.0+): override with `--sort priority|manual`, `issue_sort` in `.linear.toml`, or `LINEAR_ISSUE_SORT`. An *invalid* configured sort is an error. `issue query` also defaults to priority.
 - `issue list` shows **your** issues only (alias `mine`); use `issue query` for team-wide or others' issues.
 - Add `--no-pager` (on `issue list`/`query`/`view`) to avoid interactive paging in non-TTY contexts.
 - Add `--no-interactive` (exists on `issue create` and `team create`) so it never blocks on a prompt; supply all fields via flags. Commands with an `-i/--interactive` flag (`project create`, `initiative create`, `label create`, `document create`) only prompt when called with no flags — pass flags to stay non-interactive.
@@ -57,7 +57,7 @@ linear issue list [--sort priority|manual] [-s <state>] [--all-states] [--team E
                   [--project "Name"] [--project-label <lbl>] [--cycle active] \
                   [--milestone "Phase 1"] [-l bug] [--limit N] \
                   [--created-after 2026-01-01] [--updated-after 2026-01-01] [--no-pager]
-                  # YOUR issues only; default state=unstarted; sort REQUIRED (flag/config/env); no JSON
+                  # YOUR issues only; default state=unstarted; sort defaults to priority; no JSON
 linear issue query [--search "oauth timeout"] [--team ENG] [--all-teams] [-s started] \
                    [--assignee <user> | -A | -U] [--sort priority|manual] \
                    [--project "Name"] [--cycle active] [--milestone "..."] [-l bug] \
@@ -105,13 +105,13 @@ linear issue agent-session view <sessionId>
 linear team list [-w|-a]                     # no JSON — use `linear api` for structured team data
 linear team id                               # configured team id
 linear team members [teamKey] [-a] [-j]      # -a includes inactive/disabled members; -j has role markers
-linear team states [teamKey] [-j]            # list workflow states for a team (new in v2.2.0)
+linear team states [teamKey] [-j]            # list workflow states for a team
 linear team create [-n "Name"] [-d "desc"] [-k KEY] [--private] [--no-interactive]
 linear team delete <teamKey>
 linear team autolinks                        # configure GitHub repo autolinks for the team prefix
 ```
 
-### Users (`linear user` / `linear u`) — new in v2.2.0
+### Users (`linear user` / `linear u`)
 ```bash
 linear user list [-a] [-j] [--workspace <slug>]   # list workspace members; -a includes inactive
 ```
