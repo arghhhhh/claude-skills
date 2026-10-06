@@ -164,14 +164,14 @@ for group_dir in "$SKILL_GROUPS_DIR"/*/; do
     assert_not_empty "legacy source_paths.skills extractable by installer's grep chain" "$sp"
   fi
 
-  # ── update_policy: only pinned|latest are meaningful (group_update_policy
+  # ── update_policy: only pinned|latest|check are meaningful (group_update_policy
   #    defaults everything else to the string as-is; update_group only tests
-  #    'latest'). tool-only groups whose install command references this repo
+  #    'latest' and 'check'). tool-only groups whose install command references this repo
   #    must be 'latest' or --update never refreshes them. ──
   pol=$(jnode "$mf" "process.stdout.write(m.update_policy||'pinned');")
   case "$pol" in
-    pinned|latest) : ;;
-    *) suite "update_policy: $group"; fail "update_policy '$pol' is not pinned|latest — treated as pinned silently" ;;
+    pinned|latest|check) : ;;
+    *) suite "update_policy: $group"; fail "update_policy '$pol' is not pinned|latest|check — treated as pinned silently" ;;
   esac
   if [ "$gtype" = "tool-only" ]; then
     cmd0=$(jnode "$mf" "const ms=((m.install||{}).methods)||[]; process.stdout.write(ms.length?(ms[0].command||''):'');")

@@ -1,5 +1,5 @@
 ---
-version: 1.15.1
+version: 1.16.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when updating/pulling claude-skills, editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -269,7 +269,7 @@ Tool-only groups (`type: "tool-only"`) ship no skills or agents — they exist o
 
 To update, edit `install` / `test` / `post_install_hints`, bump `version`, commit, push. No symlinks are created, so there's nothing to re-sync on other machines beyond rerunning the installer.
 
-## Update Policy — Tracking My Own Tool Repos at HEAD
+## Update Policy — When `--update` Touches Installed Software
 
 Any group (tool-only or otherwise) whose install command builds software from a git clone can declare how `--update` treats that software:
 
@@ -279,8 +279,9 @@ Any group (tool-only or otherwise) whose install command builds software from a 
 
 | Policy | Meaning | Use for |
 |---|---|---|
-| **`pinned`** (default, field omitted) | `--update` never touches installed software; it only refreshes skills/agents/commands. Software updates happen only when the install `check` fails or a human bumps something deliberately. | Third-party tools where an unreviewed upstream change is a risk (`claude-notifications`, winget/brew packages) |
+| **`pinned`** (default, field omitted) | `--update` never touches installed software and never runs `install.check`; it only refreshes skills/agents/commands. Software is installed only by a full install (`install.sh --skills <g>`) whose `check` fails. | Third-party tools where an unreviewed upstream change is a risk (`claude-notifications`, winget/brew packages) |
 | **`latest`** | Every `--update` re-runs the group's install command even though the binary already exists — the command must be idempotent (pull-or-clone + rebuild, like `git pull --ff-only … && go build`), and `run_test` verifies afterwards. `--skip-software` suppresses this. | My own repos (`arghhhhh/*`) where HEAD is always wanted: `claude-code-sessions`, `claude-conversation-transfer` |
+| **`check`** | Every `--update` runs `install.check` and re-runs the install command only when it fails, then `run_test`. The check must be keyed to the pin (a version or SHA), or a stale install passes it. `--skip-software` suppresses this. Don't use it when the check can fail on a machine that has the software outside `PATH` (Blender.app without `blender` on `PATH` would re-run `brew install --cask` on every update). | Pinned tools that should follow the pin across machines: `unity-cli` (check greps `cargo install --list` for the pinned rev), `playwright-cli` (check matches the pinned npm version) |
 
 **Rule: any group that clones one of my own repos must set `update_policy: "latest"`** — otherwise fixes pushed from one machine silently never reach the installed binaries on others (the install `check` sees an existing binary and short-circuits). Third-party sources stay pinned/default unless there's a specific reason to track them.
 

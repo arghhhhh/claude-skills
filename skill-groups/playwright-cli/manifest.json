@@ -1,7 +1,8 @@
 {
   "name": "playwright-cli",
   "description": "Browser automation via CLI — navigate, click, fill, snapshot, screenshot, test, and debug web pages.",
-  "version": "0.2.0",
+  "version": "0.2.1",
+  "update_policy": "check",
   "prerequisites": [
     {
       "name": "node",
@@ -18,7 +19,7 @@
         "name": "npm",
         "platforms": ["macos", "linux", "windows"],
         "check": "npm --version",
-        "command": "npm install -g @playwright/cli@0.1.22 && npx playwright install chromium"
+        "command": "npm install -g @playwright/cli@0.1.22 && playwright-cli install-browser chromium"
       }
     ]
   },

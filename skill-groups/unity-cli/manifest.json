@@ -2,7 +2,8 @@
   "name": "unity-cli",
   "type": "vendored",
   "description": "Unity Editor automation via unity-cli \u2014 scene inspection, GameObject editing, prefab workflows, C# navigation/editing, asset management, input system, testing, and UI automation.",
-  "version": "0.14.2",
+  "version": "0.15.0",
+  "update_policy": "check",
   "source": {
     "repo": "arghhhhh/unity-cli",
     "ref": "7f45d7aec2a866abda88ba3768bf4057c5f23053",

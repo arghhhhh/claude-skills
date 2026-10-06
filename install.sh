@@ -516,8 +516,10 @@ group_type() {
 
 # Reads a group's "update_policy" manifest field. "latest" means the group's
 # install command tracks a moving target (e.g. one of my own tool repos cloned
-# at HEAD) and --update should re-run it every time. Default is "pinned":
-# update mode leaves installed software alone.
+# at HEAD) and --update should re-run it every time. "check" means --update
+# runs install.check and reinstalls only when it fails — for groups whose check
+# is keyed to a pinned version or SHA. Default is "pinned": update mode leaves
+# installed software alone.
 group_update_policy() {
   local group="$1"
   local manifest_file="$SKILL_GROUPS_DIR/$group/manifest.json"
@@ -2579,6 +2581,15 @@ update_group() {
       propagate_to_wsl "$group" "$manifest"
     else
       info "$group: update_policy latest, but --skip-software given — not refreshing"
+    fi
+  elif [ "$(group_update_policy "$group")" = "check" ]; then
+    # install.check is keyed to the pin, so a failing check means the installed
+    # software is older (or newer) than the manifest asks for.
+    if [ "$SKIP_SOFTWARE" = "false" ]; then
+      install_software "$group"
+      run_test "$group"
+    else
+      info "$group: update_policy check, but --skip-software given — not checking"
     fi
   fi
 
