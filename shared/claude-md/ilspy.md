@@ -1,6 +1,6 @@
 ## ILSpy CLI - .NET Decompilation
 
-When user wants to inspect a **managed .NET** assembly (.dll/.exe produced by C#/F#/VB.NET) — detect .NET vs native, list types/methods, decompile a type or single method, search decompiled source, or read assembly metadata — read `~/.claude/skills/ilspy-cli.md`.
+When user wants to inspect a **managed .NET** assembly (.dll/.exe produced by C#/F#/VB.NET) — detect .NET vs native, list types/methods, decompile a type or single method, search decompiled source, or read assembly metadata — read `~/.claude/skills/ilspy-cli/SKILL.md`.
 
 Driver is `ilspy` from [akiselev/ilspy-cli](https://github.com/akiselev/ilspy-cli), which loads ILSpy's `ICSharpCode.Decompiler` engine in-process via a C# bridge. Unlike `ilspycmd`, it supports **single-method decompilation**.
 

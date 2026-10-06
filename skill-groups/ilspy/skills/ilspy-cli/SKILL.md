@@ -1,5 +1,7 @@
 ---
-version: 1.1.1
+version: 1.2.0
+name: ilspy-cli
+description: Decompile managed .NET assemblies (.dll/.exe from C#/F#/VB.NET) via the `ilspy` CLI — detect .NET vs native, list types/methods, decompile a type or a single method, search decompiled source, read metadata. Use Ghidra for native code.
 ---
 
 # ILSpy CLI Skill

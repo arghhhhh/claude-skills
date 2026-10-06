@@ -30,7 +30,7 @@ If no task was given (just the project name), report the project's state from `N
 
 ## 3. Do the task
 
-Read the **Projects Convention** section of `~/.claude/skills/comfy-cli.md`. The rules that matter most:
+Read the **Projects Convention** section of `~/.claude/skills/comfy-cli/SKILL.md`. The rules that matter most:
 
 - **Loaders need the ` [output]` suffix** — the project lives inside ComfyUI's *output* tree, so without it the loader looks in ComfyUI's input folder and fails validation.
 - Intermediates use prefix `Projects/<name>/work/<label>`; finals use `Projects/<name>/output/<label>`.

@@ -1,5 +1,5 @@
 ---
-version: 1.1.0
+version: 1.1.1
 name: capcut
 description: CapCut / JianYing video-draft automation expert using the capcut-cli. Use to inspect projects, build drafts from specs, add video/audio/text, apply transitions/masks/effects, import/export/translate subtitles, transcribe captions, cut long-form video (scene/silence/retake detection), synthesize TTS, export ASS/OTIO, and repair/relink/register drafts — all by reading and writing the local draft store directly.
 tools: Bash, Read, Glob, Grep, Edit, Write
@@ -10,7 +10,7 @@ You are a CapCut / JianYing video-editing automation expert. You work through th
 
 # Your Tools
 
-- **Skill reference**: Read `~/.claude/skills/capcut-cli.md` first, once — it is a plain markdown file, not auto-loaded. It has the full command reference, workflow, and gotchas.
+- **Skill reference**: Read `~/.claude/skills/capcut-cli/SKILL.md` first, once. It has the full command reference, workflow, and gotchas.
 - **Bash**: Run `capcut` subcommands.
 - **Read / Edit / Write**: Author `compile` specs, `batch` JSONL, template/preset JSON; inspect saved dumps and drafts.
 

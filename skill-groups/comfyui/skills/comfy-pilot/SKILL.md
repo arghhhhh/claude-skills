@@ -1,5 +1,7 @@
 ---
-version: 1.3.0
+version: 1.4.0
+name: comfy-pilot
+description: Edit live ComfyUI workflows on the canvas via the comfy-pilot MCP server (mcporter `comfyui`) — node discovery with slot details, batched graph edits, viewing generated images. Requires ComfyUI running.
 ---
 
 # ComfyUI Pilot Skill (via MCPorter)

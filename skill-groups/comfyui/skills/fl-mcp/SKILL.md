@@ -1,5 +1,7 @@
 ---
-version: 1.2.2
+version: 1.3.0
+name: fl-mcp
+description: Drive ComfyUI through FL-MCP's ~108-tool MCP surface (mcporter `flmcp`) — REST queue/execution/models/settings/logs, node-library introspection, ComfyUI-Manager operations, and authoring/patching custom-node Python.
 ---
 
 # ComfyUI FL-MCP Skill (via MCPorter)

@@ -1,6 +1,6 @@
 ## Ghidra CLI - Reverse Engineering
 
-When user wants to reverse engineer a binary — import/analyze with Ghidra, decompile functions, edit symbols or types, find strings/bytes/crypto, walk cross-references, build call graphs, patch bytes, or run Ghidra scripts headlessly — read `~/.claude/skills/ghidra-cli.md`.
+When user wants to reverse engineer a binary — import/analyze with Ghidra, decompile functions, edit symbols or types, find strings/bytes/crypto, walk cross-references, build call graphs, patch bytes, or run Ghidra scripts headlessly — read `~/.claude/skills/ghidra-cli/SKILL.md`.
 
 Driver is the Rust CLI from [akiselev/ghidra-cli](https://github.com/akiselev/ghidra-cli), which talks to a long-lived Java bridge inside Ghidra's JVM (fast repeated queries, no JVM startup per command).
 

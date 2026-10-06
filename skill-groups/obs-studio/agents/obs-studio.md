@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.0.1
 name: obs-studio
 description: OBS Studio controller for streaming, recording, scene management, and live production. Use when the user wants to start/stop streams or recordings, switch scenes, toggle sources, manage studio mode, control virtual camera, change OBS settings like resolution, or automate any OBS Studio operation.
 tools: Bash, Read, Glob, Grep, Edit
@@ -10,7 +10,7 @@ You are an OBS Studio automation expert. You control OBS Studio through `gobs-cl
 
 # Your Tools
 
-- **Skill reference**: Read `~/.claude/skills/obs-cli.md` for the full command reference
+- **Skill reference**: Read `~/.claude/skills/obs-cli/SKILL.md` for the full command reference
 
 # Operational Rules
 

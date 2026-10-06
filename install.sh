@@ -1814,7 +1814,8 @@ configure_skills() {
         if grep -Eq '\{\{[A-Z_]+\}\}' "$f" 2>/dev/null; then
           files_with_placeholders+=("$f")
         fi
-      done < <(find "$target" -name '*.md' -print0 2>/dev/null)
+      # Trailing slash: find doesn't descend into a symlinked dir otherwise.
+      done < <(find "$target/" -name '*.md' -print0 2>/dev/null)
     fi
   done
 
@@ -1886,6 +1887,20 @@ configure_skills() {
   local config_vars
   config_vars=$(grep -oE '^[A-Z_]+=' "$CONFIG_FILE" | sed 's/=$//' || true)
 
+  # Folder skills: the files live under a symlinked dir, so sed would write
+  # this machine's paths into the repo. Swap the dir link for a real copy
+  # first (diff_skill compares copies via subst_file_to_stdout).
+  for skill in $skills; do
+    local sdir="$SKILLS_DIR/$skill"
+    [ -L "$sdir" ] && [ -d "$sdir" ] || continue
+    grep -rEq '\{\{[A-Z_]+\}\}' "$sdir/" --include='*.md' 2>/dev/null || continue
+    local real_dir
+    real_dir=$(cd "$sdir" && pwd -P)
+    rm -f "$sdir" 2>/dev/null
+    [ -e "$sdir" ] && { warn "$skill: could not unlink $sdir — placeholders left unfilled"; continue; }
+    cp -R "$real_dir" "$sdir"
+  done
+
   local any_substituted=false
   for f in "${files_with_placeholders[@]}"; do
     # If the file is a symlink, replace with a copy so we don't modify the repo
@@ -1895,6 +1910,10 @@ configure_skills() {
       rm "$f"
       cp "$real_target" "$f"
     fi
+    # Never substitute into the repo itself (e.g. a dir link we couldn't swap).
+    case "$(cd "$(dirname "$f")" && pwd -P)/" in
+      "$(cd "$SCRIPT_DIR" && pwd -P)/"*|"$CLAUDE_DIR/.skill-repos/"*) continue ;;
+    esac
 
     for var in $config_vars; do
       local val="${!var:-}"
@@ -2696,6 +2715,9 @@ group_is_installed() {
   local skill agent cmd
   for skill in $(json_array "$manifest" "skills"); do
     [ -n "$(resolve_skill_path "$SKILLS_DIR/$skill")" ] && return 0
+    # A link left dangling because the skill moved in the repo (flat
+    # <skill>.md -> <skill>/SKILL.md) still means the group is installed.
+    [ -L "$SKILLS_DIR/$skill" ] || [ -L "$SKILLS_DIR/$skill.md" ] && return 0
   done
   for agent in $(json_array "$manifest" "agents"); do
     [ -e "$AGENTS_DIR/$agent.md" ] && return 0
@@ -3631,6 +3653,9 @@ main() {
       install_user_env "$group"
       # Re-write managed wrapper blocks so fixes to them reach installed machines.
       install_group_shell_aliases "$group"
+      # A skill re-linked above is the raw repo file again; re-fill its
+      # {{PLACEHOLDER}}s. Only with a config file — no prompting during update.
+      [ -f "$CONFIG_FILE" ] && configure_skills "$group"
     done
 
     install_shared_claude_md

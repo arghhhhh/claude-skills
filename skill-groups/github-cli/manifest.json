@@ -1,7 +1,7 @@
 {
   "name": "github-cli",
   "description": "GitHub CLI (gh) — issues, pull requests, repos, CI checks, releases, and API access.",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "prerequisites": [],
   "install": {
     "check": "gh --version",

@@ -1,5 +1,7 @@
 ---
-version: 1.1.0
+version: 1.2.0
+name: huggingface-downloader
+description: Download models, checkpoints, LoRAs, VAEs, text encoders, datasets or single files from HuggingFace with the fast, resumable `hfdownloader` — especially into ComfyUI model folders.
 ---
 
 # HuggingFace Downloader Skill

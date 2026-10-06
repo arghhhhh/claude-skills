@@ -1,5 +1,7 @@
 ---
-version: 1.2.0
+version: 1.3.0
+name: comfy-cli
+description: Manage ComfyUI from the command line via comfy-cli — launch/stop the server, run workflow files, install custom nodes and models, and the Projects folder convention. Use comfy-pilot for live canvas editing.
 ---
 
 # ComfyUI CLI Skill

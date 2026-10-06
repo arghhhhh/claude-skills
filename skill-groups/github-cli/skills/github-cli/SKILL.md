@@ -1,5 +1,7 @@
 ---
-version: 1.1.1
+version: 1.2.0
+name: github-cli
+description: Work with GitHub from the terminal via the `gh` CLI — issues, pull requests, repos, CI checks and workflow runs, releases, and raw API calls. Use for any GitHub operation.
 ---
 
 # GitHub CLI (gh) Skill

@@ -1,5 +1,5 @@
 ---
-version: 1.1.1
+version: 1.2.0
 name: capcut-cli
 description: Programmatically edit CapCut / JianYing video drafts from the terminal via the `capcut` CLI. Use to inspect projects, build drafts from specs, add video/audio/text, apply transitions/masks/effects, import/export/translate subtitles, transcribe captions, and cut long-form video — all by reading and writing the local draft store directly (JSON in, JSON out, no server).
 ---

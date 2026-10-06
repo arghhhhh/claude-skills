@@ -5,8 +5,8 @@
 **Project-scoped work:** `/comfy-project <name> <task>` sets up `Projects/<name>/` and runs the task in the comfyui agent directly.
 
 **Skills the agent uses** (read them yourself only if you are doing the work directly):
-1. **comfy-cli** — server management, running workflow files, node/model management, Projects convention. `~/.claude/skills/comfy-cli.md`
-2. **comfy-pilot** — live canvas editing, node discovery, image viewing (MCPorter `comfyui` server). `~/.claude/skills/comfy-pilot.md`
-3. **fl-mcp** — FL-MCP's ~108-tool surface (MCPorter `flmcp` server): broad REST automation, node-library introspection, ComfyUI-Manager ops, custom-node Python authoring. `~/.claude/skills/fl-mcp.md`
+1. **comfy-cli** — server management, running workflow files, node/model management, Projects convention. `~/.claude/skills/comfy-cli/SKILL.md`
+2. **comfy-pilot** — live canvas editing, node discovery, image viewing (MCPorter `comfyui` server). `~/.claude/skills/comfy-pilot/SKILL.md`
+3. **fl-mcp** — FL-MCP's ~108-tool surface (MCPorter `flmcp` server): broad REST automation, node-library introspection, ComfyUI-Manager ops, custom-node Python authoring. `~/.claude/skills/fl-mcp/SKILL.md`
 
 Trigger phrases: "comfyui", "comfy", "workflow", "generate image", "generate video", "install node", "download model", "run workflow", "fl-mcp", "comfyui manager", "custom node dev", "node library", "queue status"

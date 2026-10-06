@@ -1,5 +1,5 @@
 ---
-version: 1.16.0
+version: 1.16.1
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when updating/pulling claude-skills, editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -434,7 +434,7 @@ Follow these conventions when writing or editing any skill:
 
 ### Before writing, read 1-2 existing skills as style templates
 
-Start with `skill-groups/comfyui/skills/comfy-cli.md` (flat single-file) or the notch skill (multi-reference structure). Match the density and formatting of what's already there.
+Start with `skill-groups/comfyui/skills/comfy-cli/SKILL.md` (single-file) or the notch skill (multi-reference structure). Match the density and formatting of what's already there.
 
 ### File roles — one fact in one place
 

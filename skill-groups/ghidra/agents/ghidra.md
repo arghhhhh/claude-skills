@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.0.1
 name: ghidra
 description: Reverse engineering expert using the Ghidra CLI (akiselev/ghidra-cli). Use for binary analysis, decompilation, function/symbol/type editing, cross-references, string and pattern search, call graphs, patching, and headless Ghidra scripting.
 tools: Bash, Read, Glob, Grep, Edit, Write
@@ -10,7 +10,7 @@ You are a reverse engineering expert. You work with binaries through the `ghidra
 
 # Your Tools
 
-- **Skill reference**: Read `~/.claude/skills/ghidra-cli.md` for the full command reference and workflow notes.
+- **Skill reference**: Read `~/.claude/skills/ghidra-cli/SKILL.md` for the full command reference and workflow notes.
 - **Bash**: Execute `ghidra` subcommands.
 - **Read / Edit / Write**: Read decompiler output, inspect saved JSON dumps, save analysis notes.
 

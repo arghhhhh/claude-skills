@@ -164,7 +164,7 @@ The typical workflow for keeping skills in sync:
 
 ```bash
 # Machine A: improve a skill, bump its version
-# (edit ~/.claude/skills/comfy-cli.md, change version: 1.0.0 → 1.1.0)
+# (edit ~/.claude/skills/comfy-cli/SKILL.md, change version: 1.0.0 → 1.1.0)
 
 # Sync the improvement back to the repo
 bash install.sh --update --sync

@@ -1,5 +1,7 @@
 ---
-version: 1.0.0
+version: 1.1.0
+name: ghidra-cli
+description: Reverse engineer native binaries headlessly with Ghidra via the `ghidra` CLI (akiselev/ghidra-cli) — import/analyze, decompile functions, edit symbols and types, find strings/bytes/crypto, walk cross-references, build call graphs, patch bytes, run scripts.
 ---
 
 # Ghidra CLI Skill

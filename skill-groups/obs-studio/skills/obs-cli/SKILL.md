@@ -1,5 +1,7 @@
 ---
-version: 1.1.0
+version: 1.2.0
+name: obs-cli
+description: Control OBS Studio via `gobs-cli` (obs-websocket v5) and its config files — start/stop streaming and recording, switch scenes, toggle sources, studio mode, virtual camera, replay buffer, and settings like resolution.
 ---
 
 # OBS Studio CLI Skill
