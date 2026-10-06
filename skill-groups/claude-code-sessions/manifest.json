@@ -2,13 +2,13 @@
   "name": "claude-code-sessions",
   "type": "tool-only",
   "description": "TUI for browsing every local Claude Code session (CLI + Mac-app Local) in one place. Reads ~/.claude/projects/**/*.jsonl directly.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "update_policy": "latest",
   "prerequisites": [
     {
       "name": "go",
       "check": "go version",
-      "install_hint": "Install Go 1.21+: https://go.dev/dl/  (macOS: brew install go  ·  Windows: winget install GoLang.Go)",
+      "install_hint": "Install Go 1.21+: https://go.dev/dl/  (macOS: brew install go  ·  Windows: winget install --id GoLang.Go -e --source winget)",
       "required": true
     },
     {

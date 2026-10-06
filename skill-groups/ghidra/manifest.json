@@ -1,7 +1,7 @@
 {
   "name": "ghidra",
   "description": "Reverse engineering via Ghidra CLI (akiselev/ghidra-cli) — headless analysis, decompilation, function/symbol/type editing, cross-refs, search, patching, and scripting from the terminal.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "prerequisites": [
     "Rust 1.70+ (cargo on PATH)",
     "JDK 17+ (Ghidra runtime)",
@@ -35,7 +35,7 @@
     "ghidra"
   ],
   "post_install_hints": [
-    "Install a JDK 17+ if not present (Windows: `winget install Microsoft.OpenJDK.21`; macOS: `brew install openjdk@21`; Linux: `sudo apt install openjdk-21-jdk`).",
+    "Install a JDK 17+ if not present (Windows: `winget install --id Microsoft.OpenJDK.21 -e --source winget`; macOS: `brew install openjdk@21`; Linux: `sudo apt install openjdk-21-jdk`).",
     "Install Ghidra: either run `ghidra setup` to auto-download, or download from https://ghidra-sre.org and set GHIDRA_INSTALL_DIR (or `ghidra config set ghidra_install_dir <path>`).",
     "Verify with `ghidra doctor` — it checks the Ghidra install, JDK, and project directory."
   ]

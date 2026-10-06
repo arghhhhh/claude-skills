@@ -1,7 +1,7 @@
 {
   "name": "wireviz",
   "description": "Wiring / cable harness diagrams from plain-text YAML via the WireViz CLI — connector pinouts, cable colors, point-to-point wiring, rendered to SVG/PNG/HTML with a BOM.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "prerequisites": [
     {
       "name": "pip",
@@ -12,7 +12,7 @@
     {
       "name": "graphviz-dot",
       "check": "dot -V",
-      "install_hint": "Windows: winget install Graphviz.Graphviz (then add C:/Program Files/Graphviz/bin to PATH). macOS: brew install graphviz. Linux: sudo apt install graphviz",
+      "install_hint": "Windows: winget install --id Graphviz.Graphviz -e --source winget (then add C:/Program Files/Graphviz/bin to PATH). macOS: brew install graphviz. Linux: sudo apt install graphviz",
       "required": true,
       "note": "WireViz shells out to the Graphviz 'dot' binary to lay out diagrams — rendering fails without it on PATH"
     }

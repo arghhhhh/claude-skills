@@ -601,13 +601,56 @@ vendored_ensure_clone() {
     (cd "$clone_dir" && git fetch --quiet origin 2>/dev/null) || warn "$group: fetch failed for $repo" >&2
   fi
 
+  # Undo stub materialization from the last run so checkout sees a clean tree.
+  vendored_restore_symlink_stubs "$clone_dir"
+
   # Checkout the pinned ref (detached HEAD is expected/desired)
   if ! (cd "$clone_dir" && git checkout --quiet "$ref" 2>/dev/null); then
     fail "$group: failed to checkout pinned ref $ref in $clone_dir" >&2
     return 1
   fi
 
+  vendored_materialize_symlinks "$clone_dir"
+
   echo "$clone_dir"
+}
+
+# Without symlink support (Windows without Developer Mode, core.symlinks=false)
+# git checks a symlink out as a text file holding its target, e.g. a 14-byte
+# SKILL.md containing "../../SKILL.md" — which then gets installed as the skill.
+# Replace each such stub with a copy of its target. The paths touched are
+# recorded so the next run can restore them before checking out another ref.
+vendored_materialize_symlinks() {
+  local clone_dir="$1"
+  local record="$clone_dir/.git/claude-skills-materialized"
+  local path target src done_list=""
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    src="$clone_dir/$path"
+    [ -L "$src" ] && continue          # real symlink — nothing to do
+    [ -f "$src" ] || continue
+    target=$(cat "$src")
+    target="$(dirname "$src")/$target"
+    [ -e "$target" ] || continue
+    rm -f "$src"
+    cp -R "$target" "$src" || continue
+    done_list+="$path"$'\n'
+  done < <(git -C "$clone_dir" -c core.quotepath=off ls-files -s 2>/dev/null | grep '^120000 ' | cut -f2)
+  [ -n "$done_list" ] || return 0
+  printf '%s' "$done_list" > "$record"
+  info "Resolved $(printf '%s' "$done_list" | wc -l | tr -d ' ') git symlink stub(s) in $(basename "$clone_dir") (no symlink support)" >&2
+}
+
+vendored_restore_symlink_stubs() {
+  local clone_dir="$1"
+  local record="$clone_dir/.git/claude-skills-materialized" path
+  [ -f "$record" ] || return 0
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    rm -rf "${clone_dir:?}/$path"
+    git -C "$clone_dir" checkout --quiet -- "$path" 2>/dev/null || true
+  done < "$record"
+  rm -f "$record"
 }
 
 # Read vendored overlay metadata (agent renames + presence). Echoes the rename
@@ -747,6 +790,8 @@ check_prerequisites() {
     [ -z "$name" ] && continue
     if eval "$check" </dev/null >/dev/null 2>&1; then
       ok "Prerequisite: $name"
+    elif windows_auto_install_prereq "$name" && eval "$check" </dev/null >/dev/null 2>&1; then
+      ok "Prerequisite: $name (installed via winget)"
     else
       if [ "$required" = "true" ]; then
         fail "Missing required prerequisite: $name"
@@ -785,6 +830,90 @@ check_prerequisites() {
   return 0
 }
 
+# ─── Windows install helpers ────────────────────────────────────────────────
+
+# winget install from the winget source only. Without --source winget it also
+# queries msstore, which fails outright on some networks
+# (0x8a15005e: server certificate did not match).
+winget_install() {
+  winget install --id "$1" -e --source winget --accept-source-agreements --accept-package-agreements --silent
+}
+
+# Put common tool dirs on this run's PATH. A tool winget just installed is only
+# in the registry PATH, not this shell's; npm's global bin (where
+# `npm install -g` puts playwright-cli etc.) isn't on Git Bash's PATH by default.
+windows_path_prepend_tool_dirs() {
+  [ "$PLATFORM" = "windows" ] || return 0
+  local d
+  for d in "/c/Program Files/Go/bin" "$HOME/go/bin" "/c/Program Files/nodejs" "$HOME/AppData/Roaming/npm"; do
+    [ -d "$d" ] || continue
+    case ":$PATH:" in *":$d:"*) ;; *) PATH="$d:$PATH" ;; esac
+  done
+  export PATH
+}
+
+# Install a missing prerequisite via winget (asks first unless -y). Returns 0
+# when the command is available afterwards.
+windows_auto_install_prereq() {
+  local name="$1" id ans
+  [ "$PLATFORM" = "windows" ] && command -v winget >/dev/null 2>&1 || return 1
+  case "$name" in
+    node|npx|npm) id=OpenJS.NodeJS.LTS ;;
+    go)           id=GoLang.Go ;;
+    *) return 1 ;;
+  esac
+  if [ "$NON_INTERACTIVE" != "true" ]; then
+    # /dev/tty: callers may be reading their own loop input from stdin.
+    read -rp "Install $name now via winget ($id)? [Y/n] " ans </dev/tty || ans=n
+    case "$ans" in n|N) return 1 ;; esac
+  fi
+  info "Installing $name via winget ($id)..."
+  user_path_guard_begin
+  winget_install "$id" </dev/null
+  local rc=$?
+  user_path_guard_end "$id"
+  [ "$rc" -eq 0 ] || { warn "winget install $id failed"; return 1; }
+  windows_path_prepend_tool_dirs
+  command -v "$name" >/dev/null 2>&1
+}
+
+# User PATH guard. Antivirus cleanup after a flagged install has been seen to
+# delete the whole HKCU\Environment\Path value (taking ~/.local/bin, and so
+# `claude`, with it). Snapshot it before running an installer; afterwards put
+# back any entries that vanished, keeping anything the installer added.
+# Never tries to get around the AV itself — that's the user's/IT's call.
+USER_PATH_BEFORE=""
+user_path_guard_begin() {
+  [ "$PLATFORM" = "windows" ] || return 0
+  USER_PATH_BEFORE=$(windows_user_env_get Path)
+  [ -n "$USER_PATH_BEFORE" ] && printf '%s\n' "$USER_PATH_BEFORE" > "$CLAUDE_DIR/user-path-backup.txt"
+}
+
+user_path_guard_end() {
+  local label="$1"
+  [ "$PLATFORM" = "windows" ] && [ -n "$USER_PATH_BEFORE" ] || return 0
+  local after e missing="" merged="$USER_PATH_BEFORE"
+  after=$(windows_user_env_get Path)
+  local IFS=';'
+  for e in $USER_PATH_BEFORE; do
+    [ -n "$e" ] || continue
+    case ";$after;" in *";$e;"*) ;; *) missing+="$e;" ;; esac
+  done
+  [ -n "$missing" ] || return 0
+  for e in $after; do
+    [ -n "$e" ] || continue
+    case ";$merged;" in *";$e;"*) ;; *) merged+=";$e" ;; esac
+  done
+  unset IFS
+  if CS_USER_PATH="$merged" powershell.exe -NoProfile -Command "[Environment]::SetEnvironmentVariable('Path', \$env:CS_USER_PATH, 'User')" >/dev/null 2>&1; then
+    warn "User PATH lost entries while installing $label (antivirus cleanup?) — restored: ${missing%;}"
+  else
+    fail "User PATH lost entries while installing $label and could not be restored: ${missing%;}"
+  fi
+  info "  Pre-install backup: $CLAUDE_DIR/user-path-backup.txt"
+  info "  If antivirus quarantined a file, allowing it is up to you or your IT team."
+}
+
 # ─── Install prerequisites (global) ─────────────────────────────────────────
 
 install_global_prerequisites() {
@@ -794,7 +923,8 @@ install_global_prerequisites() {
   fi
   ok "git available"
 
-  if ! command -v node >/dev/null 2>&1; then
+  windows_path_prepend_tool_dirs
+  if ! command -v node >/dev/null 2>&1 && ! windows_auto_install_prereq node; then
     fail "node is required but not found — install from https://nodejs.org/"
     if [ "$PLATFORM" = "macos" ] && command -v brew >/dev/null 2>&1; then
       info "Quick install: brew install node"
@@ -878,69 +1008,126 @@ EOF
   fi
 }
 
+# ─── PowerShell profile helpers (Windows) ───────────────────────────────────
+
+# Real PowerShell profile paths, one per line. Asks each installed PowerShell
+# for $PROFILE instead of guessing $HOME/Documents/..., which is wrong when
+# Documents is redirected (e.g. to a \\server\share folder) — edits there go to
+# a file PowerShell never loads. Falls back to the default paths only when no
+# PowerShell answers. Cached: each probe spawns a PowerShell (~0.5s).
+PS_PROFILE_PATHS=""
+powershell_profile_paths() {
+  if [ -z "$PS_PROFILE_PATHS" ]; then
+    local exe p paths=""
+    for exe in powershell pwsh; do
+      command -v "$exe" >/dev/null 2>&1 || continue
+      p=$("$exe" -NoProfile -Command '$PROFILE' 2>/dev/null | tr -d '\r')
+      [ -n "$p" ] || continue
+      command -v cygpath >/dev/null 2>&1 && p=$(cygpath -u "$p")
+      paths+="$p"$'\n'
+    done
+    if [ -z "$paths" ]; then
+      paths="$HOME/Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1"$'\n'
+      paths+="$HOME/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"$'\n'
+    fi
+    PS_PROFILE_PATHS="$paths"
+  fi
+  printf '%s' "$PS_PROFILE_PATHS"
+}
+
+# Strip the managed block between $2 and $3 from file $1 (no-op if absent).
+# Returns 0 when a block was removed.
+strip_marker_block() {
+  local file="$1" begin="$2" end="$3" tmp
+  grep -qF "$begin" "$file" 2>/dev/null || return 1
+  tmp=$(mktemp)
+  # LC_ALL=C so substr counts bytes; a UTF-8 BOM glued to line 1 is kept but
+  # ignored when matching, or a block at the top of a BOM'd file never matches.
+  LC_ALL=C awk -v begin="$begin" -v end="$end" -v bom=$'\xef\xbb\xbf' '
+    NR == 1 && substr($0, 1, 3) == bom { printf "%s", bom; $0 = substr($0, 4) }
+    { l = $0; sub(/\r$/, "", l) }   # CRLF profiles (saved by Notepad/ISE)
+    l == begin { skipping=1; next }
+    skipping && l == end { skipping=0; next }
+    !skipping { print }
+  ' "$file" > "$tmp" && cat "$tmp" > "$file"
+  rm -f "$tmp"
+  return 0
+}
+
+# Write a managed block into every real PowerShell profile.
+# Args: <marker_begin> <marker_end> <block> <label>
+# Blocks must be ASCII-only: Windows PowerShell 5.1 reads BOM-less files as
+# ANSI, so any UTF-8 em-dash/arrow turns into mojibake (and breaks if in code).
+# New profiles are created with a UTF-8 BOM for the same reason. Also removes
+# the block from the default Documents paths when they aren't the real
+# profile, so stale copies from older installer versions don't linger.
+write_powershell_profile_block() {
+  local begin="$1" end="$2" block="$3" label="$4"
+  local ps targets
+  targets=$(powershell_profile_paths)
+
+  while IFS= read -r ps; do
+    [ -n "$ps" ] || continue
+    mkdir -p "$(dirname "$ps")" 2>/dev/null
+    [ -f "$ps" ] || printf '\xef\xbb\xbf\n' > "$ps"
+
+    local existed_already=false
+    strip_marker_block "$ps" "$begin" "$end" && existed_already=true
+
+    if [ -s "$ps" ] && [ "$(tail -c1 "$ps" 2>/dev/null | od -An -c | tr -d ' ')" != "\n" ]; then
+      printf '\n' >> "$ps"
+    fi
+    printf '%s\n' "$block" >> "$ps"
+
+    if [ "$existed_already" = "true" ]; then
+      ok "Refreshed $label in $ps"
+    else
+      ok "Installed $label in $ps (restart PowerShell to pick up)"
+    fi
+  done <<< "$targets"
+
+  local legacy
+  for legacy in "$HOME/Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1" \
+                "$HOME/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"; do
+    grep -qxF "$legacy" <<< "$targets" && continue
+    [ -f "$legacy" ] || continue
+    strip_marker_block "$legacy" "$begin" "$end" \
+      && info "Removed stale $label from $legacy (not the profile PowerShell loads)"
+  done
+}
+
 install_powershell_aliases() {
-  local ps_marker_begin="# >>> claude-skills aliases >>>"
-  local ps_marker_end="# <<< claude-skills aliases <<<"
   local ps_block
   ps_block=$(cat <<'EOF'
 # >>> claude-skills aliases >>>
-# Managed by claude-skills installer — do not edit between markers.
+# Managed by claude-skills installer -- do not edit between markers.
 # Wrapper around `claude` that expands short flags (any position, combinable):
-#   --dsp  → --dangerously-skip-permissions
-#   --chr  → --chrome (Claude in Chrome)
-#   --res  → --continue (resume most recent conversation in this directory)
+#   --dsp  -> --dangerously-skip-permissions
+#   --chr  -> --chrome (Claude in Chrome)
+#   --res  -> --continue (resume most recent conversation in this directory)
 function claude {
     $exe = (Get-Command -CommandType Application -Name claude -ErrorAction SilentlyContinue | Select-Object -First 1).Source
     if (-not $exe) { Write-Error 'claude executable not found on PATH'; return }
-    $mapped = foreach ($a in $args) {
+    # @( ) keeps a single arg an array; splatting a bare string in PS 5.1
+    # passes it one character at a time (claude --dsp became "-" "-" "d" ...).
+    $mapped = @(foreach ($a in $args) {
         switch ($a) {
             '--dsp' { '--dangerously-skip-permissions' }
             '--chr' { '--chrome' }
             '--res' { '--continue' }
             default { $a }
         }
-    }
+    })
     & $exe @mapped
 }
 # <<< claude-skills aliases <<<
 EOF
 )
 
-  # Target both Windows PowerShell 5.1 and PowerShell 7+ profile paths.
-  local ps_targets=(
-    "$HOME/Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1"
-    "$HOME/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
-  )
-
-  for ps in "${ps_targets[@]}"; do
-    mkdir -p "$(dirname "$ps")"
-    [ -f "$ps" ] || touch "$ps"
-
-    local existed_already=false
-    if grep -qF "$ps_marker_begin" "$ps"; then
-      existed_already=true
-      local tmp
-      tmp=$(mktemp)
-      awk -v begin="$ps_marker_begin" -v end="$ps_marker_end" '
-        $0 == begin { skipping=1; next }
-        skipping && $0 == end { skipping=0; next }
-        !skipping { print }
-      ' "$ps" > "$tmp" && mv "$tmp" "$ps"
-    fi
-
-    if [ -s "$ps" ] && [ "$(tail -c1 "$ps" 2>/dev/null | od -An -c | tr -d ' ')" != "\n" ]; then
-      printf '\n' >> "$ps"
-    fi
-    printf '%s\n' "$ps_block" >> "$ps"
-
-    if [ "$existed_already" = "true" ]; then
-      ok "Refreshed claude shell-alias wrapper in $ps"
-    else
-      ok "Installed claude shell-alias wrapper in $ps (restart shell to pick up)"
-      info "If PowerShell execution policy blocks the profile, run once as user:"
-      info "  Set-ExecutionPolicy -Scope CurrentUser RemoteSigned"
-    fi
-  done
+  write_powershell_profile_block "# >>> claude-skills aliases >>>" "# <<< claude-skills aliases <<<" \
+    "$ps_block" "claude shell-alias wrapper"
+  info "If PowerShell execution policy blocks the profile, run once as user:"
+  info "  Set-ExecutionPolicy -Scope CurrentUser RemoteSigned"
 }
 
 # ─── Per-group shell aliases ────────────────────────────────────────────────
@@ -1003,7 +1190,7 @@ EOF
     local ps_block
     ps_block=$(cat <<'EOF'
 # >>> claude-code-sessions cs() wrapper >>>
-# Managed by claude-skills installer — do not edit between markers.
+# Managed by claude-skills installer -- do not edit between markers.
 function cs {
     $exe = Join-Path $HOME '.local\share\claude-code-sessions\claude-code-sessions.exe'
     if (-not (Test-Path $exe)) {
@@ -1011,39 +1198,22 @@ function cs {
         if (Test-Path $alt) { $exe = $alt }
     }
     $cmd = & $exe
-    if ($cmd) { Invoke-Expression $cmd }
+    if (-not $cmd) { return }
+    # The picker prints bash syntax: cd "<Go-quoted path>" && claude <flags> --resume <id>
+    # Windows PowerShell 5.1 has no &&, so split it and run the two halves here.
+    if ($cmd -match '^cd "((?:[^"\\]|\\.)*)" && claude(.*)$') {
+        $dir = $Matches[1] -replace '\\(.)', '$1'
+        $rest = @($Matches[2].Trim() -split '\s+' | Where-Object { $_ })
+        Set-Location -LiteralPath $dir
+        claude @rest
+    } else {
+        Write-Error "cs: unexpected resume command: $cmd"
+    }
 }
 # <<< claude-code-sessions cs() wrapper <<<
 EOF
 )
-    local ps_targets=(
-      "$HOME/Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1"
-      "$HOME/Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
-    )
-    for ps in "${ps_targets[@]}"; do
-      mkdir -p "$(dirname "$ps")"
-      [ -f "$ps" ] || touch "$ps"
-      local existed_already=false
-      if grep -qF "$marker_begin" "$ps"; then
-        existed_already=true
-        local tmp
-        tmp=$(mktemp)
-        awk -v begin="$marker_begin" -v end="$marker_end" '
-          $0 == begin { skipping=1; next }
-          skipping && $0 == end { skipping=0; next }
-          !skipping { print }
-        ' "$ps" > "$tmp" && mv "$tmp" "$ps"
-      fi
-      if [ -s "$ps" ] && [ "$(tail -c1 "$ps" 2>/dev/null | od -An -c | tr -d ' ')" != "\n" ]; then
-        printf '\n' >> "$ps"
-      fi
-      printf '%s\n' "$ps_block" >> "$ps"
-      if [ "$existed_already" = "true" ]; then
-        ok "Refreshed cs() wrapper in $ps"
-      else
-        ok "Installed cs() wrapper in $ps (restart shell to pick up)"
-      fi
-    done
+    write_powershell_profile_block "$marker_begin" "$marker_end" "$ps_block" "cs() wrapper"
   fi
 }
 
@@ -1136,6 +1306,31 @@ EOF
   else
     ok "Installed cdc/cdh functions in $rc (restart shell to pick up)"
   fi
+
+  # Same commands for PowerShell. cdh runs the helper as a separate process:
+  # it calls `exit`, which would close the user's shell if dot-sourced.
+  local ps_block
+  ps_block=$(cat <<'EOF'
+# >>> gitbash-clipboard-cd (cdc/cdh) >>>
+# Managed by claude-skills installer -- do not edit between markers.
+# cdc: cd into the folder path currently on the Windows clipboard.
+# cdh: cd into the most recent existing directory in Windows clipboard history.
+function cdc {
+    $p = (Get-Clipboard -Raw)
+    if (-not $p) { Write-Error 'cdc: clipboard is empty'; return }
+    $p = $p.Trim().Trim('"')
+    Set-Location -LiteralPath $p
+}
+function cdh {
+    $helper = Join-Path $HOME '.local\share\gitbash-clipboard-cd\cdh-cliphist.ps1'
+    $p = powershell -NoProfile -ExecutionPolicy Bypass -File $helper 2>$null
+    if (-not $p) { Write-Error 'cdh: no directory path found in clipboard history'; return }
+    Set-Location -LiteralPath ($p | Out-String).Trim()
+}
+# <<< gitbash-clipboard-cd (cdc/cdh) <<<
+EOF
+)
+  write_powershell_profile_block "$marker_begin" "$marker_end" "$ps_block" "cdc/cdh functions"
 }
 
 # wsl-clipboard-cd: install the cdw bash function that cd's into a Windows folder
@@ -1303,7 +1498,11 @@ install_software() {
     if [ -n "$cmd" ]; then
       cmd=$(subst_placeholders "$cmd")
       info "Installing via $method: $cmd"
-      if eval "$cmd" </dev/null; then
+      user_path_guard_begin
+      local rc=0
+      eval "$cmd" </dev/null || rc=$?
+      user_path_guard_end "$group"
+      if [ "$rc" -eq 0 ]; then
         # Add tool-specific bin dirs to PATH for subsequent commands
         case "$method" in
           go)    export PATH="$HOME/go/bin:$PATH" ;;
@@ -1564,7 +1763,13 @@ sweep_orphans_in() {
     local base
     base=$(basename "$entry")
     base="${base%.md}"
-    if ! grep -qFx "$base" <<< "$keep_set"; then
+    # Broken links go too: e.g. a flat <skill>.md link left behind after the
+    # skill moved to <skill>/SKILL.md — its name is still in the keep set.
+    if [ ! -e "$entry" ]; then
+      rm -f "$entry"
+      info "Removed broken $label link: $(basename "$entry")"
+      removed=$((removed + 1))
+    elif ! grep -qFx "$base" <<< "$keep_set"; then
       rm -f "$entry"
       info "Removed orphan $label: $base (no longer in any manifest)"
       removed=$((removed + 1))
@@ -1592,20 +1797,21 @@ configure_skills() {
   manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
   skills=$(json_array "$manifest" "skills")
 
-  # Collect all files that have placeholders
+  # Collect all files that have placeholders. Only the {{UPPER_SNAKE}} shape
+  # is ours; docs that show template syntax ({{name}}, {{ x }}) aren't config.
   local files_with_placeholders=()
   for skill in $skills; do
     local target="$SKILLS_DIR/$skill"
     for f in "$target" "$target.md"; do
       [ -f "$f" ] || continue
-      if grep -q '{{' "$f" 2>/dev/null; then
+      if grep -Eq '\{\{[A-Z_]+\}\}' "$f" 2>/dev/null; then
         files_with_placeholders+=("$f")
       fi
     done
     # Check inside directory skills
     if [ -d "$target" ]; then
       while IFS= read -r -d '' f; do
-        if grep -q '{{' "$f" 2>/dev/null; then
+        if grep -Eq '\{\{[A-Z_]+\}\}' "$f" 2>/dev/null; then
           files_with_placeholders+=("$f")
         fi
       done < <(find "$target" -name '*.md' -print0 2>/dev/null)
@@ -1712,7 +1918,7 @@ configure_skills() {
   # Check if any placeholders remain
   local remaining=false
   for f in "${files_with_placeholders[@]}"; do
-    if grep -q '{{' "$f" 2>/dev/null; then
+    if grep -Eq '\{\{[A-Z_]+\}\}' "$f" 2>/dev/null; then
       remaining=true
       break
     fi
@@ -3394,6 +3600,7 @@ main() {
 
   # ── Update mode ──
   if [ "$MODE" = "update" ]; then
+    windows_path_prepend_tool_dirs
     install_shell_aliases
     install_git_hooks
 
@@ -3422,6 +3629,8 @@ main() {
     for group in "${update_targets[@]}"; do
       update_group "$group"
       install_user_env "$group"
+      # Re-write managed wrapper blocks so fixes to them reach installed machines.
+      install_group_shell_aliases "$group"
     done
 
     install_shared_claude_md
@@ -3542,17 +3751,19 @@ main() {
     # Step 6: Append CLAUDE.md snippet
     install_claude_md_snippet "$group"
 
-    # Step 7: Smoke test (skip if software install was skipped)
+    # Step 7: Per-group shell aliases (e.g. cs() for claude-code-sessions).
+    # Before the smoke test: some write the files their test checks for
+    # (gitbash-clipboard-cd's cdh helper).
+    install_group_shell_aliases "$group"
+
+    # Step 8: Smoke test (skip if software install was skipped)
     if [ "$SKIP_SOFTWARE" = "false" ] && [ "$INSTALL_SKIPPED" != "true" ]; then
       run_test "$group"
     elif [ "$INSTALL_SKIPPED" = "true" ]; then
       info "Smoke test: skipped (software install was skipped)"
     fi
 
-    # Step 8: Per-group shell aliases (e.g. cs() for claude-code-sessions)
-    install_group_shell_aliases "$group"
-
-    # Step 8: Show post-install hints
+    # Step 9: Show post-install hints
     show_post_install_hints "$group"
   done
 

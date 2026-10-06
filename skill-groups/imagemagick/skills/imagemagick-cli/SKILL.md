@@ -1,5 +1,7 @@
 ---
-version: 1.0.0
+name: imagemagick-cli
+description: Manipulate images with the ImageMagick `magick` CLI — resize, convert formats, crop, composite, annotate, watermark, effects, batch processing, metadata. Also PDF→image when Ghostscript is installed.
+version: 1.1.0
 ---
 
 # ImageMagick CLI Skill
@@ -55,7 +57,11 @@ magick input.svg output.png                  # SVG to raster
 magick *.jpg output.pdf                      # Multiple images to multi-page PDF
 magick input.gif[0] frame0.png               # Extract first frame of GIF
 magick input.gif frames_%03d.png             # Extract all GIF frames
+magick -density 300 input.pdf page_%02d.png  # PDF pages to PNG (needs Ghostscript)
+magick -density 300 "input.pdf[0]" cover.png # First PDF page only
 ```
+
+Reading PDF/PS/EPS needs Ghostscript (`gs`, or `gswin64c` on Windows) on PATH; without it `magick` fails with `FailedToExecuteCommand 'gswin64c.exe'` / `no images defined`. Writing PDFs doesn't need it.
 
 ### Quality and compression
 

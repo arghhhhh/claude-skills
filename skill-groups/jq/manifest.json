@@ -2,7 +2,7 @@
   "name": "jq",
   "type": "tool-only",
   "description": "jq — command-line JSON processor. General-purpose utility for slicing/filtering/transforming JSON output from other CLIs (linear, officecli, gh, etc.).",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "prerequisites": [],
   "install": {
     "check": "jq --version",
@@ -11,7 +11,7 @@
         "name": "winget",
         "platforms": ["windows"],
         "check": "winget --version",
-        "command": "winget install --id jqlang.jq --accept-source-agreements --accept-package-agreements --silent"
+        "command": "winget install --id jqlang.jq -e --source winget --accept-source-agreements --accept-package-agreements --silent"
       },
       {
         "name": "brew",

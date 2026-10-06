@@ -1,7 +1,7 @@
 {
   "name": "github-cli",
   "description": "GitHub CLI (gh) — issues, pull requests, repos, CI checks, releases, and API access.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "prerequisites": [],
   "install": {
     "check": "gh --version",
@@ -16,7 +16,7 @@
         "name": "winget",
         "platforms": ["windows"],
         "check": "winget --version",
-        "command": "winget install --id GitHub.cli"
+        "command": "winget install --id GitHub.cli -e --source winget --accept-source-agreements --accept-package-agreements --silent"
       },
       {
         "name": "manual",

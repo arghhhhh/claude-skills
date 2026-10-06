@@ -1,7 +1,7 @@
 {
   "name": "ilspy",
   "description": "Agent-friendly .NET decompilation via ilspy-cli (akiselev/ilspy-cli) — type/method listing, single-method decompilation, regex search, assembly metadata, and .NET vs native detection using the ILSpy ICSharpCode.Decompiler engine.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "prerequisites": [
     "Rust 1.70+ (cargo on PATH, for source build)",
     ".NET 8 SDK (build) and .NET 8+ runtime (run)"
@@ -34,7 +34,7 @@
     "ilspy"
   ],
   "post_install_hints": [
-    "Install .NET 8 SDK if missing (Windows: `winget install Microsoft.DotNet.SDK.8`; macOS: `brew install --cask dotnet-sdk`; Linux: see https://learn.microsoft.com/dotnet/core/install/linux).",
+    "Install .NET 8 SDK if missing (Windows: `winget install --id Microsoft.DotNet.SDK.8 -e --source winget`; macOS: `brew install --cask dotnet-sdk`; Linux: see https://learn.microsoft.com/dotnet/core/install/linux).",
     "Stage the bridge DLL to a stable location: copy `<repo-clone>/target/release/bridge/` to e.g. `~/tools/ilspy-bridge`, then set `ILSPY_BRIDGE_DIR` to that path (persist with `setx` on Windows or shell rc on Unix).",
     "Run `ilspy doctor` — checks .NET runtime + bridge DLL load."
   ]

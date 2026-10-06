@@ -1,7 +1,7 @@
 {
   "name": "imagemagick",
   "description": "Image manipulation via ImageMagick CLI — resize, convert, composite, annotate, effects, and batch processing.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "prerequisites": [],
   "install": {
     "check": "magick --version",
@@ -10,7 +10,7 @@
         "name": "winget",
         "platforms": ["windows"],
         "check": "winget --version",
-        "command": "winget install ImageMagick.ImageMagick"
+        "command": "winget install --id ImageMagick.ImageMagick -e --source winget --accept-source-agreements --accept-package-agreements --silent"
       },
       {
         "name": "brew",
