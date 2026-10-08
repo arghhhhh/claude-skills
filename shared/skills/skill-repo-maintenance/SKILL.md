@@ -1,5 +1,5 @@
 ---
-version: 1.17.0
+version: 1.18.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when updating/pulling claude-skills, editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -13,6 +13,8 @@ This skill governs how to keep the `claude-skills` repo (`arghhhhh/claude-skills
 The repo lives at `~/.claude/.skill-repos/claude-skills/`. All skill edits should happen in this directory, not directly in `~/.claude/skills/` (those are symlinks).
 
 ## Updating claude-skills ("update claude-skills")
+
+The user can also do routine updates without an agent: `claude-skills-update` opens a local GUI over the same steps (`updater/`, see README). It launches an agent with the prompt "update claude-skills" when the repo is dirty or diverged, an update fails, or the user asks for one.
 
 When the user asks to update claude-skills (or "update my skills", "pull the latest skills"), the goal is: **refresh EVERYTHING claude-skills already installed on this machine, but ASK before adding anything that wasn't installed before.** Not just the group the user happened to mention — "update claude-skills and make sure unity-cli is updated" still means update all installed groups. Do not stop at `git pull`: hooks, commands and some tool files are COPIED out of the repo at install time, so a pull alone leaves them stale.
 

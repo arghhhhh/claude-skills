@@ -968,6 +968,10 @@ claude() {
   done
   command claude "${args[@]}"
 }
+# Opens the claude-skills updater (local web page) in the browser.
+claude-skills-update() {
+  node "$HOME/.claude/.skill-repos/claude-skills/updater/server.js" "$@"
+}
 # <<< claude-skills aliases <<<
 EOF
 )
@@ -1126,6 +1130,10 @@ function claude {
         }
     })
     & $exe @mapped
+}
+# Opens the claude-skills updater (local web page) in the browser.
+function claude-skills-update {
+    node (Join-Path $HOME '.claude\.skill-repos\claude-skills\updater\server.js') @args
 }
 # <<< claude-skills aliases <<<
 EOF

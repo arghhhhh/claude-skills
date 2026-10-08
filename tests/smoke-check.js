@@ -289,6 +289,18 @@ for (const f of (fs.existsSync(MIGRATIONS) ? fs.readdirSync(MIGRATIONS) : []).fi
   }
 }
 
+// ─── updater ────────────────────────────────────────────────────────────────
+console.log('\n=== updater ===');
+{
+  const { spawnSync } = require('child_process');
+  const server = path.join(REPO, 'updater', 'server.js');
+  const html = path.join(REPO, 'updater', 'index.html');
+  const r = spawnSync(process.execPath, ['--check', server], { encoding: 'utf8' });
+  if (r.status === 0) ok('updater/server.js parses'); else err('updater/server.js: ' + (r.stderr || '').trim());
+  if (fs.existsSync(html) && fs.readFileSync(html, 'utf8').includes('__TOKEN__')) ok('updater/index.html has token placeholder');
+  else err('updater/index.html missing or lacks __TOKEN__ placeholder');
+}
+
 // ─── FINAL RESULTS ──────────────────────────────────────────────────────────
 console.log('\n=== FINAL RESULTS ===');
 console.log(pass + ' passed, ' + fail + ' failed');

@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="token" content="__TOKEN__">
+<title>claude-skills updater</title>
+<style>
+  :root {
+    --bg: #f6f5f2; --surface: #ffffff; --surface-2: #efeee9; --border: #dedcd4;
+    --text: #1f1e1b; --muted: #6b6960; --accent: #c2410c; --accent-text: #ffffff;
+    --ok: #15803d; --warn: #b45309; --bad: #b91c1c; --info: #1d4ed8;
+    --warn-bg: #fef3c7; --bad-bg: #fee2e2; --info-bg: #dbeafe; --ok-bg: #dcfce7;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1917; --surface: #23221f; --surface-2: #2c2b27; --border: #3a3934;
+      --text: #ecebe6; --muted: #a09e95; --accent: #f97316; --accent-text: #1a1917;
+      --ok: #4ade80; --warn: #fbbf24; --bad: #f87171; --info: #93c5fd;
+      --warn-bg: #3a2e12; --bad-bg: #3b1a1a; --info-bg: #172238; --ok-bg: #12301d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 120px; }
+  h1 { font-size: 22px; margin: 0; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 32px 0 10px; }
+  header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  header .repo { color: var(--muted); font-family: var(--mono); font-size: 13px; }
+  header .spacer { flex: 1; }
+  button { font: inherit; border-radius: 8px; border: 1px solid var(--border); background: var(--surface);
+           color: var(--text); padding: 7px 14px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--muted); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  button.small { padding: 3px 10px; font-size: 13px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin: 8px 0; }
+  .row { display: flex; gap: 12px; align-items: flex-start; }
+  .row input[type=checkbox] { margin-top: 4px; width: 16px; height: 16px; accent-color: var(--accent); flex: none; }
+  .grow { flex: 1; min-width: 0; }
+  .name { font-weight: 600; }
+  .ver { font-family: var(--mono); font-size: 13px; color: var(--muted); margin-left: 6px; }
+  .desc { color: var(--muted); font-size: 14px; margin-top: 2px; }
+  .clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .badge { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 1px; }
+  .b-warn { background: var(--warn-bg); color: var(--warn); }
+  .b-info { background: var(--info-bg); color: var(--info); }
+  .b-ok { background: var(--ok-bg); color: var(--ok); }
+  .b-bad { background: var(--bad-bg); color: var(--bad); }
+  details { margin-top: 6px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  ul.commits { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+  ul.commits code { font-family: var(--mono); color: var(--muted); margin-right: 6px; }
+  .banner { border-radius: 10px; padding: 12px 14px; margin: 16px 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .banner p { margin: 0; flex: 1; min-width: 240px; }
+  .banner.warn { background: var(--warn-bg); color: var(--text); border: 1px solid var(--warn); }
+  .banner.bad { background: var(--bad-bg); border: 1px solid var(--bad); }
+  .banner.info { background: var(--info-bg); border: 1px solid var(--info); }
+  .muted { color: var(--muted); }
+  .empty { color: var(--muted); font-size: 14px; padding: 4px 2px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--surface-2); border-radius: 6px; padding: 2px 8px; font-size: 13px; font-family: var(--mono); }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
+  select { font: inherit; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  footer { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--border); }
+  footer .inner { max-width: 860px; margin: 0 auto; padding: 12px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  footer .summary { flex: 1; min-width: 200px; font-size: 14px; }
+  pre.log { background: var(--surface-2); border-radius: 8px; padding: 12px; font: 12px/1.45 var(--mono);
+            max-height: 420px; overflow: auto; white-space: pre-wrap; word-break: break-word; margin: 8px 0 0; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent);
+             border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -2px; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .cmd { font-family: var(--mono); font-size: 12px; background: var(--surface-2); padding: 6px 8px; border-radius: 6px;
+         margin-top: 8px; word-break: break-all; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>claude-skills updater</h1>
+    <span class="repo" id="repo"></span>
+    <span class="spacer"></span>
+    <button class="small" id="refresh">Check again</button>
+    <button class="small" id="quit">Close</button>
+  </header>
+
+  <div id="loading" class="card"><span class="spinner"></span>Fetching and previewing the update. This takes a little while.</div>
+  <div id="banners"></div>
+
+  <div id="content" hidden>
+    <section id="sec-updates">
+      <h2>Updates</h2>
+      <div id="updates"></div>
+    </section>
+
+    <section id="sec-installer" hidden>
+      <h2>Installer and shared files</h2>
+      <div class="card">
+        <div class="desc">Changes to install.sh and the shared skills. They come with the pull and apply on the next update.</div>
+        <ul class="commits" id="installer-commits"></ul>
+      </div>
+    </section>
+
+    <section id="sec-migrations" hidden>
+      <h2>Needs an agent</h2>
+      <div id="migrations"></div>
+    </section>
+
+    <section>
+      <h2>Available groups</h2>
+      <div class="toolbar">
+        <span class="muted">Profile</span>
+        <select id="profile"></select>
+        <button class="small" id="apply-profile">Select its groups</button>
+        <button class="small" id="clear-available">Clear</button>
+      </div>
+      <div id="available"></div>
+    </section>
+
+    <section>
+      <h2>Up to date</h2>
+      <div class="chips" id="current"></div>
+    </section>
+
+    <section id="sec-log" hidden>
+      <h2>Output</h2>
+      <pre class="log" id="log"></pre>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="inner">
+    <div class="summary" id="summary"></div>
+    <button id="agent-update">Have an agent do it</button>
+    <button class="primary" id="apply" disabled>Apply</button>
+  </div>
+</footer>
+
+<script>
+const TOKEN = document.querySelector('meta[name=token]').content;
+const $ = id => document.getElementById(id);
+let state = null;
+let running = false;
+
+async function api(method, url, body) {
+  const r = await fetch(url, {
+    method, headers: { 'X-Token': TOKEN, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+  return data;
+}
+
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') e.className = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (v === true) e.setAttribute(k, '');
+    else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) e.append(k instanceof Node ? k : document.createTextNode(k));
+  return e;
+}
+const badge = (text, kind) => el('span', { class: 'badge b-' + kind }, text);
+
+function commitList(commits) {
+  return el('ul', { class: 'commits' }, commits.map(c => el('li', {}, el('code', {}, c.sha), c.subject)));
+}
+
+function banner(kind, text, ...actions) {
+  $('banners').append(el('div', { class: 'banner ' + kind }, el('p', {}, text), ...actions));
+}
+
+async function launch(kind, id, where) {
+  try {
+    const r = await api('POST', '/api/launch', { kind, id });
+    const note = el('div', { class: 'cmd' },
+      r.launched ? 'Opened a terminal running: ' : 'Couldn\'t open a terminal here. Run this yourself: ', r.command);
+    where.append(note);
+  } catch (e) { alert(e.message); }
+}
+
+function groupCard(g, { checked, kind }) {
+  const box = el('input', { type: 'checkbox', 'data-group': g.name, 'data-kind': kind, checked, onchange: updateSummary });
+  const ver = g.versionNow && g.versionNext && g.versionNow !== g.versionNext
+    ? g.versionNow + ' → ' + g.versionNext : (g.versionNext || g.versionNow || '');
+  const badges = [];
+  if (g.isNew) badges.push(badge('new', 'info'));
+  if (g.needsLook) badges.push(badge('adds something new', 'warn'));
+  if (g.inProfile) badges.push(badge(state.profileName, 'ok'));
+  const extra = [];
+  if (g.newItems.length || g.newEnv.length) {
+    extra.push(el('div', { class: 'desc' }, 'Will add: ',
+      [...g.newItems.map(i => i.kind + ' ' + i.name), ...g.newEnv.map(n => 'env var ' + n)].join(', ')));
+  }
+  if (g.commits.length) {
+    extra.push(el('details', {}, el('summary', {}, g.commits.length + ' commit' + (g.commits.length > 1 ? 's' : '')), commitList(g.commits)));
+  } else if (kind === 'update' && g.noRev) {
+    extra.push(el('div', { class: 'desc' }, 'No change history yet: this group was installed before the updater recorded it.'));
+  }
+  return el('div', { class: 'card' }, el('label', { class: 'row' }, box,
+    el('div', { class: 'grow' },
+      el('span', { class: 'name' }, g.name), el('span', { class: 'ver' }, ver), badges,
+      el('div', { class: 'desc clamp', title: g.description }, g.description), extra)));
+}
+
+function render() {
+  const s = state;
+  $('banners').replaceChildren();
+  $('repo').textContent = s.repo + ' @ ' + s.head;
+
+  if (s.fetchError) banner('warn', 'Couldn\'t reach GitHub (' + s.fetchError + '). Showing what\'s already downloaded.');
+  if (s.previewError) banner('bad', 'install.sh --preview-update failed: ' + s.previewError);
+  if (s.dirty.length && s.behind > 0) {
+    banner('bad', 'The repo has uncommitted changes (' + s.dirty.length + ' file' + (s.dirty.length > 1 ? 's' : '') +
+      '), so the update can\'t be pulled. An agent can commit or set them aside.',
+      el('button', { onclick: e => launch('update', null, e.target.parentNode) }, 'Launch agent'));
+  }
+  if (s.ahead > 0 && s.behind > 0) {
+    banner('bad', 'This machine has ' + s.ahead + ' commit(s) that aren\'t on GitHub, and GitHub has ' + s.behind +
+      ' new one(s). A fast-forward pull will fail, so this needs an agent.',
+      el('button', { onclick: e => launch('update', null, e.target.parentNode) }, 'Launch agent'));
+  }
+  if (s.migrations.length) {
+    banner('warn', s.behind > 0
+      ? 'This update includes a change the installer can\'t make by itself. Apply first, then launch an agent for it below, or have an agent do the whole update.'
+      : 'There\'s a change the installer can\'t make by itself. Launch an agent for it below.');
+  }
+
+  const profile = s.profiles[$('profile').value] || s.profiles[s.defaultProfile] || { groups: [] };
+  s.profileName = profile.name;
+  const anyInstalled = s.groups.some(g => g.installed);
+  for (const g of s.groups) g.inProfile = (profile.groups || []).includes(g.name);
+
+  // Updates
+  const changed = s.groups.filter(g => g.changed);
+  $('updates').replaceChildren(...(changed.length
+    ? changed.map(g => groupCard(g, { checked: true, kind: 'update' }))
+    : [el('div', { class: 'empty' }, s.behind > 0
+        ? 'GitHub has ' + s.behind + ' new commit(s), but none touch the groups installed here.'
+        : 'Nothing to update.')]));
+  if (changed.some(g => g.type !== 'tool-only') && s.behind > 0) {
+    $('updates').append(el('div', { class: 'desc' },
+      'Unticking a group holds back its software and new files. Its skill text still updates with the pull, since installed skills link into the repo.'));
+  }
+
+  // Installer commits
+  $('sec-installer').hidden = !s.installer.commits.length;
+  $('installer-commits').replaceChildren(...s.installer.commits.map(c => el('li', {}, el('code', {}, c.sha), c.subject)));
+
+  // Migrations
+  $('sec-migrations').hidden = !s.migrations.length;
+  $('migrations').replaceChildren(...s.migrations.map(m => {
+    const card = el('div', { class: 'card' },
+      el('div', { class: 'row' },
+        el('div', { class: 'grow' }, el('span', { class: 'name' }, 'Migration ' + m.id), el('div', { class: 'desc' }, m.title)),
+        el('button', { disabled: s.behind > 0, title: s.behind > 0 ? 'Apply the update first' : '',
+                       onclick: () => launch('migration', m.id, card) }, 'Launch agent')));
+    return card;
+  }));
+
+  // Available (not installed)
+  const avail = s.groups.filter(g => !g.installed)
+    .sort((a, b) => (b.isNew - a.isNew) || (b.inProfile - a.inProfile) || a.name.localeCompare(b.name));
+  $('available').replaceChildren(...(avail.length
+    ? avail.map(g => groupCard(g, { checked: g.inProfile && (!anyInstalled || g.isNew), kind: 'install' }))
+    : [el('div', { class: 'empty' }, 'Every group is installed.')]));
+
+  // Up to date
+  const current = s.groups.filter(g => g.installed && !g.changed);
+  $('current').replaceChildren(...(current.length
+    ? current.map(g => el('span', { class: 'chip', title: g.description }, g.name))
+    : [el('span', { class: 'empty' }, 'None.')]));
+
+  $('content').hidden = false;
+  $('loading').hidden = true;
+  updateSummary();
+}
+
+function selection() {
+  const pick = kind => [...document.querySelectorAll('input[data-kind=' + kind + ']:checked')].map(b => b.dataset.group);
+  return { update: pick('update'), install: pick('install') };
+}
+
+function updateSummary() {
+  if (!state) return;
+  const { update, install } = selection();
+  const parts = [];
+  if (state.behind > 0) parts.push('pull ' + state.behind + ' commit' + (state.behind > 1 ? 's' : ''));
+  if (update.length) parts.push('update ' + update.length + ' group' + (update.length > 1 ? 's' : ''));
+  if (install.length) parts.push('install ' + install.join(', '));
+  const blocked = state.behind > 0 && (state.dirty.length || state.ahead > 0);
+  $('summary').textContent = running ? 'Running…' : parts.length ? 'Apply will ' + parts.join(', ') + '.' : 'Nothing selected.';
+  $('apply').disabled = running || blocked || !parts.length;
+  $('agent-update').disabled = running;
+}
+
+async function load() {
+  $('loading').hidden = false;
+  $('content').hidden = true;
+  $('banners').replaceChildren();
+  try {
+    state = await api('GET', '/api/state');
+    const sel = $('profile');
+    if (!sel.options.length) {
+      for (const [name, p] of Object.entries(state.profiles)) sel.append(el('option', { value: name, title: p.description }, name));
+      sel.value = state.defaultProfile || '';
+    }
+    render();
+  } catch (e) {
+    $('loading').hidden = true;
+    banner('bad', 'Couldn\'t load the update preview: ' + e.message);
+  }
+}
+
+async function apply() {
+  const sel = selection();
+  running = true;
+  updateSummary();
+  $('sec-log').hidden = false;
+  $('log').textContent = '';
+  try {
+    await api('POST', '/api/apply', sel);
+  } catch (e) {
+    running = false; updateSummary(); banner('bad', e.message); return;
+  }
+  let since = 0;
+  for (;;) {
+    const j = await api('GET', '/api/job?since=' + since);
+    if (j.lines.length) {
+      $('log').textContent += j.lines.join('\n') + '\n';
+      $('log').scrollTop = $('log').scrollHeight;
+      since = j.total;
+    }
+    if (j.done) {
+      running = false;
+      const keepLog = $('log').textContent;
+      await load();
+      $('sec-log').hidden = false;
+      $('log').textContent = keepLog;
+      if (j.failed) {
+        banner('bad', 'The update finished with errors. See the output below. An agent can check what failed and fix it.',
+          el('button', { onclick: e => launch('fix', null, e.target.parentNode) }, 'Launch agent'));
+      } else {
+        banner('info', 'Done. Restart Claude Code to pick up the changes.');
+      }
+      $('sec-log').scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+    await new Promise(r => setTimeout(r, 700));
+  }
+}
+
+$('refresh').onclick = () => { if (!running) load(); };
+$('apply').onclick = apply;
+$('agent-update').onclick = e => launch('update', null, $('banners'));
+$('profile').onchange = () => render();
+$('apply-profile').onclick = () => {
+  for (const b of document.querySelectorAll('input[data-kind=install]'))
+    b.checked = state.groups.find(g => g.name === b.dataset.group)?.inProfile || false;
+  updateSummary();
+};
+$('clear-available').onclick = () => {
+  for (const b of document.querySelectorAll('input[data-kind=install]')) b.checked = false;
+  updateSummary();
+};
+$('quit').onclick = async () => {
+  await api('POST', '/api/quit').catch(() => {});
+  document.body.replaceChildren(el('main', {}, el('p', { class: 'muted' }, 'Updater closed. You can close this tab.')));
+};
+
+load();
+</script>
+</body>
+</html>

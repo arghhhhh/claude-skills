@@ -48,6 +48,33 @@ bash install.sh --update --sync
 bash install.sh --test-integration --skills unity-cli
 ```
 
+## Updater (GUI)
+
+```bash
+claude-skills-update          # or: node ~/.claude/.skill-repos/claude-skills/updater/server.js
+```
+
+Opens a local page (127.0.0.1, random port) that fetches GitHub and shows, before
+anything is applied:
+
+- **Updates**: installed groups with changes, their version bump and commits, and
+  anything new an update would add (skills, agents, commands, env vars). Untick a
+  group to hold back its software and new files.
+- **Installer and shared files**: commits to `install.sh` and `shared/`.
+- **Needs an agent**: pending migrations, each with a **Launch agent** button that
+  opens a terminal running `claude` with the right prompt.
+- **Available groups**: groups not installed here. Ticks default to the chosen
+  profile (`basic` unless `--profile NAME` is given).
+
+**Apply** runs `git pull --ff-only`, `install.sh --update --yes --skills <ticked>` and
+`install.sh --skills <new> --yes`, streaming the output. When the repo has local
+changes, has diverged from GitHub, or the update fails, the page says so and offers an
+agent instead. **Have an agent do it** hands the whole update to `claude` at any time.
+
+The preview runs from a temporary `git worktree` of `origin/main`, because pulling
+alone already updates every linked skill. Needs Node (which the installer requires
+anyway); `--no-open` skips opening the browser.
+
 ## Agent-Driven Setup (Recommended)
 
 Use the prompt at the top of this README to kick off setup. Here's what the agent will do:
@@ -138,6 +165,7 @@ claude-skills/
 │   └── claude-md/                      # CLAUDE.md trigger-phrase snippets per group
 ├── profiles/<name>.json                # Named group sets for --profile
 ├── migrations/NNNN-<slug>.md           # Agent instructions for changes --update can't make
+├── updater/                            # claude-skills-update: local web UI over install.sh
 └── README.md
 ```
 
