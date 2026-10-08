@@ -1094,6 +1094,9 @@ write_powershell_profile_block() {
     strip_marker_block "$legacy" "$begin" "$end" \
       && info "Removed stale $label from $legacy (not the profile PowerShell loads)"
   done
+  # The loop's last command is the && list above; a legacy profile with no
+  # managed block would make it the function's status and abort under set -e.
+  return 0
 }
 
 install_powershell_aliases() {
@@ -2882,6 +2885,18 @@ update_group() {
     if [ -z "$repo_path" ]; then
       warn "$skill: not found in repo"
       continue
+    fi
+
+    # Layout change between flat (<skill>.md) and folder (<skill>/SKILL.md).
+    # update_skill relinks at local_path, which would install a folder skill
+    # under the old "<skill>.md" name. Drop the old-layout entry instead and
+    # let the not-installed branch below link it at the right name. Also
+    # catches a "<skill>.md/" directory left by that bug.
+    if [ -d "$repo_path" ] && { [ -e "$SKILLS_DIR/$skill.md" ] || [ -L "$SKILLS_DIR/$skill.md" ]; }; then
+      info "$skill: now a folder skill — replacing old $skill.md"
+      backup_file "$SKILLS_DIR/$skill.md"
+      if [ -L "$SKILLS_DIR/$skill.md" ]; then rm -f "$SKILLS_DIR/$skill.md"; else rm -rf "$SKILLS_DIR/$skill.md"; fi
+      local_path=$(resolve_skill_path "$SKILLS_DIR/$skill")
     fi
 
     # Skill not installed locally
