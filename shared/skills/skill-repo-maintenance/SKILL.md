@@ -1,5 +1,5 @@
 ---
-version: 1.16.1
+version: 1.17.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when updating/pulling claude-skills, editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -19,12 +19,15 @@ When the user asks to update claude-skills (or "update my skills", "pull the lat
 1. **Pull.** `git status --short` first; if there are uncommitted changes, surface them to the user instead of pulling. Then `git pull origin main`.
 2. **Preview what's new** (read-only):
    ```bash
-   cd ~/.claude/.skill-repos/claude-skills && bash install.sh --preview-update | grep -E '^(NEW|UPDATE)'
+   cd ~/.claude/.skill-repos/claude-skills && bash install.sh --preview-update | grep -E '^(NEW|UPDATE|MIGRATION)'
    ```
    - `NEW-GROUP <g>` — group in the repo that was never installed or offered here
    - `NEW-ITEM <g> <skill|agent|command> <name>` — newly added to a group that IS installed (`--update` would link it)
    - `NEW-ENV <g> <NAME>` — env var `--update` would set
    - `UPDATE <g>` — installed, nothing new; safe to refresh
+   - `MIGRATION <id> <title>` — a change `--update` can't make; apply it in step 5b
+
+   To tell the user what changed, `bash install.sh --changelog` prints `LOG <g> <sha> <subject>` per commit since each group was last installed/updated (`NO-REV <g>` = installed before revs were recorded). Before pulling, `git fetch` + `--changelog --to origin/main` previews the same thing.
 3. **If any `NEW-*` lines appear, ask the user** (AskUserQuestion, multiSelect) which to accept, with each item's description from its manifest/SKILL.md. Never install new things without a yes. `--update` can't skip one item inside a group, so declining a `NEW-ITEM`/`NEW-ENV` means holding back that group's whole update this time — say so in the question.
 4. **Update everything installed** (minus any held-back groups):
    ```bash
@@ -33,7 +36,17 @@ When the user asks to update claude-skills (or "update my skills", "pull the lat
    ```
    `--yes` makes it non-interactive (agent shells have no stdin); new groups are then listed but not installed, and recorded in the known-groups ledger so they aren't re-offered. That's fine because the user already answered in step 3. Do NOT add `--sync` (that copies local edits back INTO the repo — a separate task) or `--skip-software` (it skips the rebuilds for `update_policy: "latest"` groups).
 5. **Install accepted new groups:** `bash install.sh --skills <g1,g2> --yes`.
+   5b. **Apply pending migrations** in id order: read `migrations/<id>-*.md`, follow it, then `bash install.sh --mark-migration <id>`. `--update` also prints these with a ready-made `claude "..."` prompt.
 6. **Verify and report:** `bash install.sh --status` should show no `update available` / `not installed` for installed groups except ones the user held back. Tell the user what was refreshed, what's new, what was held back, and to restart Claude Code (hooks/settings load at startup). WSL: groups with `wsl_propagate` refresh the distro automatically; a separate WSL clone (`/home/<user>/.claude/.skill-repos/claude-skills`) needs its own pull + `--update` run inside WSL.
+
+## Migrations and Profiles
+
+| Path | What | Format |
+|---|---|---|
+| `migrations/NNNN-<slug>.md` | Agent instructions for a change `--update` can't make (moved files, hand-edited config, renamed settings) | Frontmatter `title:`, optional `groups:` (comma-separated; omit = all machines). See `migrations/README.md` |
+| `profiles/<name>.json` | Named group set, installed with `--profile <name>` | `{ "name", "description", "groups": [...] }`; `name` must match the filename |
+
+Add a migration only when an `install.sh` change can't do the job idempotently. Write steps that check for the new layout first, so re-running is safe. Applied ids are recorded in `~/.claude/.skills-meta/applied-migrations`. A machine without that file is seeded with every current migration, so a fresh install never runs old ones.
 
 ## Group Types
 

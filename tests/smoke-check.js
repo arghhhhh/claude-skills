@@ -254,6 +254,41 @@ for (const group of groups) {
   }
 }
 
+// ─── test-profiles-migrations ───────────────────────────────────────────────
+console.log('\n=== test-profiles-migrations ===');
+
+const PROFILES = path.join(REPO, 'profiles');
+for (const f of (fs.existsSync(PROFILES) ? fs.readdirSync(PROFILES) : []).filter(f => f.endsWith('.json'))) {
+  const pname = f.slice(0, -5);
+  let p;
+  try { p = JSON.parse(fs.readFileSync(path.join(PROFILES, f), 'utf8')); }
+  catch (e) { err('profile ' + pname + ': invalid JSON — ' + e.message); continue; }
+  if (p.name !== pname) err('profile ' + pname + ': name "' + p.name + '" does not match filename');
+  else ok('profile ' + pname + ': name');
+  if (!p.description) err('profile ' + pname + ': missing description');
+  if (!Array.isArray(p.groups) || !p.groups.length) { err('profile ' + pname + ': missing groups'); continue; }
+  for (const g of p.groups) {
+    if (groups.includes(g)) ok('profile ' + pname + ': group ' + g);
+    else err('profile ' + pname + ': unknown group ' + g);
+  }
+}
+
+const MIGRATIONS = path.join(REPO, 'migrations');
+const migIds = new Set();
+for (const f of (fs.existsSync(MIGRATIONS) ? fs.readdirSync(MIGRATIONS) : []).filter(f => f.endsWith('.md') && f !== 'README.md')) {
+  if (!/^\d{4}-[a-z0-9-]+\.md$/.test(f)) { err('migration ' + f + ': name must be NNNN-<slug>.md'); continue; }
+  const id = f.slice(0, 4);
+  if (migIds.has(id)) err('migration ' + f + ': duplicate id ' + id); else ok('migration ' + f + ': unique id');
+  migIds.add(id);
+  const fm = (fs.readFileSync(path.join(MIGRATIONS, f), 'utf8').replace(/\r/g, '').match(/^---\n([\s\S]*?)\n---/) || [])[1] || '';
+  const field = k => ((fm.match(new RegExp('^' + k + ':[ \t]*(.*)$', 'm')) || [])[1] || '').trim();
+  if (!field('title')) err('migration ' + f + ': missing title'); else ok('migration ' + f + ': title');
+  const mg = field('groups');
+  if (mg && mg !== 'all') for (const g of mg.split(',').map(s => s.trim()).filter(Boolean)) {
+    if (groups.includes(g)) ok('migration ' + f + ': group ' + g); else err('migration ' + f + ': unknown group ' + g);
+  }
+}
+
 // ─── FINAL RESULTS ──────────────────────────────────────────────────────────
 console.log('\n=== FINAL RESULTS ===');
 console.log(pass + ' passed, ' + fail + ' failed');

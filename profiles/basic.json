@@ -1,0 +1,11 @@
+{
+  "name": "basic",
+  "description": "Default set for non-advanced Claude Code users: session picker, conversation transfer, browser automation, clipboard cd, image tools.",
+  "groups": [
+    "claude-code-sessions",
+    "claude-conversation-transfer",
+    "playwright-cli",
+    "gitbash-clipboard-cd",
+    "imagemagick"
+  ]
+}

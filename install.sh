@@ -17,7 +17,7 @@ fi
 set -euo pipefail
 
 # ─────────────────────────────────────────────────────────────────────────────
-# claude-skills installer v2.4 — typed groups (authored / vendored / tool-only)
+# claude-skills installer v2.5 — typed groups (authored / vendored / tool-only)
 # Cross-platform (macOS, Linux, Windows via Git Bash/WSL)
 # Installs, updates, and syncs skill groups: software + skills + agents + commands → ~/.claude/
 # ─────────────────────────────────────────────────────────────────────────────
@@ -33,6 +33,10 @@ CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 CONFIG_FILE="$CLAUDE_DIR/skills-config.sh"
 META_DIR="$CLAUDE_DIR/.skills-meta"
 KNOWN_GROUPS_FILE="$META_DIR/known-groups"
+GROUP_REVS_FILE="$META_DIR/group-revs"                  # "<group> <commit>" per line
+APPLIED_MIGRATIONS_FILE="$META_DIR/applied-migrations"  # one migration id per line
+MIGRATIONS_DIR="$SCRIPT_DIR/migrations"
+PROFILES_DIR="$SCRIPT_DIR/profiles"
 BACKUP_DIR="$CLAUDE_DIR/.skill-backups"
 CANONICAL_DIR="$HOME/.claude/.skill-repos/claude-skills"
 
@@ -3102,6 +3106,175 @@ sync_skill_to_repo() {
   info "Copied to repo. Run 'cd $(dirname "$repo_path") && git add -A && git commit && git push' to share."
 }
 
+# ─── Install revs (what changed since a group was installed) ────────────────
+#
+# Each successful install/update records the repo commit per group in
+# $GROUP_REVS_FILE, so `git log <rev>..HEAD -- skill-groups/<group>` answers
+# "what's new for me". "_installer" is a pseudo-group for the repo-wide files
+# (install.sh, shared/, scripts/, profiles/, migrations/), recorded on every run.
+
+repo_head() { git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || true; }
+
+record_group_rev() {
+  local group="$1" rev
+  rev=$(repo_head)
+  [ -n "$rev" ] || return 0
+  mkdir -p "$META_DIR"
+  { grep -v "^$group " "$GROUP_REVS_FILE" 2>/dev/null || true; echo "$group $rev"; } > "$GROUP_REVS_FILE.tmp"
+  mv "$GROUP_REVS_FILE.tmp" "$GROUP_REVS_FILE"
+}
+
+group_rev() { awk -v g="$1" '$1 == g { print $2 }' "$GROUP_REVS_FILE" 2>/dev/null || true; }
+
+# ─── Changelog mode (--changelog [--to REF]) ────────────────────────────────
+#
+# Read-only. Commits touching each installed group since its recorded rev, up to
+# REF (default HEAD). Pass --to origin/main after a `git fetch` to preview an
+# update before pulling — for authored groups the pull itself is the update,
+# since ~/.claude/skills links straight into the repo. Machine-readable lines:
+#   LOG    <group> <short-sha> <subject>   commit touching the group
+#   NO-REV <group>                         installed, but no usable recorded rev
+#                                          (installed before revs were recorded)
+show_changelog() {
+  local to="$1" group rev
+  local paths=()
+  if ! git -C "$SCRIPT_DIR" rev-parse --verify -q "$to^{commit}" >/dev/null; then
+    fail "--changelog: unknown ref '$to'"
+    return 1
+  fi
+  for group in _installer "${SELECTED_GROUPS[@]}"; do
+    if [ "$group" = _installer ]; then
+      paths=(install.sh shared scripts profiles migrations)
+    else
+      [ -f "$SKILL_GROUPS_DIR/$group/manifest.json" ] || continue
+      group_is_installed "$group" || continue
+      paths=("skill-groups/$group" "shared/claude-md/$group.md")
+    fi
+    rev=$(group_rev "$group")
+    if [ -z "$rev" ] || ! git -C "$SCRIPT_DIR" cat-file -e "$rev^{commit}" 2>/dev/null; then
+      echo "NO-REV $group"
+      continue
+    fi
+    git -C "$SCRIPT_DIR" log --format="LOG $group %h %s" "$rev..$to" -- "${paths[@]}"
+  done
+}
+
+# ─── Migrations ─────────────────────────────────────────────────────────────
+#
+# migrations/NNNN-<slug>.md holds instructions for an AGENT, for repo changes
+# --update can't make by itself (layout moves, hand-edited files, renamed
+# config). Frontmatter: `title:` and optional `groups:` (comma-separated; the
+# migration only applies where one of them is installed; omitted or "all" =
+# everywhere). The id is the NNNN filename prefix. Applied ids live in
+# $APPLIED_MIGRATIONS_FILE; when that ledger is absent (fresh machine, or first
+# run after this landed) it is seeded with every current migration, since a
+# fresh install already has the post-migration layout.
+
+migration_field() {
+  # $1 = file, $2 = frontmatter key
+  awk -v k="$2" '
+    { sub(/\r$/, "") }
+    NR == 1 && /^---/ { fm = 1; next }
+    fm && /^---/ { exit }
+    fm && index($0, k ":") == 1 { v = substr($0, length(k) + 2); sub(/^[ \t]+/, "", v); print v; exit }
+  ' "$1"
+}
+
+migration_files() {
+  local f
+  for f in "$MIGRATIONS_DIR"/[0-9][0-9][0-9][0-9]-*.md; do
+    [ -f "$f" ] && echo "$f"
+  done
+  return 0
+}
+
+migration_id() { local b; b=$(basename "$1"); echo "${b%%-*}"; }
+
+migration_applies() {
+  local groups g
+  groups=$(migration_field "$1" groups)
+  case "$groups" in ""|all) return 0 ;; esac
+  for g in $(echo "$groups" | tr ',' ' '); do
+    [ -f "$SKILL_GROUPS_DIR/$g/manifest.json" ] && group_is_installed "$g" && return 0
+  done
+  return 1
+}
+
+# "<id> <file>" per unapplied migration that applies on this machine.
+pending_migrations() {
+  [ -f "$APPLIED_MIGRATIONS_FILE" ] || return 0
+  local f id
+  while read -r f; do
+    [ -n "$f" ] || continue
+    id=$(migration_id "$f")
+    grep -qxF "$id" "$APPLIED_MIGRATIONS_FILE" && continue
+    if migration_applies "$f"; then echo "$id $f"; fi
+  done <<< "$(migration_files)"
+  return 0
+}
+
+seed_migrations_ledger() {
+  [ -f "$APPLIED_MIGRATIONS_FILE" ] && return 0
+  mkdir -p "$META_DIR"
+  local f
+  : > "$APPLIED_MIGRATIONS_FILE"
+  while read -r f; do
+    [ -n "$f" ] && migration_id "$f" >> "$APPLIED_MIGRATIONS_FILE"
+  done <<< "$(migration_files)"
+  return 0
+}
+
+mark_migration_applied() {
+  local id="$1"
+  if [ -z "$(migration_files | grep "/$id-" || true)" ]; then
+    fail "No migration $id in $MIGRATIONS_DIR"
+    return 1
+  fi
+  mkdir -p "$META_DIR"
+  grep -qxF "$id" "$APPLIED_MIGRATIONS_FILE" 2>/dev/null || echo "$id" >> "$APPLIED_MIGRATIONS_FILE"
+  ok "Migration $id marked applied"
+}
+
+migration_agent_prompt() {
+  # $1 = id, $2 = file
+  echo "Apply claude-skills migration $1: read $2 and follow it, then run: bash $SCRIPT_DIR/install.sh --mark-migration $1"
+}
+
+report_pending_migrations() {
+  local pending id file
+  pending=$(pending_migrations)
+  [ -n "$pending" ] || return 0
+  echo ""
+  header "Migration(s) that need an agent:"
+  while read -r id file; do
+    printf "  ${BOLD}%s${NC} — %s\n" "$id" "$(migration_field "$file" title)"
+  done <<< "$pending"
+  echo ""
+  info "--update can't apply these itself. Hand each one to Claude:"
+  while read -r id file; do
+    echo "    claude \"$(migration_agent_prompt "$id" "$file")\""
+  done <<< "$pending"
+}
+
+# ─── Profiles ───────────────────────────────────────────────────────────────
+#
+# profiles/<name>.json: { "name", "description", "groups": [...] }. `--profile
+# NAME` selects its groups, in any mode that takes --skills.
+
+profile_groups() {
+  local file="$PROFILES_DIR/$1.json"
+  [ -f "$file" ] || return 1
+  json_array "$(tr -d '\r' < "$file")" "groups"
+}
+
+list_profiles() {
+  local f
+  for f in "$PROFILES_DIR"/*.json; do
+    [ -f "$f" ] || continue
+    printf "%-12s %s\n" "$(basename "$f" .json)" "$(json_get "$(tr -d '\r' < "$f")" "description")"
+  done
+}
+
 # ─── Preview-update mode (--preview-update) ─────────────────────────────────
 #
 # Read-only dry run of what `--update` would ADD on this machine (run it after
@@ -3113,6 +3286,7 @@ sync_skill_to_repo() {
 #   NEW-ENV  <group> <NAME>                         user_env var not yet set
 #   NEW-GROUP <group>                               in repo, never installed or offered
 #   UPDATE   <group>                                installed, nothing new to add
+#   MIGRATION <id> <title>                          pending migration; needs an agent
 # Never-installed groups already in the known-groups ledger (i.e. previously
 # offered and declined) are not reported.
 preview_update() {
@@ -3156,6 +3330,12 @@ preview_update() {
 
     [ "$has_new" = true ] || echo "UPDATE $group"
   done
+
+  local id file
+  while read -r id file; do
+    [ -n "$id" ] && echo "MIGRATION $id $(migration_field "$file" title)"
+  done <<< "$(pending_migrations)"
+  return 0
 }
 
 # ─── Status mode (--status) ─────────────────────────────────────────────────
@@ -3428,8 +3608,11 @@ main() {
   SYNC_MODE=false
   NON_INTERACTIVE=false
   INSTALL_SKIPPED=false
-  MODE="install"  # install, verify, test-integration, update, status, vendor-status, bump-vendor
+  MODE="install"  # install, verify, test-integration, update, status, vendor-status, bump-vendor, changelog, mark-migration
   BUMP_GROUP=""
+  PROFILE=""
+  CHANGELOG_TO="HEAD"
+  MIGRATION_ID=""
 
   # Save original args for re-exec
   local original_args=("$@")
@@ -3439,6 +3622,39 @@ main() {
     case $1 in
       --skills)
         IFS=',' read -ra SELECTED_GROUPS <<< "$2"
+        shift 2
+        ;;
+      --profile)
+        PROFILE="${2:-}"
+        if [ -z "$PROFILE" ]; then
+          fail "--profile requires a profile name (see --list-profiles)"
+          exit 1
+        fi
+        shift 2
+        ;;
+      --list-profiles)
+        list_profiles
+        exit 0
+        ;;
+      --changelog)
+        MODE="changelog"
+        shift
+        ;;
+      --to)
+        CHANGELOG_TO="${2:-}"
+        if [ -z "$CHANGELOG_TO" ]; then
+          fail "--to requires a git ref"
+          exit 1
+        fi
+        shift 2
+        ;;
+      --mark-migration)
+        MODE="mark-migration"
+        MIGRATION_ID="${2:-}"
+        if [ -z "$MIGRATION_ID" ]; then
+          fail "--mark-migration requires a migration id"
+          exit 1
+        fi
         shift 2
         ;;
       --skip-software)
@@ -3508,6 +3724,8 @@ main() {
         echo "  --update               Update only ALREADY-INSTALLED groups; prompts before adding new ones"
         echo "  --update --sync        Also sync newer local skills back to repo"
         echo "  --preview-update       Dry run: list what --update would newly add (run after pulling)"
+        echo "  --changelog [--to REF] Commits per installed group since it was last installed/updated"
+        echo "  --mark-migration ID    Record a migration as applied (agents run this when done)"
         echo "  --status               Show version table for all skills"
         echo "  --vendor-status        Show pinned vs upstream SHA for vendored groups"
         echo "  --bump-vendor GROUP    Bump pinned ref of a vendored group to upstream HEAD"
@@ -3515,6 +3733,8 @@ main() {
         echo ""
         echo "Options:"
         echo "  --skills GROUP1,GROUP2 Target specific skill groups (default: interactive)"
+        echo "  --profile NAME         Target a profile's groups (profiles/NAME.json)"
+        echo "  --list-profiles        List available profiles"
         echo "  --skip-software        Skip software installation, only install skills/agents"
         echo "  --skip-wsl             Don't propagate updates into an already-configured WSL distro"
         echo "  --yes, -y              Non-interactive mode (auto-accept prompts, skip manual installs)"
@@ -3524,6 +3744,7 @@ main() {
         echo "Examples:"
         echo "  install.sh                                    # Interactive install"
         echo "  install.sh --skills unity-cli                 # Install just unity-cli"
+        echo "  install.sh --profile basic                    # Install the basic profile"
         echo "  install.sh --verify                           # Verify all installed groups"
         echo "  install.sh --verify --skills unity-cli        # Verify just unity-cli"
         echo "  install.sh --update                           # Update all groups from repo"
@@ -3540,6 +3761,18 @@ main() {
         ;;
     esac
   done
+
+  if [ -n "$PROFILE" ]; then
+    local profile_list
+    if ! profile_list=$(profile_groups "$PROFILE"); then
+      fail "Unknown profile: $PROFILE (available: $(list_profiles | awk '{print $1}' | tr '
+' ' '))"
+      exit 1
+    fi
+    while read -r g; do
+      [ -n "$g" ] && SELECTED_GROUPS+=("$g")
+    done <<< "$profile_list"
+  fi
 
   # ── Ensure canonical repo location (for install/update modes) ──
   if [ "$MODE" = "install" ] || [ "$MODE" = "update" ]; then
@@ -3577,6 +3810,18 @@ main() {
   if [ "$MODE" = "status" ]; then
     show_status
     exit 0
+  fi
+
+  # ── Mark-migration mode ──
+  if [ "$MODE" = "mark-migration" ]; then
+    mark_migration_applied "$MIGRATION_ID"
+    exit $?
+  fi
+
+  # ── Changelog mode ──
+  if [ "$MODE" = "changelog" ]; then
+    show_changelog "$CHANGELOG_TO"
+    exit $?
   fi
 
   # ── Preview-update mode ──
@@ -3637,6 +3882,7 @@ main() {
 
   # ── Update mode ──
   if [ "$MODE" = "update" ]; then
+    seed_migrations_ledger
     windows_path_prepend_tool_dirs
     install_shell_aliases
     install_git_hooks
@@ -3663,7 +3909,9 @@ main() {
       fi
     done
 
+    local fails_before
     for group in "${update_targets[@]}"; do
+      fails_before=$FAIL_COUNT
       update_group "$group"
       install_user_env "$group"
       # Re-write managed wrapper blocks so fixes to them reach installed machines.
@@ -3671,6 +3919,7 @@ main() {
       # A skill re-linked above is the raw repo file again; re-fill its
       # {{PLACEHOLDER}}s. Only with a config file — no prompting during update.
       [ -f "$CONFIG_FILE" ] && configure_skills "$group"
+      if [ "$FAIL_COUNT" -eq "$fails_before" ]; then record_group_rev "$group"; fi
     done
 
     install_shared_claude_md
@@ -3720,6 +3969,8 @@ main() {
       echo ""
       info "Don't forget to commit and push repo changes if you synced skills back"
     fi
+    record_group_rev _installer
+    report_pending_migrations
 
     # Full install for any newly-chosen groups (reuse the standard install path).
     if [ ${#chosen_new[@]} -gt 0 ]; then
@@ -3734,6 +3985,7 @@ main() {
 
   # ── Install mode ──
 
+  seed_migrations_ledger
   install_global_prerequisites
   install_shell_aliases
   install_git_hooks
@@ -3762,6 +4014,7 @@ main() {
 
     # Reset per-group install state
     INSTALL_SKIPPED=false
+    local fails_before=$FAIL_COUNT
 
     # Step 1: Check prerequisites (fail message already emitted inside)
     if ! check_prerequisites "$group"; then
@@ -3805,6 +4058,9 @@ main() {
 
     # Step 9: Show post-install hints
     show_post_install_hints "$group"
+
+    # Step 10: Record the commit this group was installed from (for --changelog)
+    if [ "$FAIL_COUNT" -eq "$fails_before" ]; then record_group_rev "$group"; fi
   done
 
   # Install shared skills
@@ -3829,6 +4085,8 @@ main() {
   info "Run 'install.sh --status' to see version overview"
   info "Run 'install.sh --test-integration' to test live connections"
   echo ""
+  record_group_rev _installer
+  report_pending_migrations
   ok "Done! Restart Claude Code to pick up new skills."
 }
 

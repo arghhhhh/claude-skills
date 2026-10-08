@@ -19,6 +19,9 @@ bash install.sh
 # Or install specific groups
 bash install.sh --skills unity-cli,blender
 
+# Or a named profile (profiles/<name>.json; see --list-profiles)
+bash install.sh --profile basic
+
 # Skills only (skip software installation)
 bash install.sh --skills comfyui --skip-software
 
@@ -33,6 +36,10 @@ bash install.sh --status
 
 # Update installed skills from repo
 bash install.sh --update
+
+# What changed per installed group since it was last installed/updated
+bash install.sh --changelog                 # after pulling
+git fetch && bash install.sh --changelog --to origin/main   # before pulling
 
 # Bidirectional sync (also push local improvements back to repo)
 bash install.sh --update --sync
@@ -129,6 +136,8 @@ claude-skills/
 ├── shared/
 │   ├── skills/                         # Cross-group skills (always installed)
 │   └── claude-md/                      # CLAUDE.md trigger-phrase snippets per group
+├── profiles/<name>.json                # Named group sets for --profile
+├── migrations/NNNN-<slug>.md           # Agent instructions for changes --update can't make
 └── README.md
 ```
 
@@ -142,7 +151,10 @@ After installation, the following is created in `~/.claude/`:
 ├── .skill-repos/
 │   └── claude-skills/      # Canonical repo copy (symlinks point here)
 ├── .skills-meta/
-│   └── repo-path           # Stored repo location
+│   ├── repo-path           # Stored repo location
+│   ├── known-groups        # Groups already offered (declined ones aren't re-offered)
+│   ├── group-revs          # Repo commit each group was last installed/updated from
+│   └── applied-migrations  # Migration ids already applied on this machine
 ├── .skill-backups/         # Timestamped backups (created on update)
 ├── skills-config.sh        # Machine-specific config (you create this)
 └── CLAUDE.md               # Trigger phrases appended here
@@ -176,6 +188,12 @@ cd ~/.claude/.skill-repos/claude-skills
 git pull
 bash install.sh --update
 ```
+
+Most updates need nothing more. When a change can't be applied by `--update` (files
+moved outside the repo, hand-edited config), it ships as a migration in `migrations/`.
+`--preview-update` lists pending ones as `MIGRATION <id> <title>`, and `--update`
+prints a `claude "..."` command per migration for an agent to apply. The agent finishes
+with `install.sh --mark-migration <id>`. See `migrations/README.md`.
 
 ## Cross-Platform Notes
 

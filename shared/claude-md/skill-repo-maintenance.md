@@ -4,7 +4,7 @@ When editing, updating, adding skills/agents, or setting up Claude on a new mach
 
 **Always pull before editing skills** — another machine may have pushed changes.
 
-**"Update claude-skills" means update EVERYTHING it installed, not only the group mentioned.** After pulling, run `install.sh --preview-update`, ask the user before adding anything it lists as `NEW-*` (new groups, skills, agents, commands, env vars), then `install.sh --update --yes`. A pull alone leaves copied hooks and commands stale. Full procedure: "Updating claude-skills" in the SKILL.md.
+**"Update claude-skills" means update EVERYTHING it installed, not only the group mentioned.** After pulling, run `install.sh --preview-update`, ask the user before adding anything it lists as `NEW-*` (new groups, skills, agents, commands, env vars), then `install.sh --update --yes`. Apply any `MIGRATION <id>` it lists by following `migrations/<id>-*.md`, then `install.sh --mark-migration <id>`. A pull alone leaves copied hooks and commands stale. Full procedure: "Updating claude-skills" in the SKILL.md.
 
 **Before answering "do we have a skill for X" or "can I install Y" questions:** the local skills repo at `~/.claude/.skill-repos/claude-skills` may be behind origin. Run `git -C ~/.claude/.skill-repos/claude-skills fetch --quiet && git -C ~/.claude/.skill-repos/claude-skills log --oneline HEAD..origin/main` first. If commits are listed, the repo is behind — pull (or at least check `origin/main:skill-groups/`) before claiming a skill doesn't exist. Don't auto-pull if there are uncommitted local changes; surface them to the user instead.
 
