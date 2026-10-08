@@ -136,13 +136,19 @@ for (const group of groups) {
   }
 }
 
-// shared/claude-md snippets reference known groups
+// shared/claude-md snippets reference known groups, or are group-less shared
+// snippets that install_shared_claude_md in install.sh installs by name
+const sharedSnippetLoop = fs.readFileSync(path.join(REPO, 'install.sh'), 'utf8')
+  .match(/install_shared_claude_md\(\) \{[\s\S]*?for snippet in ([^;]+);/);
+const sharedSnippets = sharedSnippetLoop ? sharedSnippetLoop[1].trim().split(/\s+/) : [];
+if (sharedSnippets.length === 0) err('install.sh: could not read the snippet list in install_shared_claude_md');
 const claudeMdDir = path.join(SHARED, 'claude-md');
 if (fs.existsSync(claudeMdDir)) {
   for (const f of fs.readdirSync(claudeMdDir)) {
     if (!f.endsWith('.md')) continue;
     const groupName = f.slice(0, -3);
     if (fs.existsSync(path.join(SKILL_GROUPS, groupName))) ok('claude-md/' + f + ' matches group');
+    else if (sharedSnippets.includes(groupName)) ok('claude-md/' + f + ' is a shared snippet installed by install_shared_claude_md');
     else err('claude-md/' + f + ' has no group in skill-groups/ (orphaned snippet)');
   }
 }

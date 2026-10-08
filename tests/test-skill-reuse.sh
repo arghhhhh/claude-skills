@@ -170,11 +170,18 @@ done
 
 suite "shared/claude-md snippets reference known groups"
 
+# Group-less shared snippets (mcporter, skill-repo-maintenance) are installed
+# by name from install_shared_claude_md — read that list rather than copy it.
+shared_snippets=$(sed -n '/^install_shared_claude_md() {/,/^}/s/.*for snippet in \([^;]*\);.*/\1/p' "$REPO_DIR/install.sh")
+[ -n "$shared_snippets" ] || fail "install.sh: could not read the snippet list in install_shared_claude_md"
+
 for snippet in "$SHARED_DIR/claude-md"/*.md; do
   [ -f "$snippet" ] || continue
   name="$(basename "$snippet" .md)"
   if [ -d "$SKILL_GROUPS_DIR/$name" ]; then
     ok "claude-md/$name.md matches group '$name'"
+  elif [[ " $shared_snippets " == *" $name "* ]]; then
+    ok "claude-md/$name.md is a shared snippet installed by install_shared_claude_md"
   else
     fail "claude-md/$name.md has no corresponding group in skill-groups/"
   fi
