@@ -32,5 +32,3 @@ HOUDINI_MCP_DIR=""  # e.g. ~/.local/share/houdini-mcp or C:/Users/you/.local/sha
 # ─── Blender ─────────────────────────────────────────────────────────────────
 # No machine-specific config needed — blender-mcp uses mcporter + localhost:9876
 
-# ─── Unity CLI ───────────────────────────────────────────────────────────────
-# No machine-specific config needed — skills are pulled from the unity-cli repo

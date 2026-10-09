@@ -17,7 +17,7 @@ cd claude-skills
 bash install.sh
 
 # Or install specific groups
-bash install.sh --skills unity-cli,blender
+bash install.sh --skills blender,comfyui
 
 # Or a named profile (profiles/<name>.json; see --list-profiles)
 bash install.sh --profile basic
@@ -45,7 +45,7 @@ git fetch && bash install.sh --changelog --to origin/main   # before pulling
 bash install.sh --update --sync
 
 # Test live connections (software must be running)
-bash install.sh --test-integration --skills unity-cli
+bash install.sh --test-integration --skills blender
 ```
 
 ## Updater (GUI)
@@ -99,7 +99,7 @@ Use the prompt at the top of this README to kick off setup. Here's what the agen
 
 For each selected skill group, the installer:
 1. **Checks prerequisites** (cargo, pip, npx, etc.)
-2. **Installs the software** (e.g. `cargo install unity-cli`, `pip install comfy-cli`)
+2. **Installs the software** (e.g. `npm install -g capcut-cli`, `pip install comfy-cli`)
 3. **Symlinks skills** into `~/.claude/skills/` (with version tracking)
 4. **Symlinks agents** into `~/.claude/agents/`
 5. **Symlinks slash commands** into `~/.claude/commands/` (e.g. `/models-list` from the `claude-meta` group)
@@ -163,7 +163,7 @@ bash install.sh --status    # group + skill versions, plus what's installed loca
 Notable categories:
 
 - **MCPorter-based skills** (e.g. `comfyui`, `blender`, `houdini`, `claude-mermaid`) also need [mcporter](https://github.com/steipete/mcporter) (`npx mcporter` — auto-installed via npx)
-- **Vendored groups** (e.g. `unity-cli`) ship skills sourced from upstream repos rather than authored here. See each group's `manifest.json` for the `source` block. Local customizations live in an `overlays/` subfolder; everything else is pulled fresh on install
+- **Vendored groups** ship skills sourced from upstream repos rather than authored here. See each group's `manifest.json` for the `source` block. Local customizations live in an `overlays/` subfolder; everything else is pulled fresh on install
 - **Meta groups** (e.g. `claude-meta`) install slash commands and agents that operate on Claude itself rather than external software
 
 ## Directory Structure

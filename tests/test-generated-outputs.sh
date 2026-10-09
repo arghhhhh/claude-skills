@@ -48,20 +48,16 @@ else
   skip "blender manifest not found — skipping json extraction tests"
 fi
 
-# Test against unity-cli manifest (vendored, known values)
-unity_mf="$SKILL_GROUPS_DIR/unity-cli/manifest.json"
-if [ -f "$unity_mf" ]; then
-  gtype=$(json_field "$unity_mf" "type")
-  assert_eq "unity-cli manifest: type" "vendored" "$gtype"
-
-  repo=$(json_field "$unity_mf" "source.repo")
-  assert_not_empty "unity-cli manifest: source.repo" "$repo"
-
-  ref=$(json_field "$unity_mf" "source.ref")
-  assert_not_empty "unity-cli manifest: source.ref" "$ref"
-else
-  skip "unity-cli manifest not found — skipping vendored field tests"
-fi
+# Vendored manifests: source.repo and source.ref extract (none may exist)
+vendored_found=false
+for vendored_mf in "$SKILL_GROUPS_DIR"/*/manifest.json; do
+  [ "$(json_field "$vendored_mf" "type")" = "vendored" ] || continue
+  vendored_found=true
+  vg=$(basename "$(dirname "$vendored_mf")")
+  assert_not_empty "$vg manifest: source.repo" "$(json_field "$vendored_mf" "source.repo")"
+  assert_not_empty "$vg manifest: source.ref" "$(json_field "$vendored_mf" "source.ref")"
+done
+[ "$vendored_found" = true ] || skip "no vendored groups — skipping vendored field tests"
 
 # ─── CLAUDE.md snippet generation ─────────────────────────────────────────────
 

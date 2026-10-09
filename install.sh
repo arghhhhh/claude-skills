@@ -2365,7 +2365,7 @@ show_post_install_hints() {
 # ─── Per-group user environment variables (manifest "user_env") ─────────────
 #
 # A group can declare {"user_env": {"NAME": "value"}} for variables its tool
-# should always see (e.g. unity-cli's UNITY_CLI_NO_AUTO_UPDATE). Applied on every install
+# should always see (e.g. a flag that turns off a tool's self-update). Applied on every install
 # and --update, so an upgrade re-asserts it. Never clobbers a value the user set
 # themselves: Windows only writes the User-scope var when it is unset, and the
 # bash/zsh block uses ${NAME:=value} so an earlier export wins.
@@ -3803,10 +3803,10 @@ main() {
         echo ""
         echo "Examples:"
         echo "  install.sh                                    # Interactive install"
-        echo "  install.sh --skills unity-cli                 # Install just unity-cli"
+        echo "  install.sh --skills blender                   # Install just blender"
         echo "  install.sh --profile basic                    # Install the basic profile"
         echo "  install.sh --verify                           # Verify all installed groups"
-        echo "  install.sh --verify --skills unity-cli        # Verify just unity-cli"
+        echo "  install.sh --verify --skills blender          # Verify just blender"
         echo "  install.sh --update                           # Update all groups from repo"
         echo "  install.sh --update --sync                    # Bidirectional sync"
         echo "  install.sh --status                           # Version overview"
@@ -4084,7 +4084,7 @@ main() {
 
     # Step 2a: Per-group user environment variables (manifest "user_env").
     # Before software install, so the tool's own install/smoke-test invocations
-    # already see them (e.g. unity-cli's UNITY_CLI_NO_AUTO_UPDATE).
+    # already see them (e.g. a flag that turns off a tool's self-update).
     install_user_env "$group"
 
     # Step 2: Install software

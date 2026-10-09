@@ -1,5 +1,5 @@
 ---
-version: 1.20.0
+version: 1.21.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when updating/pulling claude-skills, editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -16,7 +16,7 @@ The repo lives at `~/.claude/.skill-repos/claude-skills/`. All skill edits shoul
 
 The user can also do routine updates without an agent: `claude-skills-update` opens a local GUI over the same steps (`updater/`, see README). It launches an agent with the prompt "update claude-skills" when the repo is dirty or diverged, an update fails, or the user asks for one.
 
-When the user asks to update claude-skills (or "update my skills", "pull the latest skills"), the goal is: **refresh EVERYTHING claude-skills already installed on this machine, but ASK before adding anything that wasn't installed before.** Not just the group the user happened to mention — "update claude-skills and make sure unity-cli is updated" still means update all installed groups. Do not stop at `git pull`: hooks, commands and some tool files are COPIED out of the repo at install time, so a pull alone leaves them stale.
+When the user asks to update claude-skills (or "update my skills", "pull the latest skills"), the goal is: **refresh EVERYTHING claude-skills already installed on this machine, but ASK before adding anything that wasn't installed before.** Not just the group the user happened to mention — "update claude-skills and make sure blender is updated" still means update all installed groups. Do not stop at `git pull`: hooks, commands and some tool files are COPIED out of the repo at install time, so a pull alone leaves them stale.
 
 1. **Pull.** `git status --short` first; if there are uncommitted changes, surface them to the user instead of pulling. Then `git pull origin main`.
 2. **Preview what's new** (read-only):
@@ -60,7 +60,7 @@ Each `skill-groups/<group>/manifest.json` declares a `type:`. Missing/empty defa
 | **`vendored`** | `manifest.json` (pinned `source.ref` SHA) + optional `overlays/` | Overlays at `skill-groups/<group>/overlays/{skills,agents}/...` mirroring upstream paths | Installer clones `source.repo` at the pinned SHA into `~/.claude/.skill-repos/<owner>-<repo>/`, then symlinks overlay files first and upstream files for the rest |
 | **`tool-only`** | `manifest.json` only — no `skills:`, no `agents:` | n/a | Installer runs `install` + `test` only; no symlinks under `~/.claude/skills/` |
 
-The manifest's `type:` field is the source of truth; `bash install.sh --status` lists every group. Examples: `unity-cli` is vendored; `jq` and `context-rotation` are tool-only.
+The manifest's `type:` field is the source of truth; `bash install.sh --status` lists every group. No group is vendored at the moment (the last, `unity-cli`, was removed in favour of upstream's plugin); `jq` and `context-rotation` are tool-only.
 
 ## Before Any Skill Edit
 
@@ -189,14 +189,14 @@ mkdir -p skill-groups/<name>/agents/  # if the group has an agent
 First decide the group's `type:` — see the Group Types table above. Pick one of:
 
 - **`authored`** (or omit `type:` entirely) — you own the SKILL.md files. Must include: `name`, `description`, `version`, `prerequisites`, `install`, `test`, `skills`, `agents`. See any existing authored manifest for the template.
-- **`vendored`** — wrapping an upstream repo. Must include: `type: "vendored"`, `name`, `version`, `source: { repo, ref, ref_name, paths: { skills, agents } }`, `skills:` (explicit allow-list), `agents:`, optional `overlays:`, `install`, `test`. See `skill-groups/unity-cli/manifest.json` for the template.
+- **`vendored`** — wrapping an upstream repo. Must include: `type: "vendored"`, `name`, `version`, `source: { repo, ref, ref_name, paths: { skills, agents } }`, `skills:` (explicit allow-list), `agents:`, optional `overlays:`, `install`, `test`. For a template, see the last vendored manifest: `git show 0a68746:skill-groups/unity-cli/manifest.json`.
 - **`tool-only`** — installs software, ships no skills. Must include: `type: "tool-only"`, `name`, `version`, `install`, `test`, `post_install_hints`. See `skill-groups/jq/manifest.json` for the template.
 
 Optional fields:
 - **`mcp_servers`**: Object mapping server names to `{ "command": "...", "args": [...] }`. The installer auto-generates `~/.mcporter/mcporter.json` and `~/.claude/.mcp.json` entries. Use `{{PLACEHOLDER}}` for machine-specific paths (resolved from `skills-config.sh`). Commands are auto-resolved to full paths on Windows.
 - **`post_install_hints`**: Array of strings printed after install. Use for optional setup steps the installer can't automate (e.g., API keys, browser auth, manual addon installation).
 - **`agent_renames`**: Object mapping source filenames to agent names when they differ.
-- **`user_env`**: Object of `{ "NAME": "value" }` the group's tool should always see (e.g. unity-cli's `UNITY_CLI_NO_AUTO_UPDATE`). Applied before software install on every install and `--update`. Windows: User-scope env var, written only when unset. macOS/Linux: managed `${NAME:=value}` block in `~/.bashrc`/`~/.zshrc`. A user-set value is never clobbered; `--verify` warns when it differs.
+- **`user_env`**: Object of `{ "NAME": "value" }` the group's tool should always see (e.g. a flag that turns off a tool's self-update). Applied before software install on every install and `--update`. Windows: User-scope env var, written only when unset. macOS/Linux: managed `${NAME:=value}` block in `~/.bashrc`/`~/.zshrc`. A user-set value is never clobbered; `--verify` warns when it differs.
 
 ### 3. Create CLAUDE.md snippet
 
@@ -321,7 +321,7 @@ Any group (tool-only or otherwise) whose install command builds software from a 
 |---|---|---|
 | **`pinned`** (default, field omitted) | `--update` never touches installed software and never runs `install.check`; it only refreshes skills/agents/commands. Software is installed only by a full install (`install.sh --skills <g>`) whose `check` fails. | Groups that install nothing third-party, or whose software can't be held at a version (`enforced: false` pins) |
 | **`latest`** | Every `--update` re-runs the group's install command even though the binary already exists — the command must be idempotent (pull-or-clone + rebuild, like `git pull --ff-only … && go build`), and `run_test` verifies afterwards. `--skip-software` suppresses this. | My own repos (`arghhhhh/*`) where HEAD is always wanted: `claude-code-sessions`, `claude-conversation-transfer` |
-| **`check`** | Every `--update` runs `install.check` and re-runs the install command only when it fails, then `run_test`. The check must be keyed to the pin (a version or SHA), or a stale install passes it. `--skip-software` suppresses this. Don't use it when the check can fail on a machine that has the software outside `PATH` (Blender.app without `blender` on `PATH` would re-run `brew install --cask` on every update). | Every pinned third-party tool (see "Pinning Upstream Tools"): `unity-cli` (check greps `cargo install --list` for the pinned rev), `playwright-cli`, `capcut-cli` (check matches the pinned version) |
+| **`check`** | Every `--update` runs `install.check` and re-runs the install command only when it fails, then `run_test`. The check must be keyed to the pin (a version or SHA), or a stale install passes it. `--skip-software` suppresses this. Don't use it when the check can fail on a machine that has the software outside `PATH` (Blender.app without `blender` on `PATH` would re-run `brew install --cask` on every update). | Every pinned third-party tool (see "Pinning Upstream Tools"): `ghidra` (check greps `cargo install --list` for the pinned tag), `playwright-cli`, `capcut-cli` (check matches the pinned version) |
 
 **Rule: any group that clones one of my own repos must set `update_policy: "latest"`** — otherwise fixes pushed from one machine silently never reach the installed binaries on others (the install `check` sees an existing binary and short-circuits). Third-party sources are pinned with `update_policy: "check"`.
 
