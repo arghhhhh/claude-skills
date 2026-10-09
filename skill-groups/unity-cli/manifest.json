@@ -2,7 +2,7 @@
   "name": "unity-cli",
   "type": "vendored",
   "description": "Unity Editor automation via unity-cli \u2014 scene inspection, GameObject editing, prefab workflows, C# navigation/editing, asset management, input system, testing, and UI automation.",
-  "version": "0.16.0",
+  "version": "0.16.1",
   "update_policy": "check",
   "source": {
     "repo": "akiojin/unity-cli",
@@ -37,7 +37,7 @@
           "linux"
         ],
         "check": "cargo --version",
-        "command": "cargo install --git https://github.com/akiojin/unity-cli.git --force --rev 7f45d7aec2a866abda88ba3768bf4057c5f23053 && bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/unity-cli/install/sync-managed.sh\""
+        "command": "bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/unity-cli/install/build.sh\" 7f45d7aec2a866abda88ba3768bf4057c5f23053"
       },
       {
         "name": "cargo",
@@ -45,7 +45,7 @@
           "windows"
         ],
         "check": "cargo --version",
-        "command": "MSVC_LINK=$(find '/c/Program Files/Microsoft Visual Studio' '/c/Program Files (x86)/Microsoft Visual Studio' -name 'link.exe' -path '*/Hostx64/x64/*' 2>/dev/null | head -1) && if [ -n \"$MSVC_LINK\" ]; then export PATH=\"$(dirname \"$MSVC_LINK\"):$PATH\" && git config --global core.longpaths true && cargo install --git https://github.com/akiojin/unity-cli.git --force --rev 7f45d7aec2a866abda88ba3768bf4057c5f23053 && bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/unity-cli/install/sync-managed.sh\"; else echo 'MSVC Build Tools not found \u2014 install via: winget install Microsoft.VisualStudio.2022.BuildTools --override \"--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"' && false; fi"
+        "command": "MSVC_LINK=$(find '/c/Program Files/Microsoft Visual Studio' '/c/Program Files (x86)/Microsoft Visual Studio' -name 'link.exe' -path '*/Hostx64/x64/*' 2>/dev/null | head -1) && if [ -n \"$MSVC_LINK\" ]; then export PATH=\"$(dirname \"$MSVC_LINK\"):$PATH\" && git config --global core.longpaths true && bash \"$HOME/.claude/.skill-repos/claude-skills/skill-groups/unity-cli/install/build.sh\" 7f45d7aec2a866abda88ba3768bf4057c5f23053; else echo 'MSVC Build Tools not found \u2014 install via: winget install Microsoft.VisualStudio.2022.BuildTools --override \"--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended\"' && false; fi"
       },
       {
         "name": "binary",

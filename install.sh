@@ -1495,6 +1495,7 @@ install_software() {
   fi
 
   local IFS_SEP=$'\x1f'
+  local cmd_failed=false
   while IFS="$IFS_SEP" read -r method cmd prereq url platforms; do
     [ -z "$method" ] && continue
 
@@ -1527,8 +1528,16 @@ install_software() {
         return 0
       else
         warn "$method install failed, trying next method..."
+        cmd_failed=true
       fi
     elif [ -n "$url" ]; then
+      # An automatic method already ran and failed. Without a prompt that is a
+      # failure, not a skip, so the group's rev isn't recorded and the next
+      # update retries it.
+      if [ "$cmd_failed" = "true" ] && [ "$NON_INTERACTIVE" = "true" ]; then
+        fail "$group software install failed (manual install: $url)"
+        return 0
+      fi
       warn "$group requires manual installation"
       info "Download from: $url"
       if [ "$NON_INTERACTIVE" = "true" ]; then
@@ -1544,7 +1553,11 @@ install_software() {
     fi
   done <<< "$methods_list"
 
-  warn "Could not auto-install $group software — skills will be installed anyway"
+  if [ "$cmd_failed" = "true" ]; then
+    fail "Could not auto-install $group software — skills will be installed anyway"
+  else
+    warn "Could not auto-install $group software — skills will be installed anyway"
+  fi
   return 0
 }
 

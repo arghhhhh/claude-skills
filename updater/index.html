@@ -90,6 +90,11 @@
   <div id="loading" class="card"><span class="spinner"></span>Fetching and previewing the update. This takes a little while.</div>
   <div id="banners"></div>
 
+  <section id="sec-log" hidden>
+    <h2><span class="spinner" id="log-spinner" hidden></span>Output</h2>
+    <pre class="log" id="log"></pre>
+  </section>
+
   <div id="content" hidden>
     <section id="sec-updates">
       <h2>Updates</h2>
@@ -125,10 +130,6 @@
       <div class="chips" id="current"></div>
     </section>
 
-    <section id="sec-log" hidden>
-      <h2>Output</h2>
-      <pre class="log" id="log"></pre>
-    </section>
   </div>
 </main>
 
@@ -301,7 +302,8 @@ function updateSummary() {
   $('agent-update').disabled = running;
 }
 
-async function load() {
+async function load(keepLog) {
+  if (!keepLog) $('sec-log').hidden = true;
   $('loading').hidden = false;
   $('content').hidden = true;
   $('banners').replaceChildren();
@@ -323,12 +325,15 @@ async function apply() {
   const sel = selection();
   running = true;
   updateSummary();
+  $('banners').replaceChildren();
   $('sec-log').hidden = false;
+  $('log-spinner').hidden = false;
   $('log').textContent = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
   try {
     await api('POST', '/api/apply', sel);
   } catch (e) {
-    running = false; updateSummary(); banner('bad', e.message); return;
+    running = false; $('log-spinner').hidden = true; updateSummary(); banner('bad', e.message); return;
   }
   let since = 0;
   for (;;) {
@@ -340,17 +345,15 @@ async function apply() {
     }
     if (j.done) {
       running = false;
-      const keepLog = $('log').textContent;
-      await load();
-      $('sec-log').hidden = false;
-      $('log').textContent = keepLog;
+      $('log-spinner').hidden = true;
+      await load(true);
       if (j.failed) {
         banner('bad', 'The update finished with errors. See the output below. An agent can check what failed and fix it.',
           el('button', { onclick: e => launch('fix', null, e.target.parentNode) }, 'Launch agent'));
       } else {
         banner('info', 'Done. Restart Claude Code to pick up the changes.');
       }
-      $('sec-log').scrollIntoView({ behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     await new Promise(r => setTimeout(r, 700));
