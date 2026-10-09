@@ -84,8 +84,8 @@ unity-cli raw analyze_scene_contents --json '{"includeInactive":true}'
 
 ## Pinned Install (claude-skills)
 
-This install is built from `arghhhhh/unity-cli`, branch `stable`, pinned by SHA in the claude-skills
-manifest. At the current pin `stable` is identical to upstream v0.18.1.
+This install is built from upstream `akiojin/unity-cli`, pinned by SHA in the claude-skills manifest
+(currently the v0.18.1 release on `main`).
 
 | Variable | Value | Why |
 |---|---|---|

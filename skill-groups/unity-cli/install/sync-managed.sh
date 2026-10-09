@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copy the cargo-installed fork build over unity-cli's *managed* binary
+# Copy the cargo-installed pinned build over unity-cli's *managed* binary
 # (~/.unity/tools/unity-cli/<rid>/), which is what `unityd` actually runs and
 # what upstream auto-update overwrites. Installing only to ~/.cargo/bin leaves
 # the daemon on whatever build was there before.
