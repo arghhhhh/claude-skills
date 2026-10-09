@@ -1,5 +1,5 @@
 ---
-version: 1.19.0
+version: 1.20.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when updating/pulling claude-skills, editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -60,7 +60,7 @@ Each `skill-groups/<group>/manifest.json` declares a `type:`. Missing/empty defa
 | **`vendored`** | `manifest.json` (pinned `source.ref` SHA) + optional `overlays/` | Overlays at `skill-groups/<group>/overlays/{skills,agents}/...` mirroring upstream paths | Installer clones `source.repo` at the pinned SHA into `~/.claude/.skill-repos/<owner>-<repo>/`, then symlinks overlay files first and upstream files for the rest |
 | **`tool-only`** | `manifest.json` only — no `skills:`, no `agents:` | n/a | Installer runs `install` + `test` only; no symlinks under `~/.claude/skills/` |
 
-The manifest's `type:` field is the source of truth; `bash install.sh --status` lists every group. Examples: `unity-cli` and `officecli` are vendored; `claude-notifications` and `context-rotation` are tool-only.
+The manifest's `type:` field is the source of truth; `bash install.sh --status` lists every group. Examples: `unity-cli` is vendored; `jq` and `context-rotation` are tool-only.
 
 ## Before Any Skill Edit
 
@@ -189,8 +189,8 @@ mkdir -p skill-groups/<name>/agents/  # if the group has an agent
 First decide the group's `type:` — see the Group Types table above. Pick one of:
 
 - **`authored`** (or omit `type:` entirely) — you own the SKILL.md files. Must include: `name`, `description`, `version`, `prerequisites`, `install`, `test`, `skills`, `agents`. See any existing authored manifest for the template.
-- **`vendored`** — wrapping an upstream repo. Must include: `type: "vendored"`, `name`, `version`, `source: { repo, ref, ref_name, paths: { skills, agents } }`, `skills:` (explicit allow-list), `agents:`, optional `overlays:`, `install`, `test`. See `skill-groups/unity-cli/manifest.json` or `skill-groups/officecli/manifest.json` for templates.
-- **`tool-only`** — installs software, ships no skills. Must include: `type: "tool-only"`, `name`, `version`, `install`, `test`, `post_install_hints`. See `skill-groups/claude-notifications/manifest.json` for the template.
+- **`vendored`** — wrapping an upstream repo. Must include: `type: "vendored"`, `name`, `version`, `source: { repo, ref, ref_name, paths: { skills, agents } }`, `skills:` (explicit allow-list), `agents:`, optional `overlays:`, `install`, `test`. See `skill-groups/unity-cli/manifest.json` for the template.
+- **`tool-only`** — installs software, ships no skills. Must include: `type: "tool-only"`, `name`, `version`, `install`, `test`, `post_install_hints`. See `skill-groups/jq/manifest.json` for the template.
 
 Optional fields:
 - **`mcp_servers`**: Object mapping server names to `{ "command": "...", "args": [...] }`. The installer auto-generates `~/.mcporter/mcporter.json` and `~/.claude/.mcp.json` entries. Use `{{PLACEHOLDER}}` for machine-specific paths (resolved from `skills-config.sh`). Commands are auto-resolved to full paths on Windows.
@@ -280,7 +280,7 @@ Add new entries to `manifest.json`'s `skills:` array. Same for `agents:`.
 
 ## Maintaining Tool-only Groups
 
-Tool-only groups (`type: "tool-only"`) ship no skills or agents — they exist only to run `install` and `test` for a piece of external software (e.g., `claude-notifications` installs a Claude Code plugin). Manifest shape is minimal: `type`, `version`, `install`, `test`, `post_install_hints`.
+Tool-only groups (`type: "tool-only"`) ship no skills or agents — they exist only to run `install` and `test` for a piece of external software (e.g., `jq` installs the jq binary). Manifest shape is minimal: `type`, `version`, `install`, `test`, `post_install_hints`.
 
 To update, edit `install` / `test` / `post_install_hints`, bump `version`, commit, push. No symlinks are created, so there's nothing to re-sync on other machines beyond rerunning the installer.
 
@@ -319,7 +319,7 @@ Any group (tool-only or otherwise) whose install command builds software from a 
 
 | Policy | Meaning | Use for |
 |---|---|---|
-| **`pinned`** (default, field omitted) | `--update` never touches installed software and never runs `install.check`; it only refreshes skills/agents/commands. Software is installed only by a full install (`install.sh --skills <g>`) whose `check` fails. | Groups whose software isn't held at a version (`enforced: false` pins like `claude-notifications`, `officecli`) or that install nothing |
+| **`pinned`** (default, field omitted) | `--update` never touches installed software and never runs `install.check`; it only refreshes skills/agents/commands. Software is installed only by a full install (`install.sh --skills <g>`) whose `check` fails. | Groups that install nothing third-party, or whose software can't be held at a version (`enforced: false` pins) |
 | **`latest`** | Every `--update` re-runs the group's install command even though the binary already exists — the command must be idempotent (pull-or-clone + rebuild, like `git pull --ff-only … && go build`), and `run_test` verifies afterwards. `--skip-software` suppresses this. | My own repos (`arghhhhh/*`) where HEAD is always wanted: `claude-code-sessions`, `claude-conversation-transfer` |
 | **`check`** | Every `--update` runs `install.check` and re-runs the install command only when it fails, then `run_test`. The check must be keyed to the pin (a version or SHA), or a stale install passes it. `--skip-software` suppresses this. Don't use it when the check can fail on a machine that has the software outside `PATH` (Blender.app without `blender` on `PATH` would re-run `brew install --cask` on every update). | Every pinned third-party tool (see "Pinning Upstream Tools"): `unity-cli` (check greps `cargo install --list` for the pinned rev), `playwright-cli`, `capcut-cli` (check matches the pinned version) |
 
@@ -443,8 +443,7 @@ Report the results to the user. If any software smoke tests failed, let them kno
 
 ### 5. Register MCP servers (if applicable)
 
-Some skills require MCP server registration. Check post-install hints in the installer output. Common ones:
-- `officecli mcp claude` — registers OfficeCLI MCP server
+Some skills require MCP server registration. Check post-install hints in the installer output.
 
 ## Running Tests
 

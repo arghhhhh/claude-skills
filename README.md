@@ -163,7 +163,7 @@ bash install.sh --status    # group + skill versions, plus what's installed loca
 Notable categories:
 
 - **MCPorter-based skills** (e.g. `comfyui`, `blender`, `houdini`, `claude-mermaid`) also need [mcporter](https://github.com/steipete/mcporter) (`npx mcporter` — auto-installed via npx)
-- **Vendored groups** (e.g. `officecli`, `unity-cli`) ship skills sourced from upstream repos rather than authored here. See each group's `manifest.json` for the `source` block. Local customizations live in an `overlays/` subfolder; everything else is pulled fresh on install
+- **Vendored groups** (e.g. `unity-cli`) ship skills sourced from upstream repos rather than authored here. See each group's `manifest.json` for the `source` block. Local customizations live in an `overlays/` subfolder; everything else is pulled fresh on install
 - **Meta groups** (e.g. `claude-meta`) install slash commands and agents that operate on Claude itself rather than external software
 
 ## Directory Structure

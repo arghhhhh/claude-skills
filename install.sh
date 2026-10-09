@@ -2663,7 +2663,7 @@ verify_group() {
   # 6. Check for unconfigured {{PLACEHOLDER}} vars.
   # Match only the install-time substitution shape ({{UPPER_SNAKE}}) so
   # skill files that document lowercase tokens like {{customer_name}} —
-  # e.g. officecli explaining what NOT to render — don't trip the check.
+  # e.g. a skill explaining a template syntax — don't trip the check.
   info "Configuration:"
   local has_placeholders=false
   local ph_pattern='\{\{[A-Z_]+\}\}'
