@@ -1,7 +1,17 @@
 {
   "name": "app-ui",
   "description": "Unity App UI framework — components, MVVM, navigation, Redux state management, and theming for UI Toolkit.",
-  "version": "0.2.2",
+  "version": "0.3.0",
+  "upstream": {
+    "app-ui": {
+      "type": "npm",
+      "registry": "https://packages.unity.com",
+      "package": "com.unity.dt.app-ui",
+      "pin": "2.2.4",
+      "installs": false,
+      "note": "Unity package added per project; the skill documents this version."
+    }
+  },
   "prerequisites": [],
   "install": {
     "check": "true",

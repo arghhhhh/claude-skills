@@ -1,5 +1,5 @@
 ---
-version: 1.0.2
+version: 1.1.0
 name: find-docs
 description: Retrieves and queries up-to-date documentation and code examples from Context7 for any programming library or framework. Use when writing code that depends on external packages, verifying API signatures, looking up usage patterns, generating code with specific libraries, or when training data may be outdated. Covers setup questions, migration guides, and version-specific docs.
 ---
@@ -8,7 +8,7 @@ description: Retrieves and queries up-to-date documentation and code examples fr
 
 Retrieve current documentation and code examples for any library using the Context7 CLI.
 
-Call the CLI as `npx ctx7@latest`, not bare `ctx7`: the global CLI may not be installed and fails with `command not found`, while `npx ctx7@latest` works without prior installation.
+Call the CLI as `npx ctx7@0.5.15`, not bare `ctx7`: the global CLI may not be installed and fails with `command not found`, while `npx ctx7@0.5.15` works without prior installation.
 
 ## Workflow
 
@@ -16,10 +16,10 @@ Two-step process: resolve the library name to an ID, then query docs with that I
 
 ```bash
 # Step 1: Resolve library ID
-npx ctx7@latest library <name> <query>
+npx ctx7@0.5.15 library <name> <query>
 
 # Step 2: Query documentation (use MSYS_NO_PATHCONV=1 on Windows/Git Bash)
-MSYS_NO_PATHCONV=1 npx ctx7@latest docs <libraryId> <query>
+MSYS_NO_PATHCONV=1 npx ctx7@0.5.15 docs <libraryId> <query>
 ```
 
 Call `ctx7 library` first to get a valid library ID, unless the user gives one in the format `/org/project` or `/org/project/version`.
@@ -31,9 +31,9 @@ Stop after 3 lookups per question and use the best result you have — the free 
 Resolves a package/product name to a Context7-compatible library ID and returns matching libraries.
 
 ```bash
-npx ctx7@latest library react "How to clean up useEffect with async operations"
-npx ctx7@latest library nextjs "How to set up app router with middleware"
-npx ctx7@latest library prisma "How to define one-to-many relations with cascade delete"
+npx ctx7@0.5.15 library react "How to clean up useEffect with async operations"
+npx ctx7@0.5.15 library nextjs "How to set up app router with middleware"
+npx ctx7@0.5.15 library prisma "How to define one-to-many relations with cascade delete"
 ```
 
 Always pass a `query` argument — it is required and directly affects result ranking. Use the user's intent to form the query, which helps disambiguate when multiple libraries share a similar name. Do not include any sensitive or confidential information such as API keys, passwords, credentials, personal data, or proprietary code in your query.
@@ -60,10 +60,10 @@ If the user mentions a specific version, use a version-specific library ID:
 
 ```bash
 # General (latest indexed)
-MSYS_NO_PATHCONV=1 npx ctx7@latest docs /vercel/next.js "How to set up app router"
+MSYS_NO_PATHCONV=1 npx ctx7@0.5.15 docs /vercel/next.js "How to set up app router"
 
 # Version-specific
-MSYS_NO_PATHCONV=1 npx ctx7@latest docs /vercel/next.js/v14.3.0-canary.87 "How to set up app router"
+MSYS_NO_PATHCONV=1 npx ctx7@0.5.15 docs /vercel/next.js/v14.3.0-canary.87 "How to set up app router"
 ```
 
 The available versions are listed in the `ctx7 library` output. Use the closest match to what the user specified.
@@ -73,9 +73,9 @@ The available versions are listed in the `ctx7 library` output. Use the closest 
 Retrieves up-to-date documentation and code examples for the resolved library.
 
 ```bash
-MSYS_NO_PATHCONV=1 npx ctx7@latest docs /facebook/react "How to clean up useEffect with async operations"
-MSYS_NO_PATHCONV=1 npx ctx7@latest docs /vercel/next.js "How to add authentication middleware to app router"
-MSYS_NO_PATHCONV=1 npx ctx7@latest docs /prisma/prisma "How to define one-to-many relations with cascade delete"
+MSYS_NO_PATHCONV=1 npx ctx7@0.5.15 docs /facebook/react "How to clean up useEffect with async operations"
+MSYS_NO_PATHCONV=1 npx ctx7@0.5.15 docs /vercel/next.js "How to add authentication middleware to app router"
+MSYS_NO_PATHCONV=1 npx ctx7@0.5.15 docs /prisma/prisma "How to define one-to-many relations with cascade delete"
 ```
 
 ### Writing good queries
@@ -102,7 +102,7 @@ Works without authentication. For higher rate limits:
 export CONTEXT7_API_KEY=your_key
 
 # Option B: OAuth login
-npx ctx7@latest login
+npx ctx7@0.5.15 login
 ```
 
 ## Error Handling
@@ -116,9 +116,9 @@ Do not silently fall back to training data — always tell the user why Context7
 
 ## Common Mistakes
 
-- **Never use bare `ctx7`** — always use `npx ctx7@latest`. The global binary is likely not installed and will fail with `command not found`
-- **Windows/Git Bash path conversion** — Always use `MSYS_NO_PATHCONV=1` before `npx ctx7@latest docs` commands, otherwise `/org/project` IDs get mangled into Windows paths like `C:/Program Files/Git/org/project`
+- **Never use bare `ctx7`** — always use `npx ctx7@0.5.15`. The global binary is likely not installed and will fail with `command not found`
+- **Windows/Git Bash path conversion** — Always use `MSYS_NO_PATHCONV=1` before `npx ctx7@0.5.15 docs` commands, otherwise `/org/project` IDs get mangled into Windows paths like `C:/Program Files/Git/org/project`
 - Library IDs require a `/` prefix — `/facebook/react` not `facebook/react`
-- Always run `npx ctx7@latest library` first — querying docs without a valid ID will fail
+- Always run `npx ctx7@0.5.15 library` first — querying docs without a valid ID will fail
 - Use descriptive queries, not single words — `"React useEffect cleanup function"` not `"hooks"`
 - Do not include sensitive information (API keys, passwords, credentials) in queries

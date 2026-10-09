@@ -1,7 +1,15 @@
 {
   "name": "wireviz",
   "description": "Wiring / cable harness diagrams from plain-text YAML via the WireViz CLI — connector pinouts, cable colors, point-to-point wiring, rendered to SVG/PNG/HTML with a BOM.",
-  "version": "1.0.1",
+  "version": "1.1.0",
+  "update_policy": "check",
+  "upstream": {
+    "wireviz": {
+      "type": "pypi",
+      "package": "wireviz",
+      "pin": "0.4.1"
+    }
+  },
   "prerequisites": [
     {
       "name": "pip",
@@ -18,13 +26,13 @@
     }
   ],
   "install": {
-    "check": "wireviz --version",
+    "check": "wireviz -V 2>&1 | grep -qE '(^|[^0-9.])v?{{PIN:wireviz}}([^0-9.]|$)'",
     "methods": [
       {
         "name": "pip",
         "platforms": ["windows", "macos", "linux"],
         "check": "pip --version",
-        "command": "pip install wireviz"
+        "command": "pip install wireviz=={{PIN:wireviz}}"
       },
       {
         "name": "manual",

@@ -1,34 +1,42 @@
 {
   "name": "ast-grep",
   "description": "Structural code search & rewriting using AST patterns — find code by structure, not text.",
-  "version": "0.1.2",
+  "version": "0.2.0",
+  "update_policy": "check",
+  "upstream": {
+    "ast-grep": {
+      "type": "npm",
+      "package": "@ast-grep/cli",
+      "pin": "0.43.0"
+    }
+  },
   "prerequisites": [],
   "install": {
-    "check": "sg --version || ast-grep --version",
+    "check": "ast-grep --version 2>&1 | grep -qE '(^|[^0-9.])v?{{PIN:ast-grep}}([^0-9.]|$)'",
     "methods": [
-      {
-        "name": "brew",
-        "platforms": ["macos", "linux"],
-        "check": "brew --version",
-        "command": "brew install ast-grep"
-      },
       {
         "name": "npm",
         "platforms": ["macos", "linux", "windows"],
         "check": "npm --version",
-        "command": "npm install -g @ast-grep/cli"
+        "command": "npm install -g @ast-grep/cli@{{PIN:ast-grep}}"
       },
       {
         "name": "cargo",
         "platforms": ["macos", "linux", "windows"],
         "check": "cargo --version",
-        "command": "cargo install ast-grep"
+        "command": "cargo install ast-grep --version {{PIN:ast-grep}} --locked"
       },
       {
         "name": "pip",
         "platforms": ["macos", "linux", "windows"],
         "check": "pip --version",
-        "command": "pip install ast-grep-cli"
+        "command": "pip install ast-grep-cli=={{PIN:ast-grep}}"
+      },
+      {
+        "name": "brew",
+        "platforms": ["macos", "linux"],
+        "check": "brew --version",
+        "command": "brew install ast-grep"
       },
       {
         "name": "manual",

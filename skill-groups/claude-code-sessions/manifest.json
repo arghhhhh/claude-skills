@@ -3,6 +3,7 @@
   "type": "tool-only",
   "description": "TUI for browsing every local Claude Code session (CLI + Mac-app Local) in one place. Reads ~/.claude/projects/**/*.jsonl directly.",
   "version": "0.3.1",
+  "upstream": {},
   "update_policy": "latest",
   "prerequisites": [
     {

@@ -15,6 +15,8 @@ set -euo pipefail
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=framework.sh
 source "$TESTS_DIR/framework.sh"
+# The installer's own field extractor, so the test exercises the real code.
+eval "$(sed -n '/^json_get_manifest_field() {/,/^}/p' "$REPO_DIR/install.sh")"
 
 echo -e "${BOLD}test-manifest-real-fields${NC}"
 
@@ -107,9 +109,9 @@ for group_dir in "$SKILL_GROUPS_DIR"/*/; do
   # ── install.check gating: check:"false" means ALWAYS re-run install (used by
   #    context-rotation). For non-tool-only that's fine; for tool-only groups,
   #    group_is_installed/verify need test.command as the real probe
-  #    (install.sh:2344-2355, 2110-2123). Also: the installer's legacy
-  #    json_get/sed extractors truncate at the first double quote — check and
-  #    test.command must not contain double quotes. ──
+  #    (install.sh:2344-2355, 2110-2123). Also: the installer reads check and
+  #    test.command with json_get_manifest_field (node), so they may contain
+  #    double quotes; make sure that extractor returns the full string. ──
   suite "install/test gating: $group"
   icheck=$(jnode "$mf" "process.stdout.write(((m.install||{}).check)||'');")
   tcmd=$(jnode "$mf" "process.stdout.write(((m.test||{}).command)||'');")
@@ -118,10 +120,12 @@ for group_dir in "$SKILL_GROUPS_DIR"/*/; do
   else
     ok "install.check/test.command combination is verify-safe"
   fi
-  case "$icheck$tcmd" in
-    *'"'*) fail "install.check or test.command contains a double quote — sed extractor truncates at first quote" ;;
-    *) ok "no double quotes in check/test.command" ;;
-  esac
+  extracted=$(json_get_manifest_field "$(tr -d '\r' < "$mf")" "install.check")
+  if [ "$extracted" = "$icheck" ]; then
+    ok "install.check extracts intact"
+  else
+    fail "install.check extracts as '$extracted'"
+  fi
 
   # ── vendored source block: repo owner/name form, ref pinned (40-hex SHA or
   #    version tag; bare branch names rejected — mirrors validate_vendor_ref

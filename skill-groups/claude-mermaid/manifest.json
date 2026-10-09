@@ -1,7 +1,15 @@
 {
   "name": "claude-mermaid",
   "description": "Mermaid diagram rendering with live-reload browser preview via the claude-mermaid MCP server — flowcharts, graphs, sequence/state/class diagrams exported to SVG/PNG/PDF.",
-  "version": "1.1.0",
+  "version": "1.2.0",
+  "update_policy": "check",
+  "upstream": {
+    "claude-mermaid": {
+      "type": "npm",
+      "package": "claude-mermaid",
+      "pin": "1.6.3"
+    }
+  },
   "prerequisites": [
     {
       "name": "node",
@@ -19,13 +27,13 @@
     }
   ],
   "install": {
-    "check": "claude-mermaid --version",
+    "check": "claude-mermaid --version 2>&1 | grep -qE '(^|[^0-9.])v?{{PIN:claude-mermaid}}([^0-9.]|$)'",
     "methods": [
       {
         "name": "npm",
         "platforms": ["windows", "macos", "linux"],
         "check": "npm --version",
-        "command": "npm install -g claude-mermaid"
+        "command": "npm install -g claude-mermaid@{{PIN:claude-mermaid}}"
       }
     ],
     "notes": "claude-mermaid is an MCP server. After install it must be registered with Claude Code (see post_install_hints)."

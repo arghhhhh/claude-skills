@@ -1,7 +1,20 @@
 {
   "name": "blender",
   "description": "Blender 3D — scene/file introspection, bpy docs, screenshots, renders (official Blender Lab MCP) plus asset import and AI 3D generation (ahujasid MCP for Blender).",
-  "version": "2.1.0",
+  "version": "2.2.0",
+  "upstream": {
+    "blender-mcp-official": {
+      "type": "git",
+      "url": "https://projects.blender.org/lab/blender_mcp.git",
+      "branch": "main",
+      "pin": "4309a39646e644261624bfcd2bca669b343b7621"
+    },
+    "blender-mcp": {
+      "type": "pypi",
+      "package": "blender-mcp",
+      "pin": "1.9.1"
+    }
+  },
   "prerequisites": [
     {
       "name": "npx",
@@ -82,14 +95,14 @@
         "--with",
         "mcp<2",
         "--from",
-        "git+https://projects.blender.org/lab/blender_mcp.git#subdirectory=mcp",
+        "git+https://projects.blender.org/lab/blender_mcp.git@{{PIN:blender-mcp-official}}#subdirectory=mcp",
         "blender-mcp"
       ]
     },
     "blender-assets": {
       "command": "uvx",
       "args": [
-        "blender-mcp"
+        "blender-mcp@{{PIN:blender-mcp}}"
       ],
       "env": {
         "BLENDER_PORT": "9878"

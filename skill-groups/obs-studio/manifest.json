@@ -1,7 +1,15 @@
 {
   "name": "obs-studio",
   "description": "OBS Studio streaming/recording control — scenes, sources, studio mode, virtual camera.",
-  "version": "0.2.0",
+  "version": "0.3.0",
+  "update_policy": "check",
+  "upstream": {
+    "gobs-cli": {
+      "type": "github-release",
+      "repo": "onyx-and-iris/gobs-cli",
+      "pin": "0.18.3"
+    }
+  },
   "prerequisites": [
     {
       "name": "go",
@@ -12,13 +20,13 @@
     }
   ],
   "install": {
-    "check": "gobs-cli --version",
+    "check": "gobs-cli --version 2>&1 | grep -qE '(^|[^0-9.])v?{{PIN:gobs-cli}}([^0-9.]|$)'",
     "methods": [
       {
         "name": "go",
         "platforms": ["macos", "linux", "windows"],
         "check": "go version",
-        "command": "go install github.com/onyx-and-iris/gobs-cli@latest"
+        "command": "go install github.com/onyx-and-iris/gobs-cli@v{{PIN:gobs-cli}}"
       },
       {
         "name": "binary",

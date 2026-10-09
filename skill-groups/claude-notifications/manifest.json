@@ -2,7 +2,16 @@
   "name": "claude-notifications",
   "type": "tool-only",
   "description": "Smart desktop notifications for Claude Code — task complete, questions, plan ready, sounds, click-to-focus.",
-  "version": "0.3.0",
+  "version": "0.4.0",
+  "upstream": {
+    "claude-notifications-go": {
+      "type": "github-release",
+      "repo": "777genius/agent-notifications",
+      "pin": "1.40.1",
+      "enforced": false,
+      "note": "Installed as a Claude Code plugin by upstream bootstrap.sh, which always installs the latest release; the pin records the version the setup was tested with."
+    }
+  },
   "prerequisites": [
     {
       "name": "claude",

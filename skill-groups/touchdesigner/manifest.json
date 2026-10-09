@@ -1,7 +1,23 @@
 {
   "name": "touchdesigner",
   "description": "TouchDesigner control via td-cli — operator/parameter editing, Python exec, screenshots, harness loop with backup/rollback.",
-  "version": "0.4.1",
+  "version": "0.5.0",
+  "update_policy": "check",
+  "upstream": {
+    "td-cli": {
+      "type": "git",
+      "url": "https://github.com/arghhhhh/td-cli.git",
+      "pin": "597b74326d6a971d76ae6642168d5eb522dd394b",
+      "note": "Your fork (opaque-output changes) of 0dot77/td-cli."
+    },
+    "td-cli-upstream": {
+      "type": "git",
+      "url": "https://github.com/0dot77/td-cli.git",
+      "pin": "12cad1a80a282279b5a639260c328b28a7e68a57",
+      "installs": false,
+      "note": "The original repo the fork tracks; a change here means rebasing the fork."
+    }
+  },
   "prerequisites": [
     {
       "name": "go",
@@ -17,13 +33,13 @@
     }
   ],
   "install": {
-    "check": "td-cli version",
+    "check": "td-cli version 2>/dev/null | grep -qF '{{PIN:td-cli}}'",
     "methods": [
       {
         "name": "source",
         "platforms": ["macos", "linux", "windows"],
         "check": "go version",
-        "command": "git clone https://github.com/arghhhhh/td-cli.git /tmp/td-cli-build && cd /tmp/td-cli-build && go install -ldflags \"-X main.version=0.1.0-opaque\" ./cmd/td-cli/ && rm -rf /tmp/td-cli-build"
+        "command": "rm -rf /tmp/td-cli-build && git clone -q https://github.com/arghhhhh/td-cli.git /tmp/td-cli-build && cd /tmp/td-cli-build && git checkout -q {{PIN:td-cli}} && go install -ldflags \"-X main.version=0.1.0-opaque+{{PIN:td-cli}}\" ./cmd/td-cli/ && rm -rf /tmp/td-cli-build"
       }
     ],
     "notes": "Pinned to fork arghhhhh/td-cli (includes --opaque flag — PR https://github.com/0dot77/td-cli/pull/2). Revert to 0dot77/td-cli after upstream merges. TouchDesigner itself must be installed separately from https://derivative.ca/download. After install, the TDCliServer.tox component from https://github.com/arghhhhh/td-cli/tree/main/tox must be dropped into the user's TD project root and the Web Server DAT must run on port 9500."

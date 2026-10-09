@@ -133,6 +133,24 @@ The installer tracks versions to enable:
 
 When updating, the installer automatically backs up your existing skills to `~/.claude/.skill-backups/`.
 
+## Upstream Pins
+
+Every third-party CLI and MCP server the installer sets up is pinned to a version in
+its group's `manifest.json` (`upstream`), and installer-wide tools such as mcporter in
+`shared/upstream.json`. Install commands use the pin through `{{PIN:<tool>}}`, so
+every machine runs the version the skill was written against, and `--update` moves
+machines to a new pin once it's bumped in the repo.
+
+New upstream versions don't reach users on their own. A weekly GitHub Action
+(`.github/workflows/upstream-check.yml`) compares each pin with its source (GitHub
+releases, git, npm, PyPI, JSR, winget) and keeps one issue labeled `upstream` open per
+pin that's behind, with a `claude` prompt for doing the bump. To check locally:
+
+```bash
+node scripts/check-upstream.js          # OK / BEHIND per pin
+gh workflow run upstream-check.yml      # sync the issues now
+```
+
 ## Skill Groups
 
 The full current list (with descriptions) is the source of truth in `skill-groups/*/manifest.json`. To see it from the CLI:

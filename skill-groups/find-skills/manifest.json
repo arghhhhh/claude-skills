@@ -1,7 +1,17 @@
 {
   "name": "find-skills",
   "description": "Discover and install agent skills from the open skills ecosystem via skills.sh.",
-  "version": "0.1.2",
+  "version": "0.2.0",
+  "upstream": {
+    "skills": {
+      "type": "npm",
+      "package": "skills",
+      "pin": "1.7.1",
+      "pinned_in": [
+        "skills/find-skills/SKILL.md"
+      ]
+    }
+  },
   "prerequisites": [
     {
       "name": "npx",
@@ -11,19 +21,19 @@
     }
   ],
   "install": {
-    "check": "npx skills --version",
+    "check": "npx skills@{{PIN:skills}} --version",
     "methods": [
       {
         "name": "npx",
         "platforms": ["macos", "linux", "windows"],
         "check": "npx --version",
-        "command": "echo 'find-skills uses npx skills — no global install needed'"
+        "command": "echo 'find-skills uses npx skills@{{PIN:skills}} — no global install needed'"
       }
     ],
-    "notes": "Uses npx skills at runtime — no global installation required. Browse skills at https://skills.sh/"
+    "notes": "Uses npx skills at the pinned version at runtime — no global installation required. Browse skills at https://skills.sh/"
   },
   "test": {
-    "command": "npx skills --version",
+    "command": "npx skills@{{PIN:skills}} --version",
     "expect_success": true
   },
   "skills": [

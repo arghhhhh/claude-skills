@@ -1,16 +1,26 @@
 {
   "name": "imagemagick",
   "description": "Image manipulation via ImageMagick CLI — resize, convert, composite, annotate, effects, and batch processing.",
-  "version": "0.2.0",
+  "version": "0.3.0",
+  "update_policy": "check",
+  "upstream": {
+    "imagemagick": {
+      "type": "winget",
+      "id": "ImageMagick.ImageMagick",
+      "pin": "7.1.2.21",
+      "match": "minimum",
+      "note": "winget installs exactly the pin; brew/apt install their current version. The check accepts the pin or newer so it never forces a downgrade."
+    }
+  },
   "prerequisites": [],
   "install": {
-    "check": "magick --version",
+    "check": "v=$(magick --version 2>/dev/null | head -1 | awk '{print $3}' | tr - .) && [ -n \"$v\" ] && [ \"$(printf '%s\\n' '{{PIN:imagemagick}}' \"$v\" | sort -V | head -1)\" = '{{PIN:imagemagick}}' ]",
     "methods": [
       {
         "name": "winget",
         "platforms": ["windows"],
         "check": "winget --version",
-        "command": "winget install --id ImageMagick.ImageMagick -e --source winget --accept-source-agreements --accept-package-agreements --silent"
+        "command": "winget install --id ImageMagick.ImageMagick --version {{PIN:imagemagick}} -e --source winget --accept-source-agreements --accept-package-agreements --silent"
       },
       {
         "name": "brew",

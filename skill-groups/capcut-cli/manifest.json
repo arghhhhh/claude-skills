@@ -1,7 +1,15 @@
 {
   "name": "capcut-cli",
   "description": "Programmatically edit CapCut / JianYing video drafts via the capcut-cli (renezander030/capcut-cli) — inspect, build, subtitle, caption, translate, and cut projects by reading/writing the local draft store directly. JSON in, JSON out; no server.",
-  "version": "1.2.0",
+  "version": "1.3.0",
+  "update_policy": "check",
+  "upstream": {
+    "capcut-cli": {
+      "type": "npm",
+      "package": "capcut-cli",
+      "pin": "0.13.2"
+    }
+  },
   "prerequisites": [
     "Node.js >= 18 (built-ins only, no native modules)",
     "Optional: FFmpeg + ffprobe (render, media metadata)",
@@ -9,16 +17,16 @@
     "Optional: ANTHROPIC_API_KEY (translate)"
   ],
   "install": {
-    "check": "capcut --version",
+    "check": "capcut --version 2>&1 | grep -qE '(^|[^0-9.])v?{{PIN:capcut-cli}}([^0-9.]|$)'",
     "methods": [
       {
         "name": "npm-global",
         "platforms": ["windows", "macos", "linux"],
         "check": "npm --version",
-        "command": "npm install -g capcut-cli"
+        "command": "npm install -g capcut-cli@{{PIN:capcut-cli}}"
       }
     ],
-    "notes": "Pure-Node CLI published to npm. Exposes the `capcut` binary. Update with `npm install -g capcut-cli@latest`. Optional tools unlock specific commands: FFmpeg/ffprobe for render + media metadata, Whisper for caption, ANTHROPIC_API_KEY for translate."
+    "notes": "Pure-Node CLI published to npm. Exposes the `capcut` binary. The version is pinned in `upstream`; bump it there. Optional tools unlock specific commands: FFmpeg/ffprobe for render + media metadata, Whisper for caption, ANTHROPIC_API_KEY for translate."
   },
   "test": {
     "command": "capcut --version",

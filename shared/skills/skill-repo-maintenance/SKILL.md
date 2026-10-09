@@ -1,5 +1,5 @@
 ---
-version: 1.18.0
+version: 1.19.0
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when updating/pulling claude-skills, editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -284,6 +284,31 @@ Tool-only groups (`type: "tool-only"`) ship no skills or agents — they exist o
 
 To update, edit `install` / `test` / `post_install_hints`, bump `version`, commit, push. No symlinks are created, so there's nothing to re-sync on other machines beyond rerunning the installer.
 
+## Pinning Upstream Tools
+
+**Every third-party tool is pinned.** Each manifest declares an `upstream` map (`{}` when the group installs nothing third-party, e.g. my own repos), and installer-wide tools (mcporter) live in `shared/upstream.json`:
+
+```json
+"update_policy": "check",
+"upstream": {
+  "capcut-cli": { "type": "npm", "package": "capcut-cli", "pin": "0.13.2" }
+},
+"install": {
+  "check": "capcut --version 2>&1 | grep -qE '(^|[^0-9.])v?{{PIN:capcut-cli}}([^0-9.]|$)'",
+  "methods": [{ "name": "npm-global", "command": "npm install -g capcut-cli@{{PIN:capcut-cli}}" }]
+}
+```
+
+- **Types** (and the field the checker looks up): `github-release` (`repo`), `git` (`url`, optional `branch`; pin is a full SHA), `npm` (`package`, optional `registry`), `pypi` (`package`), `jsr` (`package`), `winget` (`id`). Release pins have no leading `v`; write it in the command (`--tag v{{PIN:x}}`).
+- **`{{PIN:<tool>}}`** is substituted in install commands, `install.check`, `test.command` and `mcp_servers` args, so the pin lives in one field. The check must be keyed to the pin, and the group uses `update_policy: "check"`, so `--update` moves every machine onto a new pin.
+- **`pinned_in`**: files that carry the pin as literal text (skill files can't use placeholders, e.g. `npx ctx7@0.5.15` in find-docs). smoke-check verifies each listed file contains the pin.
+- **`installs: false`**: tracked only, for a tool install.sh doesn't install (an app, a ComfyUI custom node, a fork's original repo). **`enforced: false`**: install.sh installs it but can't hold the version (upstream installer always fetches latest, or the tool updates itself), with a `note` saying why. **`match: "minimum"`**: system package managers; the check accepts the pin or newer so it never forces a downgrade.
+- **Vendored groups** need no entry for their skills: the checker reads `source.ref`.
+
+**Checking for new versions:** `node scripts/check-upstream.js` lists every pin as `OK` or `BEHIND` (`--json`, `--group <g>`; set `GITHUB_TOKEN` to avoid GitHub's anonymous rate limit). The weekly `Upstream check` workflow runs it and keeps one issue (label `upstream`) open per pin that's behind. Each issue has a ready-to-run `claude "..."` prompt and closes itself once the pin catches up. Run it on demand with `gh workflow run upstream-check.yml`.
+
+**Bumping a pin:** read the upstream changes, change `pin` (or `source.ref`), update `pinned_in` files and skill text if commands or flags changed, run `bash tests/run-tests.sh`, bump the group's `version` (minor), commit and push.
+
 ## Update Policy — When `--update` Touches Installed Software
 
 Any group (tool-only or otherwise) whose install command builds software from a git clone can declare how `--update` treats that software:
@@ -294,11 +319,11 @@ Any group (tool-only or otherwise) whose install command builds software from a 
 
 | Policy | Meaning | Use for |
 |---|---|---|
-| **`pinned`** (default, field omitted) | `--update` never touches installed software and never runs `install.check`; it only refreshes skills/agents/commands. Software is installed only by a full install (`install.sh --skills <g>`) whose `check` fails. | Third-party tools where an unreviewed upstream change is a risk (`claude-notifications`, winget/brew packages) |
+| **`pinned`** (default, field omitted) | `--update` never touches installed software and never runs `install.check`; it only refreshes skills/agents/commands. Software is installed only by a full install (`install.sh --skills <g>`) whose `check` fails. | Groups whose software isn't held at a version (`enforced: false` pins like `claude-notifications`, `officecli`) or that install nothing |
 | **`latest`** | Every `--update` re-runs the group's install command even though the binary already exists — the command must be idempotent (pull-or-clone + rebuild, like `git pull --ff-only … && go build`), and `run_test` verifies afterwards. `--skip-software` suppresses this. | My own repos (`arghhhhh/*`) where HEAD is always wanted: `claude-code-sessions`, `claude-conversation-transfer` |
-| **`check`** | Every `--update` runs `install.check` and re-runs the install command only when it fails, then `run_test`. The check must be keyed to the pin (a version or SHA), or a stale install passes it. `--skip-software` suppresses this. Don't use it when the check can fail on a machine that has the software outside `PATH` (Blender.app without `blender` on `PATH` would re-run `brew install --cask` on every update). | Pinned tools that should follow the pin across machines: `unity-cli` (check greps `cargo install --list` for the pinned rev), `playwright-cli` (check matches the pinned npm version) |
+| **`check`** | Every `--update` runs `install.check` and re-runs the install command only when it fails, then `run_test`. The check must be keyed to the pin (a version or SHA), or a stale install passes it. `--skip-software` suppresses this. Don't use it when the check can fail on a machine that has the software outside `PATH` (Blender.app without `blender` on `PATH` would re-run `brew install --cask` on every update). | Every pinned third-party tool (see "Pinning Upstream Tools"): `unity-cli` (check greps `cargo install --list` for the pinned rev), `playwright-cli`, `capcut-cli` (check matches the pinned version) |
 
-**Rule: any group that clones one of my own repos must set `update_policy: "latest"`** — otherwise fixes pushed from one machine silently never reach the installed binaries on others (the install `check` sees an existing binary and short-circuits). Third-party sources stay pinned/default unless there's a specific reason to track them.
+**Rule: any group that clones one of my own repos must set `update_policy: "latest"`** — otherwise fixes pushed from one machine silently never reach the installed binaries on others (the install `check` sees an existing binary and short-circuits). Third-party sources are pinned with `update_policy: "check"`.
 
 **Same rule for groups whose "software" lives in THIS repo** — a tool-only group that installs by copying/wiring files out of `skill-groups/<group>/` (e.g. `context-rotation`'s hook scripts via `install/wire.sh`). A repo edit *is* a software change there, so without `update_policy: "latest"` the group's `--update` path short-circuits at "tool-only — nothing to update" and machines keep running stale copies while the summary reports success. Such install commands must be idempotent (wire-style copy + dedupe), which is what makes re-running them on every update safe.
 

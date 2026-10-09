@@ -3,6 +3,7 @@
   "type": "tool-only",
   "description": "Windows Git Bash + PowerShell convenience functions (cdc / cdh) to cd into folder paths copied from Explorer — fixes backslash-path mangling and reads clipboard history. Human shell helper, no agent-facing skill.",
   "version": "2.1.0",
+  "upstream": {},
   "prerequisites": [],
   "install": {
     "check": "test -f $HOME/.local/share/gitbash-clipboard-cd/cdh-cliphist.ps1",

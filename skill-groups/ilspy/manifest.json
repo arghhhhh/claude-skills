@@ -1,19 +1,28 @@
 {
   "name": "ilspy",
   "description": "Agent-friendly .NET decompilation via ilspy-cli (akiselev/ilspy-cli) — type/method listing, single-method decompilation, regex search, assembly metadata, and .NET vs native detection using the ILSpy ICSharpCode.Decompiler engine.",
-  "version": "0.3.0",
+  "version": "0.4.0",
+  "update_policy": "check",
+  "upstream": {
+    "ilspy-cli": {
+      "type": "git",
+      "url": "https://github.com/akiselev/ilspy-cli.git",
+      "pin": "089895f16a9031bb8391db13c2160def9a2e8b60",
+      "note": "No releases upstream, so the pin is a commit."
+    }
+  },
   "prerequisites": [
     "Rust 1.70+ (cargo on PATH, for source build)",
     ".NET 8 SDK (build) and .NET 8+ runtime (run)"
   ],
   "install": {
-    "check": "ilspy --version",
+    "check": "cargo install --list 2>/dev/null | grep -F 'akiselev/ilspy-cli' | grep -qF 'rev={{PIN:ilspy-cli}}'",
     "methods": [
       {
         "name": "cargo-git",
         "platforms": ["windows", "macos", "linux"],
         "check": "cargo --version",
-        "command": "cargo install --git https://github.com/akiselev/ilspy-cli --locked"
+        "command": "cargo install --git https://github.com/akiselev/ilspy-cli --rev {{PIN:ilspy-cli}} --locked --force"
       }
     ],
     "notes": "ilspy-cli is a standalone repo at github.com/akiselev/ilspy-cli (previously a subcrate of akiselev/ghidra-cli). The build script runs `dotnet publish` on the C# bridge (IlSpyBridge.dll). After install, copy `<repo>/target/release/bridge/` to a stable location and set `ILSPY_BRIDGE_DIR` so the bridge survives a `cargo clean`."

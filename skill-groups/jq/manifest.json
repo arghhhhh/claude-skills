@@ -2,16 +2,26 @@
   "name": "jq",
   "type": "tool-only",
   "description": "jq — command-line JSON processor. General-purpose utility for slicing/filtering/transforming JSON output from other CLIs (linear, officecli, gh, etc.).",
-  "version": "1.0.1",
+  "version": "1.1.0",
+  "update_policy": "check",
+  "upstream": {
+    "jq": {
+      "type": "winget",
+      "id": "jqlang.jq",
+      "pin": "1.8.2",
+      "match": "minimum",
+      "note": "winget installs exactly the pin; brew/apt install their current version. The check accepts the pin or newer so it never forces a downgrade."
+    }
+  },
   "prerequisites": [],
   "install": {
-    "check": "jq --version",
+    "check": "v=$(jq --version 2>/dev/null | sed 's/^jq-//') && [ -n \"$v\" ] && [ \"$(printf '%s\\n' '{{PIN:jq}}' \"$v\" | sort -V | head -1)\" = '{{PIN:jq}}' ]",
     "methods": [
       {
         "name": "winget",
         "platforms": ["windows"],
         "check": "winget --version",
-        "command": "winget install --id jqlang.jq -e --source winget --accept-source-agreements --accept-package-agreements --silent"
+        "command": "winget install --id jqlang.jq --version {{PIN:jq}} -e --source winget --accept-source-agreements --accept-package-agreements --silent"
       },
       {
         "name": "brew",

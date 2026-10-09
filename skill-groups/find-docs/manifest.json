@@ -1,7 +1,18 @@
 {
   "name": "find-docs",
   "description": "Retrieve up-to-date library/framework documentation via Context7 — API patterns, setup guides, migration docs.",
-  "version": "0.2.2",
+  "version": "0.3.0",
+  "upstream": {
+    "ctx7": {
+      "type": "npm",
+      "package": "ctx7",
+      "pin": "0.5.15",
+      "pinned_in": [
+        "skills/find-docs/SKILL.md",
+        "manifest.json"
+      ]
+    }
+  },
   "prerequisites": [
     {
       "name": "npx",
@@ -11,19 +22,19 @@
     }
   ],
   "install": {
-    "check": "npx ctx7@latest --version",
+    "check": "npx ctx7@{{PIN:ctx7}} --version",
     "methods": [
       {
         "name": "npx",
         "platforms": ["macos", "linux", "windows"],
         "check": "npx --version",
-        "command": "echo 'find-docs uses npx ctx7@latest — no global install needed'"
+        "command": "echo 'find-docs uses npx ctx7@{{PIN:ctx7}} — no global install needed'"
       }
     ],
-    "notes": "Uses npx ctx7@latest at runtime — no global installation required."
+    "notes": "Uses npx ctx7 at the pinned version at runtime — no global installation required."
   },
   "test": {
-    "command": "npx ctx7@latest --version",
+    "command": "npx ctx7@{{PIN:ctx7}} --version",
     "expect_success": true
   },
   "skills": [
@@ -33,7 +44,7 @@
   "post_install_hints": [
     "For higher rate limits, set up Context7 authentication:",
     "  Option A: export CONTEXT7_API_KEY=your_key  (add to ~/.bashrc)",
-    "  Option B: npx ctx7@latest login  (browser-based OAuth)",
+    "  Option B: npx ctx7@0.5.15 login  (browser-based OAuth)",
     "  Get an API key at: https://context7.com/"
   ]
 }

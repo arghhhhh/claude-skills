@@ -1,0 +1,8 @@
+{
+  "mcporter": {
+    "type": "npm",
+    "package": "mcporter",
+    "pin": "0.14.2",
+    "note": "Skills call `npx mcporter`; install.sh installs this version globally (ensure_mcporter_pin) and npx uses the global copy."
+  }
+}

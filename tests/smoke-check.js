@@ -301,6 +301,50 @@ console.log('\n=== updater ===');
   else err('updater/index.html missing or lacks __TOKEN__ placeholder');
 }
 
+// ─── upstream pins ──────────────────────────────────────────────────────────
+// Every manifest declares "upstream" (empty when it installs nothing third-party).
+// Each entry needs a known type, its lookup key and a pin; every {{PIN:x}} must
+// name an entry; an entry the installer enforces must be used by {{PIN:x}} or
+// listed in pinned_in (files that carry the pin as literal text).
+console.log('\n=== upstream pins ===');
+{
+  const KEYS = { 'github-release': 'repo', git: 'url', npm: 'package', pypi: 'package', jsr: 'package', winget: 'id' };
+  const checkEntries = (where, dir, up, raw) => {
+    for (const [tool, e] of Object.entries(up)) {
+      const id = where + '/' + tool;
+      if (!KEYS[e.type]) { err(id + ': unknown type ' + e.type); continue; }
+      if (!e[KEYS[e.type]]) err(id + ': missing ' + KEYS[e.type]);
+      if (!e.pin) { err(id + ': missing pin'); continue; }
+      if (e.type === 'git' && !/^[0-9a-f]{40}$/.test(e.pin)) err(id + ': git pin must be a full commit SHA');
+      if (e.type !== 'git' && /^v/.test(e.pin)) err(id + ': pin without the leading v (add it in the command)');
+      for (const rel of e.pinned_in || []) {
+        const f = path.join(dir, rel);
+        if (!fs.existsSync(f)) err(id + ': pinned_in ' + rel + ' missing');
+        else if (!fs.readFileSync(f, 'utf8').includes(e.pin)) err(id + ': ' + rel + ' does not contain pin ' + e.pin);
+      }
+      const used = raw.includes('{{PIN:' + tool + '}}') || (e.pinned_in || []).length > 0;
+      if (e.installs !== false && e.enforced !== false && !used && where !== '_installer') err(id + ': pinned but no {{PIN:' + tool + '}} or pinned_in uses it');
+      else ok(id + ': pin ' + e.pin);
+    }
+    for (const m of raw.matchAll(/\{\{PIN:([A-Za-z0-9_.-]+)\}\}/g)) {
+      if (!up[m[1]]) err(where + ': {{PIN:' + m[1] + '}} has no upstream entry');
+    }
+  };
+  for (const group of groups) {
+    const raw = fs.readFileSync(path.join(SKILL_GROUPS, group, 'manifest.json'), 'utf8');
+    const m = JSON.parse(raw);
+    if (!m.upstream || typeof m.upstream !== 'object') { err(group + ': missing "upstream" (use {} if it installs nothing third-party)'); continue; }
+    checkEntries(group, path.join(SKILL_GROUPS, group), m.upstream, raw);
+  }
+  const sharedUp = path.join(SHARED, 'upstream.json');
+  checkEntries('_installer', SHARED, JSON.parse(fs.readFileSync(sharedUp, 'utf8')), '');
+  const { spawnSync } = require('child_process');
+  for (const s of ['check-upstream.js', 'upstream-issues.js']) {
+    const r = spawnSync(process.execPath, ['--check', path.join(REPO, 'scripts', s)], { encoding: 'utf8' });
+    if (r.status === 0) ok('scripts/' + s + ' parses'); else err('scripts/' + s + ': ' + (r.stderr || '').trim());
+  }
+}
+
 // ─── FINAL RESULTS ──────────────────────────────────────────────────────────
 console.log('\n=== FINAL RESULTS ===');
 console.log(pass + ' passed, ' + fail + ' failed');

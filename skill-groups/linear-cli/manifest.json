@@ -1,7 +1,15 @@
 {
   "name": "linear-cli",
   "description": "Linear CLI (schpet/linear-cli) — manage Linear.app issues, projects, milestones, cycles, initiatives, labels, documents, and teams from the terminal, with git/jj integration and JSON output for agents.",
-  "version": "2.1.2",
+  "version": "2.2.0",
+  "update_policy": "check",
+  "upstream": {
+    "linear-cli": {
+      "type": "jsr",
+      "package": "@schpet/linear-cli",
+      "pin": "2.3.0"
+    }
+  },
   "prerequisites": [
     {
       "name": "deno",
@@ -12,13 +20,13 @@
     }
   ],
   "install": {
-    "check": "linear --version",
+    "check": "NO_COLOR=1 linear --version 2>&1 | grep -qE '(^|[^0-9.])v?{{PIN:linear-cli}}([^0-9.]|$)'",
     "methods": [
       {
         "name": "deno",
         "platforms": ["macos", "linux", "windows"],
         "check": "deno --version",
-        "command": "deno install -A --reload -f -g -n linear jsr:@schpet/linear-cli"
+        "command": "deno install -A --reload -f -g -n linear jsr:@schpet/linear-cli@{{PIN:linear-cli}}"
       },
       {
         "name": "brew",

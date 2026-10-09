@@ -3,6 +3,7 @@
   "type": "tool-only",
   "description": "WSL convenience function (cdw) to cd into a Windows folder path copied from Explorer, auto-converting it to WSL form (C:\\Users\\me to /mnt/c/Users/me). Human shell helper, no agent-facing skill.",
   "version": "1.0.0",
+  "upstream": {},
   "prerequisites": [],
   "install": {
     "check": "grep -qi microsoft /proc/version 2>/dev/null && grep -qF wsl-clipboard-cd $HOME/.bashrc",

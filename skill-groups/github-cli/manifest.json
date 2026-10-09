@@ -1,10 +1,20 @@
 {
   "name": "github-cli",
   "description": "GitHub CLI (gh) — issues, pull requests, repos, CI checks, releases, and API access.",
-  "version": "0.2.0",
+  "version": "0.3.0",
+  "update_policy": "check",
+  "upstream": {
+    "gh": {
+      "type": "winget",
+      "id": "GitHub.cli",
+      "pin": "2.92.0",
+      "match": "minimum",
+      "note": "winget installs exactly the pin; brew/apt install their current version. The check accepts the pin or newer so it never forces a downgrade."
+    }
+  },
   "prerequisites": [],
   "install": {
-    "check": "gh --version",
+    "check": "v=$(gh --version 2>/dev/null | head -1 | awk '{print $3}') && [ -n \"$v\" ] && [ \"$(printf '%s\\n' '{{PIN:gh}}' \"$v\" | sort -V | head -1)\" = '{{PIN:gh}}' ]",
     "methods": [
       {
         "name": "brew",
@@ -16,7 +26,7 @@
         "name": "winget",
         "platforms": ["windows"],
         "check": "winget --version",
-        "command": "winget install --id GitHub.cli -e --source winget --accept-source-agreements --accept-package-agreements --silent"
+        "command": "winget install --id GitHub.cli --version {{PIN:gh}} -e --source winget --accept-source-agreements --accept-package-agreements --silent"
       },
       {
         "name": "manual",

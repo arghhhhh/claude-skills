@@ -264,6 +264,7 @@ json_get_test_command() { json_get_manifest_field "$1" "test.command"; }
 # is missing or a variable isn't set.
 subst_placeholders() {
   local s="$1"
+  [ -n "${2:-}" ] && s=$(subst_pins "$2" "$s")
   [ -f "$CONFIG_FILE" ] || { printf '%s' "$s"; return; }
   # Source in a subshell would lose vars; source here but only read names
   # we know about from the config file.
@@ -276,6 +277,20 @@ subst_placeholders() {
     s="${s//\{\{${var}\}\}/$val}"
   done
   printf '%s' "$s"
+}
+
+# Replace {{PIN:<tool>}} with the group manifest's upstream.<tool>.pin, so an
+# install command and its check share one pinned version. Unknown names are
+# left as-is (smoke-check flags them).
+subst_pins() {
+  local group="$1" s="$2"
+  case "$s" in *'{{PIN:'*) ;; *) printf '%s' "$s"; return ;; esac
+  node -e '
+    const m = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+    const up = m.upstream || {};
+    process.stdout.write(process.argv[2].replace(/\{\{PIN:([A-Za-z0-9_.-]+)\}\}/g,
+      (all, k) => (up[k] && up[k].pin) || all));
+  ' "$SKILL_GROUPS_DIR/$group/manifest.json" "$s"
 }
 
 # Escape a string for safe use on the replacement side of sed `s|...|REPL|`.
@@ -1461,7 +1476,7 @@ install_software() {
   manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
 
   local check_cmd
-  check_cmd=$(subst_placeholders "$(json_get_install_check "$manifest")")
+  check_cmd=$(subst_placeholders "$(json_get_install_check "$manifest")" "$group")
 
   # "force" re-runs the install method even when the check passes — used by
   # update mode for groups with update_policy "latest", whose install commands
@@ -1512,7 +1527,7 @@ install_software() {
     fi
 
     if [ -n "$cmd" ]; then
-      cmd=$(subst_placeholders "$cmd")
+      cmd=$(subst_placeholders "$cmd" "$group")
       info "Installing via $method: $cmd"
       user_path_guard_begin
       local rc=0
@@ -1978,6 +1993,21 @@ configure_skills() {
 
 # ─── Install MCP server configs ─────────────────────────────────────────────
 
+# Skills run mcporter as `npx mcporter`, and npx prefers a global install, so
+# installing the pin from shared/upstream.json globally pins it everywhere.
+ensure_mcporter_pin() {
+  local pin
+  pin=$(node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).mcporter.pin)' \
+    "$SCRIPT_DIR/shared/upstream.json" 2>/dev/null) || return 0
+  [ -n "$pin" ] || return 0
+  npm ls -g --depth=0 mcporter 2>/dev/null | grep -qwF "mcporter@$pin" && return 0
+  if npm install -g "mcporter@$pin" >/dev/null 2>&1; then
+    ok "mcporter $pin installed (pinned)"
+  else
+    warn "Could not install mcporter@$pin globally; npx will fetch the latest on first use"
+  fi
+}
+
 install_mcp_config() {
   local group="$1"
   local manifest_file="$SKILL_GROUPS_DIR/$group/manifest.json"
@@ -1990,6 +2020,7 @@ install_mcp_config() {
   local mcporter_config="$HOME/.mcporter/mcporter.json"
   local claude_mcp_config="$CLAUDE_DIR/.mcp.json"
   mkdir -p "$HOME/.mcporter"
+  ensure_mcporter_pin
 
   # Bash sources skills-config.sh (correct semantics — handles quotes,
   # spaces, $HOME expansion, empty strings) and passes the placeholder
@@ -2015,7 +2046,9 @@ install_mcp_config() {
     let vars = {};
     try { vars = JSON.parse(process.env.CLAUDE_SKILLS_PLACEHOLDERS || '{}'); } catch(e) {}
 
+    const pins = manifest.upstream || {};
     function subst(s) {
+      s = s.replace(/\{\{PIN:([A-Za-z0-9_.-]+)\}\}/g, (all, k) => (pins[k] && pins[k].pin) || all);
       return s.replace(/\{\{([A-Z_]+)\}\}/g, (_, k) => vars[k] || '{{' + k + '}}');
     }
 
@@ -2295,7 +2328,7 @@ run_test() {
   manifest=$(tr -d '\r' < "$SKILL_GROUPS_DIR/$group/manifest.json")
 
   local test_cmd
-  test_cmd=$(subst_placeholders "$(json_get_test_command "$manifest")")
+  test_cmd=$(subst_placeholders "$(json_get_test_command "$manifest")" "$group")
 
   [ -z "$test_cmd" ] && return 0
 
@@ -2494,8 +2527,8 @@ verify_group() {
   if [ "$gtype" = "tool-only" ]; then
     info "Software:"
     local check_cmd
-    check_cmd=$(subst_placeholders "$(json_get_test_command "$manifest")")
-    [ -n "$check_cmd" ] || check_cmd=$(subst_placeholders "$(json_get_install_check "$manifest")")
+    check_cmd=$(subst_placeholders "$(json_get_test_command "$manifest")" "$group")
+    [ -n "$check_cmd" ] || check_cmd=$(subst_placeholders "$(json_get_install_check "$manifest")" "$group")
     if [ -n "$check_cmd" ] && [ "$check_cmd" != "true" ] && [ "$check_cmd" != "false" ]; then
       if eval "$check_cmd" </dev/null >/dev/null 2>&1; then
         ok "Software check passed ($check_cmd)"
@@ -2517,7 +2550,7 @@ verify_group() {
   info "Software:"
   local check_cmd raw_check_cmd
   raw_check_cmd=$(json_get_install_check "$manifest")
-  check_cmd=$(subst_placeholders "$raw_check_cmd")
+  check_cmd=$(subst_placeholders "$raw_check_cmd" "$group")
   if [ -n "$check_cmd" ] && [ "$check_cmd" != "true" ]; then
     if eval "$check_cmd" </dev/null >/dev/null 2>&1; then
       ok "Software binary found ($check_cmd)"
@@ -2696,7 +2729,7 @@ integration_test_group() {
   local int_cmd int_desc
   int_cmd=$(echo "$manifest" | grep -A3 '"integration_test"' | grep '"command"' | sed 's/.*: *"//;s/".*//')
   int_desc=$(echo "$manifest" | grep -A3 '"integration_test"' | grep '"description"' | sed 's/.*: *"//;s/".*//')
-  int_cmd=$(subst_placeholders "$int_cmd")
+  int_cmd=$(subst_placeholders "$int_cmd" "$group")
 
   if [ -z "$int_cmd" ]; then
     info "No integration test defined for $group"
@@ -2734,8 +2767,8 @@ group_is_installed() {
 
   if [ "$gtype" = "tool-only" ]; then
     local probe
-    probe=$(subst_placeholders "$(json_get_test_command "$manifest")")
-    [ -n "$probe" ] || probe=$(subst_placeholders "$(json_get_install_check "$manifest")")
+    probe=$(subst_placeholders "$(json_get_test_command "$manifest")" "$group")
+    [ -n "$probe" ] || probe=$(subst_placeholders "$(json_get_install_check "$manifest")" "$group")
     [ -n "$probe" ] && eval "$probe" </dev/null >/dev/null 2>&1
     return
   fi
@@ -2847,6 +2880,12 @@ update_group() {
     else
       info "$group: update_policy check, but --skip-software given — not checking"
     fi
+  fi
+
+  # MCP server entries carry pins ({{PIN:x}} in args), so re-merge them on
+  # update; install_mcp_config only rewrites entries whose content changed.
+  if group_has_mcp_servers "$group"; then
+    install_mcp_config "$group"
   fi
 
   # Tool-only groups have nothing to symlink/update at the skill level

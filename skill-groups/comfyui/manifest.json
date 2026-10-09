@@ -1,7 +1,29 @@
 {
   "name": "comfyui",
   "description": "ComfyUI image/video generation — server management, workflow editing, node/model management.",
-  "version": "0.8.1",
+  "version": "0.9.0",
+  "update_policy": "check",
+  "upstream": {
+    "comfy-cli": {
+      "type": "pypi",
+      "package": "comfy-cli",
+      "pin": "1.7.3"
+    },
+    "comfy-pilot": {
+      "type": "git",
+      "url": "https://github.com/ConstantineB6/comfy-pilot.git",
+      "pin": "772f639a7fed8513b145fb082102c7ac7837a766",
+      "installs": false,
+      "note": "ComfyUI custom node; installed into the ComfyUI workspace, not by install.sh."
+    },
+    "fl-mcp": {
+      "type": "git",
+      "url": "https://github.com/filliptm/ComfyUI_FL-MCP.git",
+      "pin": "ead3ed4831b23add8d979a4732b5b8ae43a32080",
+      "installs": false,
+      "note": "ComfyUI custom node; installed into the ComfyUI workspace, not by install.sh."
+    }
+  },
   "prerequisites": [
     {
       "name": "pip",
@@ -19,7 +41,7 @@
     }
   ],
   "install": {
-    "check": "comfy --version",
+    "check": "comfy --version 2>&1 | grep -qE '(^|[^0-9.])v?{{PIN:comfy-cli}}([^0-9.]|$)'",
     "methods": [
       {
         "name": "pip",
@@ -29,7 +51,7 @@
           "windows"
         ],
         "check": "pip --version || python -m pip --version || python3 -m pip --version",
-        "command": "pip install comfy-cli || python -m pip install comfy-cli || python3 -m pip install comfy-cli"
+        "command": "pip install comfy-cli=={{PIN:comfy-cli}} || python -m pip install comfy-cli=={{PIN:comfy-cli}} || python3 -m pip install comfy-cli=={{PIN:comfy-cli}}"
       }
     ],
     "post_install": [
