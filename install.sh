@@ -257,6 +257,14 @@ json_get_install_check() { json_get_manifest_field "$1" "install.check"; }
 # installed?" probe (install.check only answers "may I skip installing?").
 json_get_test_command() { json_get_manifest_field "$1" "test.command"; }
 
+# In-place sed that works on both GNU and BSD sed. `sed -i'' -e` reaches BSD
+# sed (macOS) as `-i -e`, which takes "-e" as the backup suffix and leaves a
+# stray "<file>-e" copy behind.
+sed_inplace() {
+  # $1 = expression, $2 = file
+  sed -i.sedbak -e "$1" "$2" && rm -f "$2.sedbak"
+}
+
 # Substitute {{VAR}} placeholders in a string using values from $CONFIG_FILE.
 # Mirrors the install-time substitution (lines ~1311-1336) so verify and
 # integration tests don't fail on literal placeholders when the user has
@@ -861,10 +869,16 @@ winget_install() {
 # Put common tool dirs on this run's PATH. A tool winget just installed is only
 # in the registry PATH, not this shell's; npm's global bin (where
 # `npm install -g` puts playwright-cli etc.) isn't on Git Bash's PATH by default.
-windows_path_prepend_tool_dirs() {
-  [ "$PLATFORM" = "windows" ] || return 0
+# macOS/Linux: `go install` and `cargo install` put binaries in ~/go/bin and
+# ~/.cargo/bin, which a login profile may never add, so a pinned install.check
+# fails forever and --update rebuilds the tool on every run.
+path_prepend_tool_dirs() {
   local d
-  for d in "/c/Program Files/Go/bin" "$HOME/go/bin" "/c/Program Files/nodejs" "$HOME/AppData/Roaming/npm"; do
+  local dirs=("$HOME/go/bin" "$HOME/.cargo/bin" "$HOME/.local/bin")
+  if [ "$PLATFORM" = "windows" ]; then
+    dirs=("/c/Program Files/Go/bin" "$HOME/go/bin" "/c/Program Files/nodejs" "$HOME/AppData/Roaming/npm")
+  fi
+  for d in "${dirs[@]}"; do
     [ -d "$d" ] || continue
     case ":$PATH:" in *":$d:"*) ;; *) PATH="$d:$PATH" ;; esac
   done
@@ -892,7 +906,7 @@ windows_auto_install_prereq() {
   local rc=$?
   user_path_guard_end "$id"
   [ "$rc" -eq 0 ] || { warn "winget install $id failed"; return 1; }
-  windows_path_prepend_tool_dirs
+  path_prepend_tool_dirs
   command -v "$name" >/dev/null 2>&1
 }
 
@@ -942,7 +956,7 @@ install_global_prerequisites() {
   fi
   ok "git available"
 
-  windows_path_prepend_tool_dirs
+  path_prepend_tool_dirs
   if ! command -v node >/dev/null 2>&1 && ! windows_auto_install_prereq node; then
     fail "node is required but not found — install from https://nodejs.org/"
     if [ "$PLATFORM" = "macos" ] && command -v brew >/dev/null 2>&1; then
@@ -1900,7 +1914,7 @@ configure_skills() {
         read -rp "  $vprompt: " value
         if [ -n "$value" ]; then
           if grep -q "^${vname}=" "$CONFIG_FILE" 2>/dev/null; then
-            sed -i'' -e "s|^${vname}=.*|${vname}=\"${value}\"|" "$CONFIG_FILE"
+            sed_inplace "s|^${vname}=.*|${vname}=\"${value}\"|" "$CONFIG_FILE"
           else
             echo "${vname}=\"${value}\"" >> "$CONFIG_FILE"
           fi
@@ -1967,7 +1981,7 @@ configure_skills() {
         # (`C:\Users\...`) or values containing `|`/`&` corrupt the output.
         local val_esc
         val_esc=$(sed_escape_repl "$val")
-        sed -i'' -e "s|{{${var}}}|${val_esc}|g" "$f"
+        sed_inplace "s|{{${var}}}|${val_esc}|g" "$f"
         any_substituted=true
       fi
     done
@@ -2188,7 +2202,7 @@ install_mcp_config() {
         if [ -n "$value" ]; then
           # Write/update the var in the config file
           if grep -q "^${vname}=" "$CONFIG_FILE" 2>/dev/null; then
-            sed -i'' -e "s|^${vname}=.*|${vname}=\"${value}\"|" "$CONFIG_FILE"
+            sed_inplace "s|^${vname}=.*|${vname}=\"${value}\"|" "$CONFIG_FILE"
           else
             echo "${vname}=\"${value}\"" >> "$CONFIG_FILE"
           fi
@@ -3226,9 +3240,11 @@ show_changelog() {
 # config). Frontmatter: `title:` and optional `groups:` (comma-separated; the
 # migration only applies where one of them is installed; omitted or "all" =
 # everywhere). The id is the NNNN filename prefix. Applied ids live in
-# $APPLIED_MIGRATIONS_FILE; when that ledger is absent (fresh machine, or first
-# run after this landed) it is seeded with every current migration, since a
-# fresh install already has the post-migration layout.
+# $APPLIED_MIGRATIONS_FILE. When that ledger is absent on a fresh machine it is
+# seeded with every current migration, since a fresh install already has the
+# post-migration layout. When it is absent on a machine that already has
+# claude-skills installed (it predates the ledger), nothing has been applied
+# there: every migration is pending and the ledger starts empty.
 
 migration_field() {
   # $1 = file, $2 = frontmatter key
@@ -3261,13 +3277,27 @@ migration_applies() {
 }
 
 # "<id> <file>" per unapplied migration that applies on this machine.
+# True when claude-skills was installed here before this run: the known-groups
+# ledger exists, or a skill/agent link points into a skill repo.
+machine_has_prior_install() {
+  [ -f "$KNOWN_GROUPS_FILE" ] && return 0
+  local l
+  for l in "$CLAUDE_DIR"/skills/* "$CLAUDE_DIR"/agents/*; do
+    [ -L "$l" ] || continue
+    case "$(readlink "$l")" in */.skill-repos/*) return 0 ;; esac
+  done
+  return 1
+}
+
 pending_migrations() {
-  [ -f "$APPLIED_MIGRATIONS_FILE" ] || return 0
+  if [ ! -f "$APPLIED_MIGRATIONS_FILE" ]; then
+    machine_has_prior_install || return 0
+  fi
   local f id
   while read -r f; do
     [ -n "$f" ] || continue
     id=$(migration_id "$f")
-    grep -qxF "$id" "$APPLIED_MIGRATIONS_FILE" && continue
+    grep -qxF "$id" "$APPLIED_MIGRATIONS_FILE" 2>/dev/null && continue
     if migration_applies "$f"; then echo "$id $f"; fi
   done <<< "$(migration_files)"
   return 0
@@ -3276,6 +3306,10 @@ pending_migrations() {
 seed_migrations_ledger() {
   [ -f "$APPLIED_MIGRATIONS_FILE" ] && return 0
   mkdir -p "$META_DIR"
+  if machine_has_prior_install; then
+    : > "$APPLIED_MIGRATIONS_FILE"
+    return 0
+  fi
   local f
   : > "$APPLIED_MIGRATIONS_FILE"
   while read -r f; do
@@ -3861,6 +3895,9 @@ main() {
     exit $?
   fi
 
+  # Before any mode runs a check: --verify and --status probe software too.
+  path_prepend_tool_dirs
+
   # For non-install modes, default to all groups if none specified
   if [ "$MODE" != "install" ] && [ ${#SELECTED_GROUPS[@]} -eq 0 ]; then
     SELECTED_GROUPS=($(list_groups))
@@ -3943,7 +3980,7 @@ main() {
   # ── Update mode ──
   if [ "$MODE" = "update" ]; then
     seed_migrations_ledger
-    windows_path_prepend_tool_dirs
+    path_prepend_tool_dirs
     install_shell_aliases
     install_git_hooks
 

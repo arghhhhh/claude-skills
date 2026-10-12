@@ -32,5 +32,6 @@ group is installed; omit it or write `all` to apply everywhere.
 | Apply | agent | Follows the file, then runs `bash install.sh --mark-migration <id>` |
 
 Applied ids live in `~/.claude/.skills-meta/applied-migrations`. When that file is
-missing (fresh machine) it's seeded with every current migration, since a fresh
-install already has the new layout.
+missing on a fresh machine it's seeded with every current migration, since a fresh
+install already has the new layout. When it's missing on a machine that already has
+claude-skills installed (it predates the ledger), every migration is pending.
