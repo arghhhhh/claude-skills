@@ -1,5 +1,5 @@
 ---
-version: 1.2.0
+version: 1.3.0
 name: obs-cli
 description: Control OBS Studio via `gobs-cli` (obs-websocket v5) and its config files — start/stop streaming and recording, switch scenes, toggle sources, studio mode, virtual camera, replay buffer, and settings like resolution.
 ---
@@ -10,7 +10,7 @@ Use this skill to control OBS Studio remotely via `gobs-cli` (obs-websocket v5) 
 
 ## Setup
 
-- **Binary**: `{{GOBS_CLI}}`
+- **Binary**: `gobs-cli` on PATH — installed by `go install` into `$(go env GOPATH)/bin`. If `gobs-cli --version` is older than expected, another copy earlier on PATH is shadowing it (`which -a gobs-cli`).
 - **Requires**: OBS Studio running with obs-websocket enabled (bundled in OBS 28+)
 - **Default connection**: `localhost:4455` (obs-websocket v5)
 - **Override**: `--host`, `--port`, `--password` flags or env vars `OBS_HOST`, `OBS_PORT`, `OBS_PASSWORD`
@@ -19,8 +19,6 @@ Use this skill to control OBS Studio remotely via `gobs-cli` (obs-websocket v5) 
 
 - **OBS Studio**: https://obsproject.com/download
 - **gobs-cli**: https://github.com/onyx-and-iris/gobs-cli — install via `go install github.com/onyx-and-iris/gobs-cli@latest` or download a release binary
-
-For brevity, `gobs-cli` below refers to the full path to the binary.
 
 ## Stream Control
 

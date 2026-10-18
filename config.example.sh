@@ -16,9 +16,6 @@ COMFYUI_PYTHON=""  # e.g. C:/Users/you/ComfyUI-Easy-Install/python_embeded/pytho
 GPU_INFO=""  # e.g. "NVIDIA RTX 4080 (12GB VRAM)"
 
 # ─── OBS Studio ──────────────────────────────────────────────────────────────
-# Path to gobs-cli binary
-GOBS_CLI=""  # e.g. /usr/local/bin/gobs-cli or C:/Users/you/tools/obs-cli/gobs-cli.exe
-
 # OBS config directory
 OBS_CONFIG_DIR=""  # e.g. ~/.config/obs-studio or C:/Users/you/AppData/Roaming/obs-studio
 

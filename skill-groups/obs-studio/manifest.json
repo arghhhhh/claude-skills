@@ -1,7 +1,7 @@
 {
   "name": "obs-studio",
   "description": "OBS Studio streaming/recording control — scenes, sources, studio mode, virtual camera.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "update_policy": "check",
   "upstream": {
     "gobs-cli": {
@@ -37,7 +37,7 @@
     "notes": "OBS Studio itself must be installed separately from https://obsproject.com/download"
   },
   "test": {
-    "command": "gobs-cli --version",
+    "command": "gobs-cli --version 2>&1 | grep -qE '(^|[^0-9.])v?{{PIN:gobs-cli}}([^0-9.]|$)'",
     "expect_success": true
   },
   "integration_test": {
@@ -46,11 +46,6 @@
     "description": "OBS Studio must be running with obs-websocket enabled (bundled in OBS 28+)"
   },
   "config_vars": {
-    "GOBS_CLI": {
-      "prompt": "Path to gobs-cli binary (leave blank if installed via 'go install' — will use gobs-cli from PATH)",
-      "example": "C:/Users/you/go/bin/gobs-cli.exe",
-      "fallback": "gobs-cli"
-    },
     "OBS_CONFIG_DIR": {
       "prompt": "Path to your OBS Studio config directory",
       "example_windows": "C:/Users/you/AppData/Roaming/obs-studio",

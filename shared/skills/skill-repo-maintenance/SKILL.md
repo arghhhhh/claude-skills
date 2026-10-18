@@ -1,5 +1,5 @@
 ---
-version: 1.21.0
+version: 1.21.1
 name: skill-repo-maintenance
 description: Maintain the claude-skills repo — update skill versions, add new skills, sync across machines. Use when updating/pulling claude-skills, editing skill files, creating new skill groups, or when a skill needs updating. Ensures changes are versioned, committed, and pushed so all machines stay in sync.
 ---
@@ -423,7 +423,6 @@ After install, run `bash install.sh --verify` and check for `{{PLACEHOLDER}}` wa
 COMFY_CLI="/path/to/comfy"
 COMFYUI_WORKSPACE="/path/to/ComfyUI"
 COMFYUI_PYTHON=""  # leave empty if not using Windows standalone
-GOBS_CLI="/path/to/gobs-cli"
 OBS_CONFIG_DIR="$HOME/.config/obs-studio"  # or AppData/Roaming on Windows
 ```
 
