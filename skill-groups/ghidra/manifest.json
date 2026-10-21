@@ -1,7 +1,7 @@
 {
   "name": "ghidra",
   "description": "Reverse engineering via Ghidra CLI (akiselev/ghidra-cli) — headless analysis, decompilation, function/symbol/type editing, cross-refs, search, patching, and scripting from the terminal.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "update_policy": "check",
   "upstream": {
     "ghidra-cli": {
@@ -22,7 +22,7 @@
         "name": "cargo-git",
         "platforms": ["windows", "macos", "linux"],
         "check": "cargo --version",
-        "command": "cargo install --git https://github.com/akiselev/ghidra-cli --tag v{{PIN:ghidra-cli}} --locked --force"
+        "command": "cargo install --git https://github.com/akiselev/ghidra-cli --tag v{{PIN:ghidra-cli}} --locked --force ghidra-cli"
       }
     ],
     "notes": "ghidra-cli is a Rust CLI not yet published to crates.io; install from the GitHub source. Requires JDK 17+ and a Ghidra install. After install, run `ghidra setup` to auto-download Ghidra, or set GHIDRA_INSTALL_DIR / `ghidra config set ghidra_install_dir <path>`."
