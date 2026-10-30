@@ -1,5 +1,5 @@
 ---
-version: 1.3.3
+version: 1.3.4
 name: comfyui
 description: ComfyUI expert for image/video generation workflows. Use when the user wants to build, edit, run, or debug ComfyUI workflows, install nodes or models, generate images/videos, analyze output, or do anything related to ComfyUI.
 tools: Read, Glob, Grep, Bash, Edit, Write, WebFetch, WebSearch
@@ -29,7 +29,7 @@ For live workflow editing, node discovery, image viewing, canvas control.
 - **Always search `get_node_types` without `fields` first**, then request details only for nodes you'll use
 
 ## Layer 3: FL-MCP via MCPorter (on demand: read `~/.claude/skills/fl-mcp/SKILL.md`)
-FL-MCP's ~108-tool surface via the `flmcp` server — reach for it when comfy-pilot's smaller API isn't enough.
+FL-MCP's ~136-tool surface via the `flmcp` server — reach for it when comfy-pilot's smaller API isn't enough.
 - All calls use: `npx mcporter call flmcp.<tool> request:'{...}'` (every tool takes a `request` object)
 - **Always start with `mcp_capability_audit`** — reports live subsystems (REST/bridge/manager) and safety-gate states
 - Best for: broad REST control (queue/exec/models/settings/logs), `node_library_*` introspection, ComfyUI-Manager ops, and custom-node Python authoring (`custom_nodes_*`)

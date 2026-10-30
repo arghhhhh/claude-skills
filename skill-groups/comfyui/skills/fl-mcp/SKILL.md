@@ -1,12 +1,12 @@
 ---
-version: 1.3.0
+version: 1.4.0
 name: fl-mcp
-description: Drive ComfyUI through FL-MCP's ~108-tool MCP surface (mcporter `flmcp`) — REST queue/execution/models/settings/logs, node-library introspection, ComfyUI-Manager operations, and authoring/patching custom-node Python.
+description: Drive ComfyUI through FL-MCP's ~136-tool MCP surface (mcporter `flmcp`) — REST queue/execution/models/settings/logs, node-library introspection, ComfyUI-Manager operations, and authoring/patching custom-node Python.
 ---
 
 # ComfyUI FL-MCP Skill (via MCPorter)
 
-FL-MCP (`filliptm/ComfyUI_FL-MCP`) is a second, much larger MCP surface for ComfyUI — **~108 tools** spanning REST control, a live browser-bridge canvas editor, the node library, ComfyUI-Manager, and a custom-node development toolkit.
+FL-MCP (`filliptm/ComfyUI_FL-MCP`) is a second, much larger MCP surface for ComfyUI — **~136 tools** (as of 0.9.0) spanning REST control, a live browser-bridge canvas editor, plan→apply workflow building, image/mask review, the node library and Comfy Registry, ComfyUI-Manager, and a custom-node development toolkit.
 
 **When to use which ComfyUI skill:**
 - Server launch/stop, running workflow files, CLI node/model installs → **comfy-cli**
@@ -106,6 +106,34 @@ REST userdata (write ops gated): `workflow_list_files`, `workflow_read_file`, `w
 
 ### Frontend commands (browser bridge)
 `frontend_list_commands`, `frontend_execute_command`, `frontend_list_keybindings`.
+
+### Plan → apply workflow building (added in 0.9.0, ⚠ untested)
+Compile tools are **read-only dry runs** against one pinned `/object_info` catalog. They never touch the canvas or queue. Apply tools need the bridge and only accept the compiler's output **unchanged**: they recompile it, and if the graph, catalog or hashes have moved, they reject it rather than partially applying.
+
+| Step | Tools |
+|---|---|
+| Catalog freshness | `node_library_status` (`refresh:true` after installing nodes or restarting ComfyUI), `node_knowledge_search` (discovery hints only; compile still revalidates) |
+| New workflow from user language | `compile_workflow_spec` (preferred; returns a ready `apply_request`) → `apply_workflow_plan` |
+| Lower level | `resolve_workflow_spec` (role → exact class) → `plan_workflow` (validates values, slots, cycles; returns plan hash) → `apply_workflow_plan` |
+| New workflow or edit, GraphPatch v2 (the default planner for both an empty canvas and edits) | `compile_workflow_refinement_spec` → `apply_workflow_graph_patch` |
+| Splice, replace, delete or append on an existing graph | `plan_workflow_refinement` → `apply_workflow_refinement` |
+| One prompt value, no planner | `update_connected_prompt` (connected STRING producers win; ambiguity never mutates the canvas) |
+
+Pass `apply_request` from a `valid:true` result as-is; if `valid:false`, fix every reported error and compile again.
+
+### Workflow branches (added in 0.9.0, ⚠ untested)
+`workflow_branches_discover` (read-only; returns pinned workflow/graph/branch hashes; ties return candidates rather than a guess), `workflow_branch_compare` (read-only diff of two pinned branches; credential-like fields are redacted), `workflow_branch_navigate` (select and focus on the canvas), `compile_workflow_branch_operation` → `apply_workflow_graph_patch`, then `resolve_workflow_branch_successor` (call only after a successful apply, passing its envelope unchanged).
+
+### Images & masks (added in 0.9.0, ⚠ untested)
+These return real image content that Claude can inspect visually.
+- **View:** `view_output_image` (defaults to the last image of the latest successful run; pass `prompt_id`/`node_id`/`output_index` to pick one), `view_canvas_images` (paginated, read-only), `view_prompt_reference_image` (the image wired into an `image2`/reference input).
+- **Masks:** `view_node_mask` (masked pixels shown in magenta; call it first) → `edit_node_mask` (rectangle/ellipse paint or erase; requires the one-use context token from the view call) → `confirm_mask_review` (the user must accept the preview; **queueing stays blocked until it succeeds**, and acceptance is never remembered for later masks).
+
+### Comfy Registry (added in 0.9.0, ⚠ untested)
+`registry_search_packages` (all published packs; results include `registry_url` and `github_url`), `registry_get_package` (one pack's metadata before recommending an install). These differ from `node_library_search` (loaded nodes only) and `manager_search_nodes` (Manager's local cache). A Registry hit doesn't prove the pack is compatible: after installing and restarting, confirm with `node_library_search`.
+
+### Ren chat context (added in 0.9.0, ⚠ untested)
+Scoped to FL-MCP's in-ComfyUI Ren chat; expect them to fail when called from mcporter with no Ren message in context. `web_search` (provider and depth come from the current Ren message; Tavily modes cost credits), `web_fetch_page` (public pages only; private and loopback targets are rejected), `view_chat_image`, `place_chat_image_in_node` (sets the image widget, never queues).
 
 *⚿ = requires a safety gate to be enabled.*
 
