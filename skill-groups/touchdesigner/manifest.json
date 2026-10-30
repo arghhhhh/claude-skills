@@ -1,7 +1,7 @@
 {
   "name": "touchdesigner",
   "description": "TouchDesigner control via td-cli — operator/parameter editing, Python exec, screenshots, harness loop with backup/rollback.",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "update_policy": "check",
   "upstream": {
     "td-cli": {
