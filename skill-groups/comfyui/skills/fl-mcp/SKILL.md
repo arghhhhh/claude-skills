@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 1.4.1
 name: fl-mcp
 description: Drive ComfyUI through FL-MCP's ~136-tool MCP surface (mcporter `flmcp`) — REST queue/execution/models/settings/logs, node-library introspection, ComfyUI-Manager operations, and authoring/patching custom-node Python.
 ---
@@ -77,7 +77,7 @@ Check current states with the `safety` block of `mcp_capability_audit`.
 `mcp_capability_audit`, `get_system_info`, `comfy_get_logs`, `clear_error_buffer`.
 
 ### REST — queue & execution
-`comfy_status`, `queue_workflow`, `cancel_workflow`, `get_queue_status`, `get_queue_status_details`, `delete_queue_items`, `get_execution_history`, `get_execution_details`, `comfy_jobs_list`, `comfy_job_get`, `comfy_history_delete`, `set_batch_count`, `enable_auto_queue`, `disable_auto_queue`, `comfy_free_memory`⚿, `comfy_restart`⚿.
+`comfy_status`, `queue_workflow`, `cancel_workflow`, `get_queue_status` (❌ actually needs the bridge, returns `requires_browser_bridge` headless), `get_queue_status_details`, `delete_queue_items`, `get_execution_history`, `get_execution_details`, `comfy_jobs_list`, `comfy_job_get`, `comfy_history_delete`, `set_batch_count`, `enable_auto_queue`, `disable_auto_queue`, `comfy_free_memory`⚿, `comfy_restart`⚿.
 
 ### REST — models, assets, files, settings
 `comfy_models_list`, `comfy_list_folders`, `comfy_search_resources`, `comfy_tags_list`, `comfy_settings_get`, `comfy_settings_set`, `comfy_read_file`, `comfy_upload_image`, `comfy_upload_mask`, `comfy_assets_list`, `comfy_asset_get`, `comfy_asset_upload`, `comfy_assets_upload`, `comfy_workflow_templates_list`, `comfy_global_subgraphs_list`, `comfy_node_replacements_get`, `extract_workflow_from_image`.
@@ -107,19 +107,26 @@ REST userdata (write ops gated): `workflow_list_files`, `workflow_read_file`, `w
 ### Frontend commands (browser bridge)
 `frontend_list_commands`, `frontend_execute_command`, `frontend_list_keybindings`.
 
-### Plan → apply workflow building (added in 0.9.0, ⚠ untested)
+### Plan → apply workflow building (added in 0.9.0)
 Compile tools are **read-only dry runs** against one pinned `/object_info` catalog. They never touch the canvas or queue. Apply tools need the bridge and only accept the compiler's output **unchanged**: they recompile it, and if the graph, catalog or hashes have moved, they reject it rather than partially applying.
 
-| Step | Tools |
-|---|---|
-| Catalog freshness | `node_library_status` (`refresh:true` after installing nodes or restarting ComfyUI), `node_knowledge_search` (discovery hints only; compile still revalidates) |
-| New workflow from user language | `compile_workflow_spec` (preferred; returns a ready `apply_request`) → `apply_workflow_plan` |
-| Lower level | `resolve_workflow_spec` (role → exact class) → `plan_workflow` (validates values, slots, cycles; returns plan hash) → `apply_workflow_plan` |
-| New workflow or edit, GraphPatch v2 (the default planner for both an empty canvas and edits) | `compile_workflow_refinement_spec` → `apply_workflow_graph_patch` |
-| Splice, replace, delete or append on an existing graph | `plan_workflow_refinement` → `apply_workflow_refinement` |
-| One prompt value, no planner | `update_connected_prompt` (connected STRING producers win; ambiguity never mutates the canvas) |
+| Step | Tools | Headless? |
+|---|---|---|
+| Catalog freshness | `node_library_status` (`refresh:true` after installing nodes or restarting ComfyUI), `node_knowledge_search` (discovery hints only; compile still revalidates) | ✅ Verified |
+| New workflow from user language | `compile_workflow_spec` (preferred; returns a ready `apply_request`) → `apply_workflow_plan` | compile ✅ Verified, apply needs bridge |
+| Lower level | `resolve_workflow_spec` (role → exact class) → `plan_workflow` (validates values, slots, cycles; returns plan hash) → `apply_workflow_plan` | resolve/plan ✅ Verified |
+| New workflow or edit, GraphPatch v2 | `compile_workflow_refinement_spec` → `apply_workflow_graph_patch` | ❌ compile needs bridge too: it reads the active canvas |
+| Splice, replace, delete or append on an existing graph | `plan_workflow_refinement` → `apply_workflow_refinement` | ⚠ Untested |
+| One prompt value, no planner | `update_connected_prompt` (connected STRING producers win; ambiguity never mutates the canvas) | ⚠ Untested |
 
-Pass `apply_request` from a `valid:true` result as-is; if `valid:false`, fix every reported error and compile again.
+Pass `apply_request` from a `valid:true` result as-is; if `valid:false`, fix every reported error and compile again. `compile_workflow_spec` and `plan_workflow` produce the **same `plan_hash`** for the same graph, so either works for headless validation.
+
+**Request shapes** (✅ Verified; these models use `extra="forbid"`, so typos fail loudly):
+- `resolve_workflow_spec`: `capabilities:[{alias, capability, requested_node_type?}]`.
+- `compile_workflow_spec` / `compile_workflow_refinement_spec`: required `application_id`, 8-128 chars matching `^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$`. Nodes: `{alias, capability, requested_node_type?, values}`.
+- `plan_workflow`: nodes `{alias, node_type, values}`.
+- Aliases are lowercase letters, digits and `_`. Connections are `{source_alias, source_output, target_alias, target_input}`. Outputs are upper-case type names (`CLIP`, `MODEL`), inputs are runtime input names. `values` is free-form.
+- Pinning: `node_library_status` returns `catalog_hash` (use this one for `expected_catalog_hash`) and `observed_catalog_hash`.
 
 ### Workflow branches (added in 0.9.0, ⚠ untested)
 `workflow_branches_discover` (read-only; returns pinned workflow/graph/branch hashes; ties return candidates rather than a guess), `workflow_branch_compare` (read-only diff of two pinned branches; credential-like fields are redacted), `workflow_branch_navigate` (select and focus on the canvas), `compile_workflow_branch_operation` → `apply_workflow_graph_patch`, then `resolve_workflow_branch_successor` (call only after a successful apply, passing its envelope unchanged).
@@ -129,11 +136,15 @@ These return real image content that Claude can inspect visually.
 - **View:** `view_output_image` (defaults to the last image of the latest successful run; pass `prompt_id`/`node_id`/`output_index` to pick one), `view_canvas_images` (paginated, read-only), `view_prompt_reference_image` (the image wired into an `image2`/reference input).
 - **Masks:** `view_node_mask` (masked pixels shown in magenta; call it first) → `edit_node_mask` (rectangle/ellipse paint or erase; requires the one-use context token from the view call) → `confirm_mask_review` (the user must accept the preview; **queueing stays blocked until it succeeds**, and acceptance is never remembered for later masks).
 
-### Comfy Registry (added in 0.9.0, ⚠ untested)
-`registry_search_packages` (all published packs; results include `registry_url` and `github_url`), `registry_get_package` (one pack's metadata before recommending an install). These differ from `node_library_search` (loaded nodes only) and `manager_search_nodes` (Manager's local cache). A Registry hit doesn't prove the pack is compatible: after installing and restarting, confirm with `node_library_search`.
+### Comfy Registry (added in 0.9.0, ✅ Verified headless)
+`registry_search_packages` (all published packs; page size is `max_results` 1-20, default 10; results include `registry_url` and `github_url`), `registry_get_package` (one pack's metadata before recommending an install). These differ from `node_library_search` (loaded nodes only) and `manager_search_nodes` (Manager's local cache). A Registry hit doesn't prove the pack is compatible: after installing and restarting, confirm with `node_library_search`.
 
-### Ren chat context (added in 0.9.0, ⚠ untested)
-Scoped to FL-MCP's in-ComfyUI Ren chat; expect them to fail when called from mcporter with no Ren message in context. `web_search` (provider and depth come from the current Ren message; Tavily modes cost credits), `web_fetch_page` (public pages only; private and loopback targets are rejected), `view_chat_image`, `place_chat_image_in_node` (sets the image widget, never queues).
+### Ren chat context (added in 0.9.0)
+Built for FL-MCP's in-ComfyUI Ren chat.
+- `web_search` ✅ works from mcporter too (falls back to provider `free`; Tavily modes come from a Ren message and cost credits).
+- `web_fetch_page` ✅ works from mcporter (public pages only; private and loopback targets are rejected).
+- `view_chat_image` ❌ needs an `image` chat-attachment reference, which only exists inside Ren.
+- `place_chat_image_in_node` ⚠ Untested (sets the image widget, never queues).
 
 *⚿ = requires a safety gate to be enabled.*
 
@@ -146,6 +157,10 @@ Scoped to FL-MCP's in-ComfyUI Ren chat; expect them to fail when called from mcp
 - **Gated writes no-op** with a safety error, not an exception — if a write "does nothing," check the gate in `mcp_capability_audit`.
 - **`assets` may be `degraded`** ("ComfyUI assets feature is disabled") — the `comfy_asset*` tools need ComfyUI's assets feature on.
 - **Param names are non-obvious — grep the signatures.** `npx mcporter list flmcp --all-parameters` dumps every tool; request-object field names are surprising (`random_choice` → `items` not `choices`; `comfy_list_folders` → `folder_type`). When the signature only shows `request: Record<string, unknown>`, read the pydantic `*Request` models in `backend/mcp_server.py` for the real fields.
+- **Unknown fields are silently ignored on the registry and node-library tools** (everywhere else uses `extra="forbid"`). `registry_search_packages` and `node_knowledge_search` page with `max_results`; a `limit` is accepted and does nothing. `node_library_search` does take `limit`.
+- **`comfy_status` reports stale default config**, e.g. `mode:"embedded"`, python `venv\bin\python`, args `--cpu`. That is not the running process. The real launch args are in `mcp_capability_audit` → `comfy_rest.system.argv`.
+- **Bridge needs both ends.** A ComfyUI tab, including the Easy-Install GUI's webview, registers a frontend session (`has_frontend:true` in `curl http://127.0.0.1:8000/api/sessions`). But a plain mcporter-spawned server runs standalone ("MCP WebSocket client is not initialized") until it gets `FL_MCP_MODE=subprocess` plus that same `FL_MCP_SESSION_ID`.
+- **`--args` must be single-line JSON.** A pretty-printed file via `--args "$(cat f.json)"` fails with `Unexpected end of JSON input`. Compact it first (`python -c "import json,sys;print(json.dumps(json.load(open(sys.argv[1]))))" f.json`).
 - **`manager_queue_action` is a two-step confirm gate** — first call returns `confirmation_required`; re-call with `{endpoint, confirmed:true, payload:{…}}` to execute (also needs `FL_MCP_ENABLE_MANAGER_MUTATIONS`).
 - **`custom_nodes_create_pack` prepends `ComfyUI_`** to the folder name (`name:"foo"` → pack `ComfyUI_foo`); use that prefixed name in follow-up `path` args.
 
