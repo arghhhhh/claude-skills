@@ -1,12 +1,12 @@
 ---
-version: 1.2.0
+version: 1.3.0
 name: capcut-cli
 description: Programmatically edit CapCut / JianYing video drafts from the terminal via the `capcut` CLI. Use to inspect projects, build drafts from specs, add video/audio/text, apply transitions/masks/effects, import/export/translate subtitles, transcribe captions, and cut long-form video — all by reading and writing the local draft store directly (JSON in, JSON out, no server).
 ---
 
 # capcut-cli — CapCut / JianYing draft editing from the CLI
 
-Independent, unofficial CLI ([renezander030/capcut-cli](https://github.com/renezander030/capcut-cli)) that reads and writes CapCut/JianYing project JSON on disk. Every command loads the local draft, validates it against a version-aware schema, applies one edit, and writes it back **atomically with a `.bak`**. No MCP server, no HTTP daemon, no uploads.
+Independent, unofficial CLI ([renezander030/capcut-cli](https://github.com/renezander030/capcut-cli)) that reads and writes CapCut/JianYing project JSON on disk. Every command loads the local draft, validates it against a version-aware schema, applies one edit, and writes it back **atomically with a `.bak`**. No MCP server, no HTTP daemon. Nothing leaves the machine except the opt-in cloud flags and `translate` (see rule 7). Documented against **capcut-cli 0.34.0**.
 
 ## Critical rules
 
@@ -16,9 +16,9 @@ Independent, unofficial CLI ([renezander030/capcut-cli](https://github.com/renez
 4. **Pass `--jianying`** to target the JianYing enum namespace instead of CapCut's. Enum slugs differ between the two.
 5. **Mutating commands write in place** and leave a `.bak`. Use **`capcut restore <project> --list` / `--step N`** to undo. Confirm destructive ops (`prune`, `replace-media`, `migrate`) with the user first.
 6. **CapCut must NOT have the project open** while you mutate it — the editor can overwrite your changes. Close CapCut, edit, then reopen. On CapCut ≥ 8.7 use `sync-timelines` to reconcile mirror files if they drift.
-7. **This tool never renders CapCut's final output and never uploads.** `render` is a low-res ffmpeg *proxy* preview only. The human opens CapCut to review and export.
+7. **This tool never renders CapCut's final output and never publishes.** `render` is a low-res ffmpeg *proxy* preview only. The human opens CapCut to review and export. **Data-egress exceptions, all opt-in:** `caption --cloud` uploads the audio to ByteDance's CapCut servers; `caption --translate <lang>` and `translate --cloud` send caption/text content there; `translate` without `--cloud` sends text to the Anthropic API. The ByteDance paths are experimental and unofficial. Ask the user before using any of them, and default to local Whisper / `--words`.
 8. **Global safety flags:** `--dry-run` previews any mutating command (prints result with `"dryRun":true`, leaves draft and `.bak` untouched); `--force-write` overrides editor-running / changed-on-disk / version-boundary guards (only with user say-so); `--active-timeline` follows the `Timelines/project.json` pointer on an unverified build; `-q` silences success output.
-9. **`capcut describe`** emits the full command surface as JSON (an agent tool spec) — use it to discover exact flags programmatically. `capcut <command> --help` gives per-command flags. `capcut enums <category> [--jianying]` lists valid slugs for transitions/masks/effects/etc.
+9. **`capcut describe`** emits the full command surface as JSON (an agent tool spec). `describe --compact` gives a short discovery index and `describe --command <name>` gives one command's contract. Use them to discover exact flags programmatically. `capcut <command> --help` gives per-command flags. `capcut enums <category> [--jianying]` lists valid slugs for transitions/masks/effects/etc.
 
 ## Command reference
 
@@ -29,7 +29,7 @@ Independent, unofficial CLI ([renezander030/capcut-cli](https://github.com/renez
 |---|---|
 | `info` | `capcut info <project>` — overview + material summary |
 | `version` | `capcut version <project>` — detect CapCut/JianYing version, schema flags, support status |
-| `lint` | `capcut lint <project> [--fix] [--frame-grid] [--max-chars <n>] [--max-cue-secs <n>] [--min-gap-ms <n>] [--no-check-paths]` — overlaps, line length, main-track gaps, media outside draft, missing files; `--fix` repairs `fixable:true` issues; exit 0/1/2 for CI |
+| `lint` | `capcut lint <project> [--fix] [--frame-grid] [--max-chars <n>] [--max-cue-secs <n>] [--min-gap-ms <n>] [--max-cps <n>] [--safe-area] [--max-still-secs <n>] [--max-shot-secs <n>] [--min-silent-secs <n>] [--pip] [--no-check-paths] [--no-probe]` — overlaps, line length, main-track gaps, media outside draft, missing files, over-long stills/shots, silent stretches; `--fix` repairs `fixable:true` issues; exit 0/1/2 for CI |
 | `tracks` | `capcut tracks <project>` |
 | `segments` | `capcut segments <project> [--track <type>]` — timing per segment |
 | `texts` | `capcut texts <project>` — all text/subtitle content |
@@ -38,17 +38,18 @@ Independent, unofficial CLI ([renezander030/capcut-cli](https://github.com/renez
 | `materials` | `capcut materials <project> [--type <type>]` |
 | `timeline` | `capcut timeline <project> [--cols <n>]` (`-H` for ASCII bars) |
 | `projects` | `capcut projects [query] [--drafts <path>] [--names]` — list draft folders on disk |
-| `diff` | `capcut diff <project-a> <project-b>` |
+| `diff` | `capcut diff <project-a> (<project-b> \| --since-write)` — `--since-write` shows what the CapCut app changed since capcut-cli's last write |
 | `config` | `capcut config` — resolved `.capcutrc` + effective defaults |
-| `describe` | `capcut describe` — full command surface as JSON (agent tool spec) |
+| `describe` | `capcut describe [--compact] [--command <name>]` — full command surface as JSON (agent tool spec) |
+| `catalogue` | `capcut catalogue <query> [--kind <category>] [--limit <n>] [--jianying]` — fuzzy-find a resource id/slug by name across every category (filters, bubbles, fonts, harvested entries) |
 | `enums` | `capcut enums <category-flag> [--jianying]` — list slugs (transitions, masks, effects, …) |
-| `doctor` | `capcut doctor` — environment preflight |
+| `doctor` | `capcut doctor [--drafts <dir>]` — environment preflight (Node, ffmpeg/ffprobe, whisper, TTS, API key, draft stores) |
 | `diagnose` | `capcut diagnose <project> [--bundle <report.json>]` — canonical files, divergence, write safety |
 
 ### Create / build
 | Command | Usage |
 |---|---|
-| `init` | `capcut init <name> [--template <dir>] [--drafts <dir>]` — new empty draft |
+| `init` | `capcut init <name> [--template auto\|bundled\|<dir>] [--drafts <dir>]` — new empty draft |
 | `quickstart` | `capcut quickstart <name> [--video <f>] [--audio <f>] [--srt <f>] [--drafts <dir>]` — create + add one input + lint |
 | `compile` | `capcut compile <spec.json> [--out <draftdir> \| --into <project>] [--data <rows.jsonl\|->] [--check \| --plan]` — build a draft from a declarative JSON spec (inverse of `describe`); `--data` builds one draft per JSONL row, substituting `{{key}}` placeholders |
 | `init` / `quickstart` canvas | both accept `--ratio 16:9\|9:16\|1:1\|4:3\|3:4` or exact `--width <px> --height <px>` |
@@ -58,19 +59,20 @@ Independent, unofficial CLI ([renezander030/capcut-cli](https://github.com/renez
 |---|---|
 | `add-video` | `capcut add-video <project> <file-or-url> <start> [duration] [opts]` (Wikimedia URLs, license-checked) |
 | `add-audio` | `capcut add-audio <project> <file-or-url> <start> [duration] [opts]` |
-| `add-text` | `capcut add-text <project> <start> <duration> <text> [--font/--color/--position …]` |
+| `add-text` | `capcut add-text <project> <start> <duration> <text> [--font-size <n>] [--color <hex>] [--align 0\|1\|2] [--x <-1..1>] [--y <-1..1>] [--track-name <s>] [--preset <file>]` — there is no `--position`/`--font` flag; place with `--x/--y` (`--y -0.8` ≈ bottom) |
 | `add-sticker` | `capcut add-sticker <project> <resource-id> <start> <duration> [opts]` |
-| `add-filter` | `capcut add-filter <project> <slug> <start> <duration> [opts]` |
-| `add-effect` | `capcut add-effect <project> <slug> <start> <duration> [opts]` — scene effect on own track |
+| `add-filter` | `capcut add-filter <project> <slug-or-name> (<start> <duration> \| --full) [--intensity 0-1] [--resource-id <id> [--effect-id <id>]] [--track-name <s>]` |
+| `add-effect` | `capcut add-effect <project> <slug-or-name> (<start> <duration> \| --full) [--intensity 0-1] [--params <json>] [--resource-id <id>] [--bind <segment-id>]` — scene effect on own track; `--bind` (experimental) attaches to one segment |
 | `add-sfx` | `capcut add-sfx <project> <slug> <start> <duration> [opts]` |
-| `tts` | `capcut tts <project> [start] [duration] (--text <s> \| --text-file <f>) --tts-cmd '<template>'` — local TTS → audio segment. Template runs without a shell: `{out}` required (wav path), `{text}` one arg or piped to stdin. macOS: `--tts-cmd 'say -o {out} {text}'` |
+| `tts` | `capcut tts <project> [start] [duration] (--text <s> \| --text-file <f>) --tts-cmd '<template>'` — local TTS → audio segment. Template runs without a shell: `{out}` required (wav path), `{text}` one arg or piped to stdin. e.g. `--tts-cmd 'piper --model en_US-amy-medium --output_file {out}'`, `'espeak-ng -w {out} {text}'`, macOS `'say -o {out} {text}'`. `--lexicon <file>` applies pronunciation rules |
 | `add-cover` | `capcut add-cover <project> <image> [--time <ms>]` |
 
 ### Edit / animate (mutates)
 | Command | Usage |
 |---|---|
 | `set-text` | `capcut set-text <project> <id> <text>` |
-| `shift` / `shift-all` | `capcut shift <project> <id> <offset>` · `capcut shift-all <project> <offset> [--track <type>]` (e.g. `+0.5s`) |
+| `shift` / `shift-all` | `capcut shift <project> <id> <offset>` · `capcut shift-all <project> <offset> [--track <type>] [--from <time>]` (e.g. `+0.5s`; `--from` shifts only segments at/after that boundary) |
+| `remove` | `capcut remove <project> <segment-id> [--keep-track] [--keep-materials] [--ripple]` — delete a segment, drop its emptied track, sweep orphaned materials; `--ripple` closes the gap across all tracks |
 | `trim` | `capcut trim <project> <id> <start> <duration>` |
 | `speed` | `capcut speed <project> <id> <multiplier>` |
 | `volume` | `capcut volume <project> <id> <0.0-1.0>` |
@@ -102,12 +104,12 @@ Independent, unofficial CLI ([renezander030/capcut-cli](https://github.com/renez
 ### Subtitles & i18n
 | Command | Usage |
 |---|---|
-| `import-srt` | `capcut import-srt <project> <srt-or-> [opts]` — one text segment per cue |
+| `import-srt` | `capcut import-srt <project> <srt-or-> [--track-name <s>] [--time-offset <s>] [--style-ref <seg-id> \| --clone-style] [style flags] [--highlight-words <w,…\|@file>] [--keyword-color <hex>] [--color-cycle <hex,…>]` — one text segment per cue |
 | `import-ass` | `capcut import-ass <project> <ass-or-> [opts]` |
 | `export-ass` | `capcut export-ass <project> [--karaoke] [--out <f.ass>]` — styled ASS (per-style lines, inline override tags, `{\k}` word timing with `--karaoke`) |
 | `export-srt` | `capcut export-srt <project> [--granularity line\|word] [--format srt\|vtt]` → stdout |
-| `caption` | `capcut caption <project> (--audio <path> \| --from-segment <id>) [opts]` — Whisper transcription into caption-track segments |
-| `translate` | `capcut translate <project> --to <language> --out <path> [opts]` — clone draft into another language (Anthropic API) |
+| `caption` | `capcut caption <project> (--audio <path> \| --from-segment <id> \| --words <file.json\|->) [opts]` — Whisper transcription into caption-track segments. `--words` takes word timings from any aligner (no Whisper needed). `--script <file>` keeps Whisper timing but uses your transcript's wording. Also `--karaoke`, `--word-reveal`, `--max-chars`, `--max-words`, `--highlight-words`, `--preset`/`--style-ref`, `--language`, `--whisper-model`. The transcript is cached, so restyling doesn't re-transcribe (`--no-cache` to force). ⚠ `--cloud` / `--translate` send data to ByteDance (rule 7) |
+| `translate` | `capcut translate <project> --to <language> --out <path> [--from <lang>] [--model <id>] [--api-key <k>] [--cloud]` — clone draft into another language via the Anthropic API, or ByteDance with `--cloud` (no key, experimental) |
 
 ### Long-form → short, and batch
 | Command | Usage |
@@ -119,25 +121,26 @@ Independent, unofficial CLI ([renezander030/capcut-cli](https://github.com/renez
 | `export-timeline` | `capcut export-timeline <project> [--out <f.otio>] [--captions markers]` — OpenTimelineIO export (DaVinci Resolve imports natively); exit ramp when the app rejects a draft |
 | `import-timeline` | `capcut import-timeline <f.otio> (--out <dir> \| --into <project>)` — inverse; missing media becomes a placeholder to `replace-media` |
 | `concat` | `capcut concat <project-a> <project-b> [--out <path>]` — append timeline (id-safe) |
-| `batch` | `capcut batch <project> [--continue-on-error] < operations.jsonl` — many edits, one file write |
-| `serve` | `capcut serve [--queue <path>] [opts]` — stateless JSONL job runner from stdin (for n8n/Make/Coze) |
+| `batch` | `capcut batch <project> [--continue-on-error] [--plan <plan.json>] < operations.jsonl` · `capcut batch <project> --apply-plan <plan.json>` — many edits, one file write; `--plan` saves a reviewable plan to apply later |
+| `serve` | `capcut serve [--queue <path>] [--fail-fast] [--workers <n>] [--retries <n>] [--timeout <s>]` — stateless JSONL job runner from stdin (for n8n/Make/Coze) |
 
 ### Maintenance / repair (mutates unless noted)
 | Command | Usage |
 |---|---|
 | `prune` | `capcut prune <project>` — remove unreferenced materials |
-| `relink` | `capcut relink <project> (--dir <path> \| --from <prefix> --to <prefix>)` — repair broken media paths |
+| `relink` | `capcut relink <project> (--dir <path> [--recursive] \| --from <prefix> --to <prefix>) [--stage]` — repair broken media paths; `--stage` copies relinked video/audio into the draft's `assets/` so it is portable |
 | `replace-media` | `capcut replace-media <project> <segment-id> <new-file> [--retime]` — swap source, keep timing/effects/keyframes |
-| `migrate` | `capcut migrate <project> --from <version> --to <version>` — schema migrations |
-| `sync-timelines` | `capcut sync-timelines <project-dir> [--apply]` — reconcile drifted mirrors (CapCut ≥ 8.7); plan by default, `--apply` rewrites |
+| `migrate` | `capcut migrate <project> (--from <version> --to <version> \| --like <project> \| --from-store)` — schema migrations (mask ↔ common_masks across JianYing 5.9 / CapCut 9.6); `--like <donor>` / `--from-store` copy schema markers from an app-authored draft so a build that refuses a CLI-made draft opens it |
+| `sync-timelines` | `capcut sync-timelines <project-dir> [--nested] [--apply]` — reconcile drifted mirrors (CapCut ≥ 8.7); plan by default, `--apply` rewrites |
 | `register` | `capcut register <project-dir> [--apply] [--materials] [--drafts <dir>]` — repair registration metadata (`draft_meta_info.json` + store `root_meta_info.json`) so CapCut lists an existing draft again; plan by default |
 | `rename` | `capcut rename <project> <new-name> [--drafts <dir>]` — rename folder + metadata in one transaction; prints relink command for stale media refs |
 | `harvest-enums` | `capcut harvest-enums (<project> \| --sync) [--apply] [--catalogue <path>]` / `--add <kind> <slug> <resource-id>` — learn store resource ids from app-authored drafts into `~/.config/capcut-cli/user-enums.json` so they stop lint-flagging and become writable slugs |
 | `restore` | `capcut restore <project> [--step <n> \| --list]` — undo writes from `.bak`/snapshot history |
-| `render` (read-only) | `capcut render <project> [--out <preview.mp4>] [--burn-captions …]` — low-res ffmpeg proxy, NOT CapCut's final render |
+| `loudness` | `capcut loudness <project> [--target <lufs>] [--per-clip] [--max-gain-db <db>] [--apply] [--tolerance <lu>] [--max-true-peak <dbtp>]` — EBU R128 measure of the timeline's audio; `--target -14` (long-form) / `-11` (shorts) computes gain, `--apply` writes it as segment volume (mutates only with `--apply`); `--tolerance`/`--max-true-peak` make it a delivery gate (exit 1). Needs ffmpeg |
+| `render` (read-only) | `capcut render <project> [--out <preview.mp4>] [--scale <f>] [--fps <n>] [--burn-captions \| --soft-captions] [--all-video-tracks] [--crf <n>] [--verify]` — low-res ffmpeg proxy, NOT CapCut's final render |
 | `decrypt` (read-only) | `capcut decrypt <project-or-file>` — detect JianYing 6.0+ encryption + explain workaround |
-| `fixture` (read-only) | `capcut fixture <project> --out <dir>` — redacted compatibility bundle for a bug report |
-| `export` | `capcut export <drafts-dir> --batch [opts]` — ⚠ EXPERIMENTAL UI-automated render queue (macOS only) |
+| `fixture` (read-only) | `capcut fixture <project> --out <dir> [--anonymize] [--check]` — redacted compatibility bundle for a bug report; `--anonymize` also scrubs media/folder/project names and texts |
+| `export` | `capcut export <drafts-dir> --batch [--app capcut\|jianying]` — ⚠ EXPERIMENTAL UI-automated render queue (macOS only) |
 | `completions` (read-only) | `capcut completions <bash\|zsh\|fish>` |
 
 ## Typical workflow
@@ -148,8 +151,9 @@ capcut projects --names                         # 2. find a draft folder (or qui
 capcut quickstart promo --video clip.mp4        #    -> creates ./promo/, adds clip, lints
 capcut info ./promo/ -H                          # 3. inspect (table)
 capcut segments ./promo/                         #    get segment ids for edits
-capcut add-text ./promo/ 0 3 "Hello" --position bottom
+capcut add-text ./promo/ 0 3 "Hello" --y -0.8      # x/y in -1..1
 capcut transition ./promo/ <seg-id> $(capcut enums --transitions | jq -r '.[0].slug')
+capcut loudness ./promo/ --target -14            #    optional: check delivery loudness (add --apply)
 capcut lint ./promo/                             # 4. validate before handing back
 # human opens CapCut to review + render
 ```
@@ -158,9 +162,11 @@ capcut lint ./promo/                             # 4. validate before handing ba
 
 - **Draft dir must exist** — CapCut/JianYing create the drafts root on first launch. If `doctor` reports the dir missing, open the editor once or pass a path directly.
 - **Editor race** — CapCut open on the same project can clobber your writes; and on ≥ 8.7 it keeps mirror files (`template-2.tmp`, `draft_info.json`) that must be reconciled with `sync-timelines`.
-- **`caption` needs Whisper on PATH**; **`translate` needs `ANTHROPIC_API_KEY`** (or `--api-key`); **`render`/media metadata need ffmpeg/ffprobe**. `doctor` flags which are missing and which commands they affect.
+- **`caption` needs Whisper on PATH** (or pass `--words <aligner.json>`, or `import-srt` an existing SRT); **`translate` needs `ANTHROPIC_API_KEY`** (or `--api-key`); **`render`/media metadata need ffmpeg/ffprobe**. `tts` needs a local TTS binary (piper/espeak-ng/say) via `--tts-cmd`. `doctor` flags which are missing and which commands they affect.
 - **JianYing 6.0+ drafts are encrypted** — `capcut decrypt` only detects and explains the workaround; it does not decrypt.
 - **Slugs are namespace-specific** — always source them from `capcut enums <category> [--jianying]`, don't guess.
 - **`render --soft-captions`** muxes cues as a toggleable `mov_text` stream (+ `<preview>.srt`); skipped if the ffmpeg build lacks `mov_text`. `doctor` reports `drawtext=false` on Homebrew ffmpeg → `--burn-captions` unavailable there; use `--soft-captions`.
 - **Detect → cut pipeline:** `detect-scenes` / `detect-silence` / `detect-retakes` never touch a draft; they emit µs segment lists to feed `cut` or `compile`.
 - **Unofficial tool** — schema support tracks specific CapCut/JianYing versions. Check `capcut version <project>` for support status; use `capcut fixture` to file a version-support issue.
+- **Finding slugs by name:** `capcut catalogue "glitch"` searches every category at once, harvested store items included. Use it before guessing an `enums` category.
+- **Removing vs pruning:** `remove` deletes one segment and sweeps its orphans. `prune` sweeps orphans only. Both can be undone with `restore`.

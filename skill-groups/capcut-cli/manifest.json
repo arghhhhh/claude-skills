@@ -1,20 +1,21 @@
 {
   "name": "capcut-cli",
   "description": "Programmatically edit CapCut / JianYing video drafts via the capcut-cli (renezander030/capcut-cli) — inspect, build, subtitle, caption, translate, and cut projects by reading/writing the local draft store directly. JSON in, JSON out; no server.",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "update_policy": "check",
   "upstream": {
     "capcut-cli": {
       "type": "npm",
       "package": "capcut-cli",
-      "pin": "0.13.2"
+      "pin": "0.34.0"
     }
   },
   "prerequisites": [
     "Node.js >= 18 (built-ins only, no native modules)",
     "Optional: FFmpeg + ffprobe (render, media metadata)",
     "Optional: Whisper on PATH (caption)",
-    "Optional: ANTHROPIC_API_KEY (translate)"
+    "Optional: ANTHROPIC_API_KEY (translate)",
+    "Optional: a local TTS binary — piper, espeak-ng, or macOS say (tts)"
   ],
   "install": {
     "check": "capcut --version 2>&1 | grep -qE '(^|[^0-9.])v?{{PIN:capcut-cli}}([^0-9.]|$)'",
@@ -47,6 +48,6 @@
     "Run `capcut doctor` to confirm the environment and that CapCut/JianYing draft folders are detected.",
     "Optional: install FFmpeg + ffprobe for `render` and automatic media metadata (Windows: `winget install --id Gyan.FFmpeg -e --source winget`; macOS: `brew install ffmpeg`; Linux: `sudo apt install ffmpeg`).",
     "Optional: install Whisper for `caption` (`pip install openai-whisper`), and set ANTHROPIC_API_KEY for `translate`.",
-    "capcut-cli never uploads projects and never renders CapCut's final output — open the draft in CapCut to review and export. Automated upload to short-video platforms is prohibited; the publish click stays human."
+    "capcut-cli never publishes and never renders CapCut's final output — open the draft in CapCut to review and export. Automated upload to short-video platforms is prohibited; the publish click stays human. Exception to local-only: the opt-in `caption --cloud` / `--translate` and `translate --cloud` flags send audio/text to ByteDance servers."
   ]
 }
