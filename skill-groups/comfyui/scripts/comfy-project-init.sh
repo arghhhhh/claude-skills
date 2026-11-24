@@ -29,7 +29,8 @@ if [ ! -e "$link" ]; then
   case "$(uname -s)" in
     MINGW*|MSYS*|CYGWIN*)
       w_link="$(cygpath -w "$link")"; w_real="$(cygpath -w "$real")"
-      cmd //c "mklink /J \"$w_link\" \"$w_real\"" >/dev/null ;;
+      # cmd //c "mklink /J \"…\"" breaks under MSYS argument quoting; PowerShell takes the paths as plain strings.
+      powershell -NoProfile -Command "New-Item -ItemType Junction -Path '$w_link' -Target '$w_real'" >/dev/null ;;
     *) ln -s "$real" "$link" ;;
   esac
   echo "created junction: $link -> $real"
