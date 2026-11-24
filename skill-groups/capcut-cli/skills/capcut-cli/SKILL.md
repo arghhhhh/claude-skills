@@ -1,12 +1,12 @@
 ---
-version: 1.3.0
+version: 1.4.0
 name: capcut-cli
 description: Programmatically edit CapCut / JianYing video drafts from the terminal via the `capcut` CLI. Use to inspect projects, build drafts from specs, add video/audio/text, apply transitions/masks/effects, import/export/translate subtitles, transcribe captions, and cut long-form video — all by reading and writing the local draft store directly (JSON in, JSON out, no server).
 ---
 
 # capcut-cli — CapCut / JianYing draft editing from the CLI
 
-Independent, unofficial CLI ([renezander030/capcut-cli](https://github.com/renezander030/capcut-cli)) that reads and writes CapCut/JianYing project JSON on disk. Every command loads the local draft, validates it against a version-aware schema, applies one edit, and writes it back **atomically with a `.bak`**. No MCP server, no HTTP daemon. Nothing leaves the machine except the opt-in cloud flags and `translate` (see rule 7). Documented against **capcut-cli 0.34.0**.
+Independent, unofficial CLI ([renezander030/capcut-cli](https://github.com/renezander030/capcut-cli)) that reads and writes CapCut/JianYing project JSON on disk. Every command loads the local draft, validates it against a version-aware schema, applies one edit, and writes it back **atomically with a `.bak`**. No MCP server, no HTTP daemon. Nothing leaves the machine except the opt-in cloud flags and `translate` (see rule 7). Documented against **capcut-cli 0.37.1**.
 
 ## Critical rules
 
@@ -65,6 +65,7 @@ Independent, unofficial CLI ([renezander030/capcut-cli](https://github.com/renez
 | `add-effect` | `capcut add-effect <project> <slug-or-name> (<start> <duration> \| --full) [--intensity 0-1] [--params <json>] [--resource-id <id>] [--bind <segment-id>]` — scene effect on own track; `--bind` (experimental) attaches to one segment |
 | `add-sfx` | `capcut add-sfx <project> <slug> <start> <duration> [opts]` |
 | `tts` | `capcut tts <project> [start] [duration] (--text <s> \| --text-file <f>) --tts-cmd '<template>'` — local TTS → audio segment. Template runs without a shell: `{out}` required (wav path), `{text}` one arg or piped to stdin. e.g. `--tts-cmd 'piper --model en_US-amy-medium --output_file {out}'`, `'espeak-ng -w {out} {text}'`, macOS `'say -o {out} {text}'`. `--lexicon <file>` applies pronunciation rules |
+| `dub` | `capcut dub <project> <subs.srt\|.vtt> --tts-cmd '<template>' [--lexicon <f>] [--trim-overlap] [--volume <n>] [--track-name <s>]` — one TTS clip per cue, placed at the cue start. Speech that runs into the next cue (or an existing segment) is refused unless `--trim-overlap` cuts it there. Same `--tts-cmd` template as `tts` |
 | `add-cover` | `capcut add-cover <project> <image> [--time <ms>]` |
 
 ### Edit / animate (mutates)
@@ -104,7 +105,7 @@ Independent, unofficial CLI ([renezander030/capcut-cli](https://github.com/renez
 ### Subtitles & i18n
 | Command | Usage |
 |---|---|
-| `import-srt` | `capcut import-srt <project> <srt-or-> [--track-name <s>] [--time-offset <s>] [--style-ref <seg-id> \| --clone-style] [style flags] [--highlight-words <w,…\|@file>] [--keyword-color <hex>] [--color-cycle <hex,…>]` — one text segment per cue |
+| `import-srt` | `capcut import-srt <project> <srt-or-> [--track-name <s>] [--time-offset <s>] [--style-ref <seg-id> \| --clone-style] [style flags] [--highlight-words <w,…\|@file>] [--keyword-color <hex>] [--color-cycle <hex,…>]` — one text segment per cue. SRT or WebVTT (detected by the `WEBVTT` header); non-UTF-8 input is refused |
 | `import-ass` | `capcut import-ass <project> <ass-or-> [opts]` |
 | `export-ass` | `capcut export-ass <project> [--karaoke] [--out <f.ass>]` — styled ASS (per-style lines, inline override tags, `{\k}` word timing with `--karaoke`) |
 | `export-srt` | `capcut export-srt <project> [--granularity line\|word] [--format srt\|vtt]` → stdout |
@@ -137,7 +138,7 @@ Independent, unofficial CLI ([renezander030/capcut-cli](https://github.com/renez
 | `harvest-enums` | `capcut harvest-enums (<project> \| --sync) [--apply] [--catalogue <path>]` / `--add <kind> <slug> <resource-id>` — learn store resource ids from app-authored drafts into `~/.config/capcut-cli/user-enums.json` so they stop lint-flagging and become writable slugs |
 | `restore` | `capcut restore <project> [--step <n> \| --list]` — undo writes from `.bak`/snapshot history |
 | `loudness` | `capcut loudness <project> [--target <lufs>] [--per-clip] [--max-gain-db <db>] [--apply] [--tolerance <lu>] [--max-true-peak <dbtp>]` — EBU R128 measure of the timeline's audio; `--target -14` (long-form) / `-11` (shorts) computes gain, `--apply` writes it as segment volume (mutates only with `--apply`); `--tolerance`/`--max-true-peak` make it a delivery gate (exit 1). Needs ffmpeg |
-| `render` (read-only) | `capcut render <project> [--out <preview.mp4>] [--scale <f>] [--fps <n>] [--burn-captions \| --soft-captions] [--all-video-tracks] [--crf <n>] [--verify]` — low-res ffmpeg proxy, NOT CapCut's final render |
+| `render` (read-only) | `capcut render <project> [--out <preview.mp4>] [--scale <f>] [--fps <n>] [--burn-captions \| --soft-captions] [--all-video-tracks] [--crf <n> \| --video-bitrate <r>] [--encoder <c>] [--audio-track <n>] [--audio-channel left\|right\|mix] [--strict] [--verify]` — low-res ffmpeg proxy, NOT CapCut's final render. `--audio-track` picks the stream of multi-stream audio files (0-based); `--audio-channel` plays one stereo channel as mono |
 | `decrypt` (read-only) | `capcut decrypt <project-or-file>` — detect JianYing 6.0+ encryption + explain workaround |
 | `fixture` (read-only) | `capcut fixture <project> --out <dir> [--anonymize] [--check]` — redacted compatibility bundle for a bug report; `--anonymize` also scrubs media/folder/project names and texts |
 | `export` | `capcut export <drafts-dir> --batch [--app capcut\|jianying]` — ⚠ EXPERIMENTAL UI-automated render queue (macOS only) |
@@ -167,6 +168,10 @@ capcut lint ./promo/                             # 4. validate before handing ba
 - **Slugs are namespace-specific** — always source them from `capcut enums <category> [--jianying]`, don't guess.
 - **`render --soft-captions`** muxes cues as a toggleable `mov_text` stream (+ `<preview>.srt`); skipped if the ffmpeg build lacks `mov_text`. `doctor` reports `drawtext=false` on Homebrew ffmpeg → `--burn-captions` unavailable there; use `--soft-captions`.
 - **Detect → cut pipeline:** `detect-scenes` / `detect-silence` / `detect-retakes` never touch a draft; they emit µs segment lists to feed `cut` or `compile`.
+- **`render` exit codes (0.37+):** audio is padded to the timeline, and a proxy whose probed duration misses the draft's by more than one frame **exits non-zero** (file kept). Main-track gaps and music/captions past the last clip are held to what the proxy plays (a stderr note; an error only with `--verify`). Scripts that run `render` under `set -e` can now stop there.
+- **`render --burn-captions` and fonts:** each caption uses its draft font file when it exists (.ttf/.otf/.ttc); a missing one falls back to ffmpeg's default face and is counted in `fidelity.dropped.missing_fonts` (not `faithful`). `--strict` refuses instead.
+- **App versions (0.37.1):** CapCut 9.5.0 round-trip verified; **9.8.0 untested** (a compiled draft opens, no round trip yet). JianYing 11.x is write-only (see `capcut version`).
+- **Subtitle input:** `import-srt`, `quickstart --srt`, `detect-retakes --srt`, `compile` captions and `dub` all accept WebVTT too.
 - **Unofficial tool** — schema support tracks specific CapCut/JianYing versions. Check `capcut version <project>` for support status; use `capcut fixture` to file a version-support issue.
 - **Finding slugs by name:** `capcut catalogue "glitch"` searches every category at once, harvested store items included. Use it before guessing an `enums` category.
 - **Removing vs pruning:** `remove` deletes one segment and sweeps its orphans. `prune` sweeps orphans only. Both can be undone with `restore`.

@@ -1,7 +1,7 @@
 ---
-version: 1.2.0
+version: 1.3.0
 name: capcut
-description: CapCut / JianYing video-draft automation expert using the capcut-cli. Use to inspect projects, build drafts from specs, add/remove video/audio/text, apply transitions/masks/effects, measure and normalize loudness, import/export/translate subtitles, transcribe captions, cut long-form video (scene/silence/retake detection), synthesize TTS, export ASS/OTIO, and repair/relink/register drafts — all by reading and writing the local draft store directly.
+description: CapCut / JianYing video-draft automation expert using the capcut-cli. Use to inspect projects, build drafts from specs, add/remove video/audio/text, apply transitions/masks/effects, measure and normalize loudness, import/export/translate subtitles, transcribe captions, cut long-form video (scene/silence/retake detection), synthesize TTS and dub subtitle tracks, export ASS/OTIO, and repair/relink/register drafts — all by reading and writing the local draft store directly.
 tools: Bash, Read, Glob, Grep, Edit, Write
 model: sonnet
 ---

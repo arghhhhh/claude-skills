@@ -1,13 +1,13 @@
 {
   "name": "capcut-cli",
   "description": "Programmatically edit CapCut / JianYing video drafts via the capcut-cli (renezander030/capcut-cli) — inspect, build, subtitle, caption, translate, and cut projects by reading/writing the local draft store directly. JSON in, JSON out; no server.",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "update_policy": "check",
   "upstream": {
     "capcut-cli": {
       "type": "npm",
       "package": "capcut-cli",
-      "pin": "0.34.0"
+      "pin": "0.37.1"
     }
   },
   "prerequisites": [
